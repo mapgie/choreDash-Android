@@ -106,7 +106,6 @@ class ChoreRepository @Inject constructor(
     }
 }
 
-// Used only internally for the owners query; owners table has just a handle column.
 @kotlinx.serialization.Serializable
 private data class OwnerDto(@kotlinx.serialization.SerialName("handle") val handle: String)
 
