@@ -1,0 +1,165 @@
+package com.mapgie.dash.ui.components
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.SecureFlagPolicy
+import com.mapgie.dash.data.model.Chore
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditChoreSheet(
+    chore: Chore,
+    owners: List<String>,
+    sheetState: SheetState,
+    onSave: (tagId: String, label: String, owner: String?, intervalDays: Double?) -> Unit,
+    onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetScope = rememberCoroutineScope()
+    var label by remember { mutableStateOf(chore.label) }
+    var selectedOwner by remember { mutableStateOf(chore.owner ?: "") }
+    var intervalText by remember { mutableStateOf(chore.intervalDays?.toInt()?.toString() ?: "") }
+    var ownerExpanded by remember { mutableStateOf(false) }
+    var showArchiveConfirm by remember { mutableStateOf(false) }
+
+    val isArchived = chore.archivedAt != null
+
+    ModalBottomSheet(
+        onDismissRequest = { sheetScope.launch { sheetState.show() } },
+        sheetState = sheetState,
+        properties = ModalBottomSheetProperties(
+            securePolicy = SecureFlagPolicy.Inherit,
+            isFocusable = true,
+            shouldDismissOnBackPress = false
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                if (isArchived) "Archived chore" else "Edit chore",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                label = { Text("Label") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            if (owners.isNotEmpty()) {
+                ExposedDropdownMenuBox(
+                    expanded = ownerExpanded,
+                    onExpandedChange = { ownerExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedOwner,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Owner") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ownerExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = ownerExpanded,
+                        onDismissRequest = { ownerExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("(none)") },
+                            onClick = { selectedOwner = ""; ownerExpanded = false }
+                        )
+                        owners.forEach { owner ->
+                            DropdownMenuItem(
+                                text = { Text(owner) },
+                                onClick = { selectedOwner = owner; ownerExpanded = false }
+                            )
+                        }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = intervalText,
+                onValueChange = { intervalText = it },
+                label = { Text("Interval (days, optional)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedButton(
+                onClick = { showArchiveConfirm = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(if (isArchived) "Unarchive" else "Archive")
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Cancel") }
+                Button(
+                    onClick = {
+                        val intervalDays = intervalText.toDoubleOrNull()
+                        val owner = selectedOwner.ifBlank { null }
+                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                            onSave(chore.tagId, label.trim(), owner, intervalDays)
+                        }
+                    },
+                    enabled = label.isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("Save") }
+            }
+        }
+    }
+
+    if (showArchiveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm = false },
+            title = { Text(if (isArchived) "Unarchive chore?" else "Archive chore?") },
+            text = {
+                Text(
+                    if (isArchived)
+                        "This chore will reappear in your active list."
+                    else
+                        "This chore will be hidden from your active list."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveConfirm = false
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                        onArchiveToggle(chore, !isArchived)
+                    }
+                }) { Text(if (isArchived) "Unarchive" else "Archive") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+}

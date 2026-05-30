@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">choreDash + taskDash</string>
+    <string name="channel_task_reminders_name">Task reminders</string>
+    <string name="channel_task_reminders_desc">Alerts when a task reminder is due</string>
+    <string name="channel_chore_alerts_name">Overdue chores</string>
+    <string name="channel_chore_alerts_desc">Daily summary of overdue chores</string>
+</resources>
