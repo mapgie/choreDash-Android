@@ -1,0 +1,27 @@
+name: Changelog bump check
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.kt"
+      - "**/*.xml"
+      - "**/*.gradle.kts"
+      - "gradle/libs.versions.toml"
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if CHANGELOG.md was not updated
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if echo "$CHANGED" | grep -q "^CHANGELOG.md$"; then
+            echo "CHANGELOG.md updated — good."
+          else
+            echo "::error::Code changed but CHANGELOG.md was not updated."
+            exit 1
+          fi
