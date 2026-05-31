@@ -33,11 +33,12 @@ jobs:
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v3
         with:
+          gradle-version: '8.13'
           cache-read-only: false
       - run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-      - run: ./gradlew :app:assembleDebug --no-daemon
-      - run: ./gradlew :app:test --no-daemon
-      - run: ./gradlew :app:lintDebug --no-daemon
+      - run: gradle :app:assembleDebug --no-daemon
+      - run: gradle :app:test --no-daemon
+      - run: gradle :app:lintDebug --no-daemon
       - name: Create GitHub Release
         if: github.event_name == 'workflow_dispatch'
         env:
