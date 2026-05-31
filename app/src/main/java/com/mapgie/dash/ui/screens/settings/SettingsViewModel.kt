@@ -47,5 +47,5 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun clearSaveError() = _saveError.value = null
+    fun clearSaveError() { _saveError.value = null }
 }

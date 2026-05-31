@@ -21,11 +21,11 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SecureFlagPolicy
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -150,7 +150,6 @@ fun EditTaskSheet(
         onDismissRequest = { sheetScope.launch { sheetState.show() } },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
-            securePolicy = SecureFlagPolicy.Inherit,
             isFocusable = true,
             shouldDismissOnBackPress = false
         )
@@ -189,7 +188,7 @@ fun EditTaskSheet(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable)
                 )
                 val filtered = categories.filter { it.contains(category, ignoreCase = true) }
                 if (filtered.isNotEmpty()) {
@@ -298,7 +297,7 @@ fun EditTaskSheet(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ownerExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable)
                 )
                 if (owners.isNotEmpty()) {
                     ExposedDropdownMenu(

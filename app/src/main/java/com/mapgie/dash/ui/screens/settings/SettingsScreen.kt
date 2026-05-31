@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -61,14 +62,12 @@ fun SettingsScreen(
     val saveError by viewModel.saveError.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
 
-    // Seed local fields once settings load
     var url by rememberSaveable(settings?.supabaseUrl) { mutableStateOf(settings?.supabaseUrl ?: "") }
     var key by rememberSaveable(settings?.supabaseKey) { mutableStateOf(settings?.supabaseKey ?: "") }
     var owner by rememberSaveable(settings?.ownerHandle) { mutableStateOf(settings?.ownerHandle ?: "") }
     var keyVisible by remember { mutableStateOf(false) }
     var ownerExpanded by remember { mutableStateOf(false) }
 
-    // Load owners when screen is first shown (after potential existing credentials)
     LaunchedEffect(Unit) { viewModel.loadOwners() }
 
     LaunchedEffect(saveError) {
@@ -138,7 +137,7 @@ fun SettingsScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable)
                 )
                 if (owners.isNotEmpty()) {
                     ExposedDropdownMenu(

@@ -1,0 +1,24 @@
+name: Licence screen sync check
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "gradle/libs.versions.toml"
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if LicensesScreen.kt was not updated
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if echo "$CHANGED" | grep -q "LicensesScreen.kt"; then
+            echo "LicensesScreen.kt updated — good."
+          else
+            echo "::error::gradle/libs.versions.toml changed but LicensesScreen.kt was not updated."
+            exit 1
+          fi

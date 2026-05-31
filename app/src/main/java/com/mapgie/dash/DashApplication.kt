@@ -1,5 +1,4 @@
 package com.mapgie.dash
-
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -14,26 +13,17 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class DashApplication : Application(), Configuration.Provider {
-
     @Inject lateinit var workerFactory: HiltWorkerFactory
-
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .build()
-
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
     override fun onCreate() {
         super.onCreate()
         NotificationHelper.createChannels(this)
         scheduleDailyChoreCheck()
     }
-
     private fun scheduleDailyChoreCheck() {
         val request = PeriodicWorkRequestBuilder<DailyStaleChoreWorker>(1, TimeUnit.DAYS).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "daily_chore_check",
-            ExistingPeriodicWorkPolicy.KEEP,
-            request
-        )
+            "daily_chore_check", ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }

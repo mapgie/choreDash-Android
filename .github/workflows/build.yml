@@ -1,0 +1,53 @@
+name: Build & Release APK
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.kt"
+      - "**/*.xml"
+      - "**/*.gradle.kts"
+      - "gradle/libs.versions.toml"
+      - "gradle/wrapper/**"
+      - "gradle.properties"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version is new
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | grep -oP '"[^"]+"' | tr -d '"')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          if gh release view "v${VERSION}" &>/dev/null; then
+            echo "::error::v${VERSION} already released."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.13'
+          cache-read-only: false
+      - run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - run: gradle :app:assembleDebug --no-daemon
+      - run: gradle :app:test --no-daemon
+      - run: gradle :app:lintDebug --no-daemon
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK_NAME="Dash-${{ env.VERSION }}-debug.apk"
+          mv app/build/outputs/apk/debug/app-debug.apk \
+             app/build/outputs/apk/debug/${APK_NAME}
+          gh release create "v${{ env.VERSION }}" \
+            "app/build/outputs/apk/debug/${APK_NAME}" \
+            --title "Dash v${{ env.VERSION }}" \
+            --notes "Debug build — enable 'Install unknown apps' in Android settings to sideload."
