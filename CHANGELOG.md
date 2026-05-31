@@ -10,6 +10,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - CI: provision Gradle 8.13 directly via `gradle/actions/setup-gradle` instead of
   relying on `gradle-wrapper.jar`, which cannot be committed through the GitHub API
+- Compose BOM bumped to 2024.09.00 (Material3 1.3.0) to gain `PullToRefreshBox`
+  and align `ModalBottomSheetProperties` signature (removed `securePolicy` param)
+- Added missing `lifecycle-runtime-compose` dependency for `collectAsStateWithLifecycle`
+- `TaskRepository.pendingReminders`: replaced unavailable `isNull()` DSL call with
+  a Kotlin-side `completedAt == null` filter
+- `EditTaskSheet`: fixed `SecureFlagPolicy` import (`material3` → `compose.ui.window`)
+- `SettingsViewModel.clearSaveError`: fixed assignment-as-expression syntax error
+- Removed custom `debug.keystore` signing config; CI now uses the default Android
+  debug keystore so packaging does not fail in a clean environment
 
 ## [1.0.0] — 2026-05-30
 

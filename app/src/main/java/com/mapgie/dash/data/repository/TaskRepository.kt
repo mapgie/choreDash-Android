@@ -66,13 +66,11 @@ class TaskRepository @Inject constructor(
         val client = requireClient()
         return client.from("todos")
             .select {
-                filter {
-                    eq("reminded", false)
-                    isNull("completed_at")
-                }
+                filter { eq("reminded", false) }
             }
             .decodeList<TaskDto>()
             .filter { dto ->
+                if (dto.completedAt != null) return@filter false
                 val reminderAt = dto.reminderAt?.let {
                     runCatching { Instant.parse(it) }.getOrNull()
                 } ?: return@filter false

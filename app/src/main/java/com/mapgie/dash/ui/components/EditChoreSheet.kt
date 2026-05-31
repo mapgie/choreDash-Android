@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.SecureFlagPolicy
 import com.mapgie.dash.data.model.Chore
 import kotlinx.coroutines.launch
 
@@ -34,7 +33,6 @@ fun EditChoreSheet(
         onDismissRequest = { sheetScope.launch { sheetState.show() } },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
-            securePolicy = SecureFlagPolicy.Inherit,
             isFocusable = true,
             shouldDismissOnBackPress = false
         )

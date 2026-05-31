@@ -25,7 +25,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SecureFlagPolicy
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -150,7 +149,6 @@ fun EditTaskSheet(
         onDismissRequest = { sheetScope.launch { sheetState.show() } },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
-            securePolicy = SecureFlagPolicy.Inherit,
             isFocusable = true,
             shouldDismissOnBackPress = false
         )
