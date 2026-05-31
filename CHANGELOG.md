@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- CI: provision Gradle 8.13 directly via `gradle/actions/setup-gradle` instead of
+  relying on `gradle-wrapper.jar`, which cannot be committed through the GitHub API
+
 ## [1.0.0] — 2026-05-30
 
 ### Added
