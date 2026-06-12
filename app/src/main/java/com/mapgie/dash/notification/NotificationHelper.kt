@@ -1,5 +1,6 @@
 package com.mapgie.dash.notification
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -43,6 +44,7 @@ object NotificationHelper {
         )
     }
 
+    @SuppressLint("MissingPermission")
     fun showTaskReminder(context: Context, taskId: String, taskTitle: String) {
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
@@ -66,6 +68,7 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
     }
 
+    @SuppressLint("MissingPermission")
     fun showStaleChoresSummary(context: Context, choreLabels: List<String>) {
         if (choreLabels.isEmpty()) return
         val openIntent = PendingIntent.getActivity(
