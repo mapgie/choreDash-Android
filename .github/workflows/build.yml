@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Accessibility role check
+        run: python3 a11y_check.py --fails-only
       - name: Check version is new
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,4 +52,4 @@ jobs:
           gh release create "v${{ env.VERSION }}" \
             "app/build/outputs/apk/debug/${APK_NAME}" \
             --title "Dash v${{ env.VERSION }}" \
-            --notes "Debug build — enable 'Install unknown apps' in Android settings to sideload."
+            --notes "Debug build - enable 'Install unknown apps' in Android settings to sideload."
