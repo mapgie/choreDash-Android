@@ -15,8 +15,8 @@ android {
         applicationId = "com.mapgie.dash"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -55,6 +55,15 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+tasks.register("copyChangelogToAssets", Copy::class) {
+    from(rootProject.file("CHANGELOG.md"))
+    into("src/main/assets")
+}
+
+tasks.named("preBuild") {
+    dependsOn("copyChangelogToAssets")
 }
 
 dependencies {
