@@ -15,6 +15,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -237,6 +240,7 @@ fun ChoreListScreen(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
                                             modifier = Modifier
+                                                .semantics { role = Role.Button }
                                                 .combinedClickable(
                                                     onClick = {},
                                                     onLongClick = {
@@ -364,10 +368,12 @@ private fun SwipeToLogCard(
         ChoreCard(
             chore = chore,
             showOwner = showOwner,
-            modifier = Modifier.combinedClickable(
-                onClick = { onTap(chore) },
-                onLongClick = { onLongPress(chore) }
-            )
+            modifier = Modifier
+                .semantics { role = Role.Button }
+                .combinedClickable(
+                    onClick = { onTap(chore) },
+                    onLongClick = { onLongPress(chore) }
+                )
         )
     }
 }
