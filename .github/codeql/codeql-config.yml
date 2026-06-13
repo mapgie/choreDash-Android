@@ -1,0 +1,17 @@
+name: "CodeQL config"
+
+# java/android/implicit-pendingintents ("Use of implicit PendingIntents", CWE-927) is
+# excluded for this Kotlin codebase. The query's mutability check only
+# recognises FLAG_IMMUTABLE when combined via Java's `|` BinaryExpr; Kotlin's
+# `or` infix function is a MethodCall, not a BinaryExpr, so the query can
+# never see FLAG_IMMUTABLE in Kotlin source and flags every
+# PendingIntent.getActivity/getBroadcast call regardless of the flags passed.
+# Every PendingIntent in this codebase already uses an explicit
+# Intent(context, Class) + setPackage() + FLAG_IMMUTABLE, which are the
+# query's own documented mitigations.
+query-filters:
+  - exclude:
+      id: java/android/implicit-pendingintents
+
+queries:
+  - uses: security-extended

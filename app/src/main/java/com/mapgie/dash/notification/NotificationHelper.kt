@@ -17,6 +17,8 @@ object NotificationHelper {
 
     const val EXTRA_TASK_ID = "task_id"
     const val EXTRA_TASK_TITLE = "task_title"
+    const val EXTRA_REMINDER_ID = "reminder_id"
+    const val EXTRA_REMINDER_SUBJECT = "reminder_subject"
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -49,6 +51,7 @@ object NotificationHelper {
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
             Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
                 putExtra(EXTRA_TASK_ID, taskId)
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
@@ -69,11 +72,38 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
+    fun showReminderAlert(context: Context, reminderId: String, subject: String) {
+        val notifyId = ("reminder_$reminderId").hashCode()
+        val openIntent = PendingIntent.getActivity(
+            context, notifyId,
+            Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
+                putExtra(EXTRA_REMINDER_ID, reminderId)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_TASK_REMINDERS)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("Reminder")
+            .setContentText(subject)
+            .setContentIntent(openIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(notifyId, notification)
+    }
+
+    @SuppressLint("MissingPermission")
     fun showStaleChoresSummary(context: Context, choreLabels: List<String>) {
         if (choreLabels.isEmpty()) return
         val openIntent = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
