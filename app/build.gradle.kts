@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.work.runtime.ktx)
     implementation(libs.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.postgrest)

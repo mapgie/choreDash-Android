@@ -12,7 +12,7 @@ data class ReminderDto(
     @SerialName("chore_id") val choreId: String? = null,
     @SerialName("task_id") val taskId: String? = null,
     @SerialName("completed_at") val completedAt: String? = null,
-    @SerialName("reminded") val reminded: Boolean? = null,
+    @SerialName("reminded") val reminded: Boolean = false,
     @SerialName("created_at") val createdAt: String = ""
 )
 
@@ -22,16 +22,6 @@ data class ReminderInsert(
     @SerialName("remind_at") val remindAt: String,
     @SerialName("chore_id") val choreId: String? = null,
     @SerialName("task_id") val taskId: String? = null
-)
-
-@Serializable
-data class ReminderUpdate(
-    @SerialName("subject") val subject: String? = null,
-    @SerialName("remind_at") val remindAt: String? = null,
-    @SerialName("chore_id") val choreId: String? = null,
-    @SerialName("task_id") val taskId: String? = null,
-    @SerialName("completed_at") val completedAt: String? = null,
-    @SerialName("reminded") val reminded: Boolean? = null
 )
 
 fun ReminderDto.remindAtInstant(): Instant? =

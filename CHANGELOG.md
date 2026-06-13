@@ -9,9 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New expandable "Add" FAB menu on the Chores, Tasks, and Reminders tabs with
   three options: "Recurring chore", "One-time task", and "One-off reminder".
   Selecting an option switches to the relevant tab and opens its add sheet.
-- New "Reminders" tab backed by a new `reminders` table (subject, date/time,
-  optional link to a chore or task). Reminders schedule a local notification
-  via `AlarmManager`, can be marked done/undone, and are rescheduled on boot.
+- New "Reminders" tab for on-device-only reminders (subject, date/time,
+  optional link to a chore or task), stored locally via DataStore and never
+  synced to Supabase. Reminders schedule a local notification via
+  `AlarmManager`, can be marked done/undone, and are rescheduled on boot.
 - "Add chore" FAB on the Chores tab opens a new sheet to create a chore
   (tag ID, label, category, owner, interval). Scanning an unrecognised NFC
   tag now opens the same sheet pre-filled with that tag's ID, instead of
