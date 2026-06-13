@@ -15,32 +15,38 @@ required parameters. Omitting any of them causes a compile error:
 properties = ModalBottomSheetProperties(
     securePolicy = SecureFlagPolicy.Inherit,
     isFocusable = true,
-    shouldDismissOnBackPress = false
+    shouldDismissOnBackPress = true
 )
 ```
 
-`shouldDismissOnBackPress = false` is intentional — we manage dismissal
-explicitly to prevent the invisible-overlay bug (see #2).
+`shouldDismissOnBackPress = false` looked appealing as a way to avoid the
+invisible-overlay bug (see #2), but it also swallows the system back
+button entirely — users get stuck in the sheet with no way out except
+Save/Delete. Keep it `true` and route `onDismissRequest` through the same
+hide-then-remove path as the sheet's own buttons (see #2).
 
 ---
 
-## 2. ModalBottomSheet: bounce `onDismissRequest` back to prevent stuck overlay
+## 2. ModalBottomSheet: route `onDismissRequest` through `hide()` to prevent stuck overlay
 
-When the user swipes down or taps the scrim, `onDismissRequest` fires.
-If you call `onDismiss()` directly from there (removing the composable
-from the tree while the sheet is still animating), Material3 1.2.x leaves
-an invisible transparent overlay that blocks all touch input.
+When the user swipes down, taps the scrim, or presses back,
+`onDismissRequest` fires. If you call `onDismiss()` directly from there
+(removing the composable from the tree while the sheet is still
+animating), Material3 1.2.x leaves an invisible transparent overlay that
+blocks all touch input.
 
-Fix — call `sheetState.show()` inside `onDismissRequest` to cancel the
-dismiss animation, then hide it properly from within the sheet's own
-Cancel / Save button handlers:
+Fix — call `sheetState.hide()` from `onDismissRequest` (same as the
+Cancel / Save button handlers) and only call `onDismiss()` once the hide
+animation completes:
 
 ```kotlin
 ModalBottomSheet(
-    onDismissRequest = { sheetScope.launch { sheetState.show() } },
+    onDismissRequest = {
+        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+    },
     ...
 ) {
-    // In the Cancel button:
+    // Cancel / Save buttons use the same pattern:
     sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
 }
 ```

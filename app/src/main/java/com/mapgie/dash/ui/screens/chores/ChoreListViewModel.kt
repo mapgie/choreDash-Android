@@ -47,6 +47,9 @@ data class ChoreUiState(
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
         }
+
+    val categories: List<String>
+        get() = (active + archived).mapNotNull { it.category }.filter { it.isNotBlank() }.distinct().sorted()
 }
 
 @HiltViewModel
@@ -121,6 +124,17 @@ class ChoreListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 choreRepository.updateTag(tagId, label, owner, intervalDays)
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
+        viewModelScope.launch {
+            runCatching {
+                choreRepository.createTag(tagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }

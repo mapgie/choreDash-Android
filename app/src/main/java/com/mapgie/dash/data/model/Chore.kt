@@ -30,6 +30,15 @@ data class ScanInsert(
     @SerialName("scanned_at") val scannedAt: String
 )
 
+@Serializable
+data class TagInsert(
+    @SerialName("tag_id") val tagId: String,
+    @SerialName("label") val label: String,
+    @SerialName("category") val category: String? = null,
+    @SerialName("owner") val owner: String? = null,
+    @SerialName("interval_days") val intervalDays: Double? = null
+)
+
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
 
 data class Chore(

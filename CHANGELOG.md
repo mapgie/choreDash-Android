@@ -6,10 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- "Add chore" FAB on the Chores tab opens a new sheet to create a chore
+  (tag ID, label, category, owner, interval). Scanning an unrecognised NFC
+  tag now opens the same sheet pre-filled with that tag's ID, instead of
+  pointing at the retired web app.
 - `.claude/CLAUDE.md` with project-specific versioning, architecture, and accessibility guidance
 - `a11y_check.py` accessibility role checker (ported from Android App Template)
 
 ### Fixed
+- `ChoreRepository.logChore` and `TaskRepository.addTask`/`updateTask` now
+  request `select()` on insert/update so Supabase returns the affected row
+  instead of an empty body — fixes "Expected start of the array '[', but
+  had 'EOF'" when logging a chore or saving a task.
+- `EditChoreSheet`, `LogBottomSheet`, and `EditTaskSheet` now allow the
+  system back button to dismiss the sheet, and route swipe/scrim/back
+  dismissal through `hide()` + `onDismiss()` so the sheet always closes
+  cleanly (previously the back button did nothing).
 - Added missing `.semantics { role = Role.Button }` to the two `.combinedClickable` modifiers in `ChoreListScreen.kt` (active and archived chore rows)
 - Removed stale `<receiver android:name=".alarm.DailyChoreCheckReceiver">` entry from
   AndroidManifest.xml — the class was never implemented; the daily overdue-chore

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.ui.components.AddChoreSheet
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.LogBottomSheet
@@ -40,26 +42,30 @@ fun ChoreListScreen(
     // SheetState hoisted above the composables that use them (GoFlo LESSONS.md)
     val logSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var logTargetChore by remember { mutableStateOf<Chore?>(null) }
     var editTargetChore by remember { mutableStateOf<Chore?>(null) }
     var showLogSheet by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     var showArchivedSection by remember { mutableStateOf(false) }
+    var showAddSheet by remember { mutableStateOf(false) }
+    var addSheetTagId by remember { mutableStateOf("") }
 
     // Handle incoming NFC tag from MainActivity
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
         val tagId = pendingNfcTagId ?: return@LaunchedEffect
-        val chore = uiState.active.find { it.tagId == tagId }
+        val chore = (uiState.active + uiState.archived).find { it.tagId == tagId }
         when {
             chore != null -> {
                 logTargetChore = chore
                 showLogSheet = true
                 viewModel.setPendingNfcTag(tagId)
             }
-            uiState.active.isNotEmpty() || uiState.archived.isNotEmpty() -> {
-                snackbarHostState.showSnackbar("Unknown tag — add it in the web app")
-                onNfcConsumed()
+            uiState.active.isNotEmpty() || uiState.archived.isNotEmpty() || !uiState.loading -> {
+                addSheetTagId = tagId
+                showAddSheet = true
+                viewModel.setPendingNfcTag(tagId)
             }
             // else: data still loading; LaunchedEffect will re-run when list populates
         }
@@ -80,7 +86,12 @@ fun ChoreListScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { addSheetTagId = ""; showAddSheet = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add chore")
+            }
+        }
     ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = uiState.loading,
@@ -161,7 +172,7 @@ fun ChoreListScreen(
                     !uiState.loading && uiState.active.isEmpty() -> EmptyState(
                         message = if (uiState.owners.isEmpty())
                             "Configure Supabase credentials in Settings to get started"
-                        else "No chores found. Add NFC tags in the web app."
+                        else "No chores found. Tap + to add one, or scan an NFC tag."
                     )
 
                     else -> {
@@ -284,6 +295,30 @@ fun ChoreListScreen(
                 showEditSheet = false
             },
             onDismiss = { showEditSheet = false }
+        )
+    }
+
+    if (showAddSheet) {
+        AddChoreSheet(
+            initialTagId = addSheetTagId,
+            owners = uiState.owners,
+            categories = uiState.categories,
+            sheetState = addSheetState,
+            onSave = { tagId, label, category, owner, intervalDays ->
+                viewModel.addChore(tagId, label, category, owner, intervalDays)
+                showAddSheet = false
+                if (uiState.pendingNfcTagId != null) {
+                    viewModel.clearPendingNfcTag()
+                    onNfcConsumed()
+                }
+            },
+            onDismiss = {
+                showAddSheet = false
+                if (uiState.pendingNfcTagId != null) {
+                    viewModel.clearPendingNfcTag()
+                    onNfcConsumed()
+                }
+            }
         )
     }
 }
