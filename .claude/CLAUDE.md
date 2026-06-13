@@ -4,7 +4,7 @@ When fixing a bug or solving a non-obvious problem, check `LESSONS.md` for prior
 
 ## Versioning and changelog
 
-Every PR that changes app code (`.kt`, `.xml`, `.gradle.kts`, `gradle/libs.versions.toml`) **must** update `CHANGELOG.md`. CI (`changelog-check.yml`) fails the PR otherwise.
+Every PR that touches app code (`.kt`, `.xml`, `.gradle.kts`, `gradle/libs.versions.toml`) **must** add a changelog fragment. No exceptions.
 
 ### Scheme: `MAJOR.MINOR.PATCH[-prerelease]`
 
@@ -20,18 +20,47 @@ When in doubt between MINOR and MAJOR, ask: can a user who doesn't update keep u
 
 Pre-release suffix: `-beta.N`. Current status: **beta** (`0.x.y`) — versioning conventions are still settling.
 
-### How to bump (every PR)
+### How to record a change (every PR)
 
-1. Update `versionCode` (+1) and `versionName` in `app/build.gradle.kts`
-2. Add an entry under `## [Unreleased]` (or a new version heading) at the top of `CHANGELOG.md`, following the existing [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format (`### Added` / `### Changed` / `### Fixed`)
-3. Include both changes in the same commit as the feature/fix
+Do **not** edit `CHANGELOG.md` or `app/build.gradle.kts`'s `versionCode`/`versionName`
+directly — these are owned by the release automation and editing them in a feature PR is
+the main source of merge conflicts. Instead, add **one** fragment file at
+`changelog/unreleased/<short-slug>.json`:
+
+```json
+{
+  "bump": "patch",
+  "added": ["..."],
+  "changed": ["..."],
+  "fixed": ["..."]
+}
+```
+
+`bump` is required (`patch`/`minor`/`major`); include only the `added`/`changed`/`fixed`
+sections that apply, each a list of one-line user-facing descriptions. CI
+(`changelog-check.yml`, via `check_changelog_fragment.py`) fails the PR if no valid
+fragment is added. See `changelog/unreleased/README.md` for details.
+
+### Cutting a release
+
+The "Prepare release" GitHub Actions workflow (`workflow_dispatch`,
+`.github/workflows/prepare-release.yml`) runs `consolidate_changelog.py`, which:
+- gathers all fragments in `changelog/unreleased/`
+- computes the overall bump as the highest severity among them
+- bumps `versionCode` (+1) and `versionName` in `app/build.gradle.kts` — increments the
+  PATCH/MINOR/MAJOR digit per the bump and resets `-beta.N` to `beta.1`
+- writes one consolidated entry at the top of `CHANGELOG.md`
+- deletes the consumed fragments
+- opens a `Release vX.Y.Z` PR for review
+
+Promoting out of beta (dropping the `-beta.N` suffix) remains a manual edit.
 
 ### Changelog immutability rules — NO EXCEPTIONS
 
 - **Never edit an existing entry.** Once a changelog entry is committed, its version string and change list are frozen. Treat them like a released tag.
-- **Never reuse a version string.** Released versions are immutable.
-- **Never delete an entry.** Even if a feature was reverted, keep the original entry and add a new entry describing the revert.
-- **Merge conflicts in CHANGELOG.md must preserve both sides.** Keep all entries from both branches, newest at top.
+- **Never reuse a version string.** Released versions are immutable — never re-tag, amend, or reuse a version string.
+- **Never delete an entry.** Even if a feature was reverted, keep the original entry and add a new entry at the top describing the revert.
+- **The "What's New" dialog shows only the 5 most recent entries.** The full list in `CHANGELOG.md` is the permanent record; users see a summary.
 
 ## Working in the web/remote environment
 

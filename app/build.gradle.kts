@@ -57,6 +57,15 @@ android {
     }
 }
 
+tasks.register("copyChangelogToAssets", Copy::class) {
+    from(rootProject.file("CHANGELOG.md"))
+    into("src/main/assets")
+}
+
+tasks.named("preBuild") {
+    dependsOn("copyChangelogToAssets")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
