@@ -223,3 +223,25 @@ sharing one signing cert across different `applicationId`s is itself a
 pattern that looks suspicious to malware scanners, and it doesn't transfer
 any "reputation" between apps anyway. Each app should have its own
 dedicated debug keystore.
+
+---
+
+## 13. AlarmManager PendingIntent request codes must be namespaced per entity type
+
+`PendingIntent.getBroadcast` request codes are a single shared integer
+space for the whole app. `AlarmScheduler.scheduleTask`/`cancelTask` use
+`taskId.hashCode()` as the request code. When adding a second alarm-backed
+entity (e.g. standalone reminders), do not reuse the raw id's hash code —
+two different tables can produce UUIDs whose hash codes collide, silently
+cancelling or overwriting the wrong alarm.
+
+Prefix the id before hashing so each entity type gets its own namespace:
+
+```kotlin
+private fun reminderRequestCode(reminderId: String): Int = ("reminder_$reminderId").hashCode()
+```
+
+The same prefix must be used for both the notification id
+(`NotificationManagerCompat.notify`) and the `PendingIntent` request code,
+and `AlarmReceiver` must branch on which `EXTRA_*_ID` is present in the
+intent to know which repository to update.

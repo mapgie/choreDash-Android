@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -23,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.ui.components.AddChoreSheet
+import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.LogBottomSheet
@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 fun ChoreListScreen(
     pendingNfcTagId: String?,
     onNfcConsumed: () -> Unit,
+    pendingAddIntent: AddMenuOption? = null,
+    onPendingAddIntentConsumed: () -> Unit = {},
     viewModel: ChoreListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +73,14 @@ fun ChoreListScreen(
         }
     }
 
+    LaunchedEffect(pendingAddIntent) {
+        if (pendingAddIntent == AddMenuOption.CHORE) {
+            addSheetTagId = ""
+            showAddSheet = true
+            onPendingAddIntentConsumed()
+        }
+    }
+
     // Show snackbar after a successful log, with Undo action
     LaunchedEffect(uiState.recentScan) {
         val scan = uiState.recentScan ?: return@LaunchedEffect
@@ -86,12 +96,7 @@ fun ChoreListScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { addSheetTagId = ""; showAddSheet = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add chore")
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = uiState.loading,

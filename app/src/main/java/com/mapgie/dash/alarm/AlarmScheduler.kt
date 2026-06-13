@@ -39,6 +39,28 @@ class AlarmScheduler @Inject constructor(
         alarmManager.cancel(pending)
     }
 
+    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant) {
+        if (remindAt.isBefore(Instant.now())) return
+        if (!canScheduleExactAlarms()) return
+
+        val pending = buildReminderPendingIntent(reminderId, subject)
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            remindAt.toEpochMilli(),
+            pending
+        )
+    }
+
+    fun cancelReminder(reminderId: String) {
+        val pending = PendingIntent.getBroadcast(
+            context,
+            reminderRequestCode(reminderId),
+            Intent(context, AlarmReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pending)
+    }
+
     fun canScheduleExactAlarms(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) alarmManager.canScheduleExactAlarms()
         else true
@@ -55,4 +77,20 @@ class AlarmScheduler @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
+
+    private fun buildReminderPendingIntent(reminderId: String, subject: String): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
+            putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            reminderRequestCode(reminderId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    // Distinct request-code namespace so reminder alarms never collide with task alarms
+    private fun reminderRequestCode(reminderId: String): Int = ("reminder_$reminderId").hashCode()
 }
