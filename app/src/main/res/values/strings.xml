@@ -5,4 +5,10 @@
     <string name="channel_task_reminders_desc">Alerts when a task reminder is due</string>
     <string name="channel_chore_alerts_name">Overdue chores</string>
     <string name="channel_chore_alerts_desc">Daily summary of overdue chores</string>
+    <string name="widget_quick_add_label">Quick Add Task</string>
+    <string name="widget_next_up_label">Next Up</string>
+    <string name="widget_pinned_item_label">Pinned Task/Chore</string>
+    <string name="widget_quick_add_description">Tap to add a new task</string>
+    <string name="widget_next_up_description">Shows your most urgent task or chore</string>
+    <string name="widget_pinned_item_description">Shows the task or chore you pinned in the app</string>
 </resources>

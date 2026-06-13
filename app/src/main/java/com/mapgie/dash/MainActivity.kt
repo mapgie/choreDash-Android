@@ -27,6 +27,7 @@ import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.ui.navigation.DashNavGraph
 import com.mapgie.dash.ui.theme.DashTheme
+import com.mapgie.dash.widget.WIDGET_DESTINATION_EXTRA
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -40,6 +41,9 @@ class MainActivity : ComponentActivity() {
 
     // Compose state: survives recompositions, drives the NFC sheet trigger
     private var pendingNfcTagId by mutableStateOf<String?>(null)
+
+    // Compose state: set when launched from a home screen widget, drives navigation
+    private var pendingWidgetDestination by mutableStateOf<String?>(null)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -65,6 +69,7 @@ class MainActivity : ComponentActivity() {
         )
 
         NfcHandler.extractTagId(intent)?.let { pendingNfcTagId = it }
+        pendingWidgetDestination = intent.getStringExtra(WIDGET_DESTINATION_EXTRA)
 
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = null)
@@ -87,6 +92,8 @@ class MainActivity : ComponentActivity() {
                 DashNavGraph(
                     pendingNfcTagId = pendingNfcTagId,
                     onNfcConsumed = { pendingNfcTagId = null },
+                    pendingWidgetDestination = pendingWidgetDestination,
+                    onWidgetDestinationConsumed = { pendingWidgetDestination = null },
                     startOnSettings = settings!!.supabaseUrl.isBlank()
                 )
             }
@@ -96,6 +103,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         NfcHandler.extractTagId(intent)?.let { pendingNfcTagId = it }
+        intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
     }
 
     override fun onResume() {

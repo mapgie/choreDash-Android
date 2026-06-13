@@ -32,6 +32,13 @@ ROLE_WINDOW = 15
 CLICKABLE_RE = re.compile(r"\.(clickable|combinedClickable)\s*[{(]")
 ROLE_RE      = re.compile(r"\brole\s*=\s*Role\.")
 
+# Jetpack Glance widgets use androidx.glance.action.clickable(Action), an
+# unrelated API to Compose's Modifier.clickable{}/combinedClickable{}. Glance
+# has no Modifier.semantics{role=Role.*} equivalent; its accessible labels
+# come from the Text/Button/CheckBox content itself. Files that import
+# Glance's clickable are exempt from this check.
+GLANCE_CLICKABLE_IMPORT_RE = re.compile(r"^import androidx\.glance\.action\.clickable\b")
+
 
 def find_kt_files(roots: list[str]) -> list[Path]:
     files: list[Path] = []
@@ -48,6 +55,9 @@ def check_file(path: Path) -> list[tuple[int, str]]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError):
+        return []
+
+    if any(GLANCE_CLICKABLE_IMPORT_RE.match(line.strip()) for line in lines):
         return []
 
     violations: list[tuple[int, str]] = []

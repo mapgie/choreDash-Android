@@ -204,6 +204,8 @@ fun ChoreListScreen(
                                         SwipeToLogCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            isPinned = chore.id == uiState.pinnedChoreId,
+                                            onTogglePin = { viewModel.togglePin(chore.id) },
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetChore = it; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -215,6 +217,8 @@ fun ChoreListScreen(
                                     SwipeToLogCard(
                                         chore = chore,
                                         showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                        isPinned = chore.id == uiState.pinnedChoreId,
+                                        onTogglePin = { viewModel.togglePin(chore.id) },
                                         onTap = { logTargetChore = it; showLogSheet = true },
                                         onLongPress = { editTargetChore = it; showEditSheet = true },
                                         onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -244,6 +248,8 @@ fun ChoreListScreen(
                                         ChoreCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            isPinned = chore.id == uiState.pinnedChoreId,
+                                            onTogglePin = { viewModel.togglePin(chore.id) },
                                             modifier = Modifier
                                                 .semantics { role = Role.Button }
                                                 .combinedClickable(
@@ -333,6 +339,8 @@ fun ChoreListScreen(
 private fun SwipeToLogCard(
     chore: Chore,
     showOwner: Boolean,
+    isPinned: Boolean = false,
+    onTogglePin: (() -> Unit)? = null,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit
@@ -373,6 +381,8 @@ private fun SwipeToLogCard(
         ChoreCard(
             chore = chore,
             showOwner = showOwner,
+            isPinned = isPinned,
+            onTogglePin = onTogglePin,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

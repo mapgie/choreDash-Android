@@ -189,6 +189,8 @@ fun TaskListScreen(
                                 task = task,
                                 onClick = { editingTask = task; showTaskSheet = true },
                                 onToggleDone = { viewModel.markDone(task.id) },
+                                isPinned = task.id == uiState.pinnedTaskId,
+                                onTogglePin = { viewModel.togglePin(task.id) },
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             )
                         }
@@ -199,6 +201,8 @@ fun TaskListScreen(
                             task = task,
                             onClick = { editingTask = task; showTaskSheet = true },
                             onToggleDone = { viewModel.markDone(task.id) },
+                            isPinned = task.id == uiState.pinnedTaskId,
+                            onTogglePin = { viewModel.togglePin(task.id) },
                             modifier = Modifier.padding(horizontal = 12.dp)
                         )
                     }
@@ -232,6 +236,8 @@ fun TaskListScreen(
                                 task = task,
                                 onClick = { editingTask = task; showTaskSheet = true },
                                 onToggleDone = { viewModel.markUndone(task.id) },
+                                isPinned = task.id == uiState.pinnedTaskId,
+                                onTogglePin = { viewModel.togglePin(task.id) },
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             )
                         }

@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.tasks
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
@@ -14,7 +15,12 @@ import com.mapgie.dash.data.model.reminderInstant
 import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.widget.PinnedItemStore
+import com.mapgie.dash.widget.PinnedItemType
+import com.mapgie.dash.widget.PinnedWidgetItem
+import com.mapgie.dash.widget.WidgetUpdater
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +42,8 @@ data class TaskUiState(
     val sort: TaskSort = TaskSort.PRIORITY,
     val groupByCategory: Boolean = false,
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
-    val ownerHandle: String = ""
+    val ownerHandle: String = "",
+    val pinnedTaskId: String? = null
 ) {
     val displayed: List<TaskDto>
         get() {
@@ -84,7 +91,9 @@ data class TaskUiState(
 class TaskListViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val settingsRepository: SettingsRepository,
-    private val alarmScheduler: AlarmScheduler
+    private val alarmScheduler: AlarmScheduler,
+    private val pinnedItemStore: PinnedItemStore,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -96,7 +105,20 @@ class TaskListViewModel @Inject constructor(
                 _uiState.update { it.copy(ownerHandle = s.ownerHandle) }
             }
         }
+        viewModelScope.launch {
+            pinnedItemStore.pinnedItem.collect { pinned ->
+                val pinnedTaskId = pinned?.takeIf { it.type == PinnedItemType.TASK }?.id
+                _uiState.update { it.copy(pinnedTaskId = pinnedTaskId) }
+            }
+        }
         load()
+    }
+
+    fun togglePin(taskId: String) {
+        viewModelScope.launch {
+            pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.TASK, taskId))
+            WidgetUpdater.updateAll(appContext)
+        }
     }
 
     fun load() {
@@ -120,6 +142,7 @@ class TaskListViewModel @Inject constructor(
                     alarmScheduler.scheduleTask(task.id, task.title, at)
                 }
                 load()
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -138,6 +161,7 @@ class TaskListViewModel @Inject constructor(
                     alarmScheduler.scheduleTask(task.id, task.title, at)
                 }
                 load()
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -150,6 +174,7 @@ class TaskListViewModel @Inject constructor(
                 alarmScheduler.cancelTask(id)
                 taskRepository.markDone(id)
                 load()
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -169,6 +194,7 @@ class TaskListViewModel @Inject constructor(
                     }
                 }
                 load()
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -180,7 +206,11 @@ class TaskListViewModel @Inject constructor(
             runCatching {
                 alarmScheduler.cancelTask(id)
                 taskRepository.deleteTask(id)
+                if (_uiState.value.pinnedTaskId == id) {
+                    pinnedItemStore.setPinned(null)
+                }
                 load()
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }

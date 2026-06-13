@@ -298,3 +298,20 @@ intents. Re-check the permission state on `ON_RESUME` (via a
 without the Activity restarting. `permission/PermissionHelper.kt` and the
 "Reminders & alerts" section of `SettingsScreen` in this repo are a working
 example of the pattern.
+
+---
+
+## 16. `a11y_check.py` flags Glance widget `.clickable(Action)` as a missing Role
+
+`androidx.glance.action.clickable(Action)` (used in `GlanceModifier` chains
+for home screen widgets) is an unrelated API to Compose's
+`Modifier.clickable{}` / `.combinedClickable{}`. Glance has no
+`Modifier.semantics { role = Role.* }` equivalent. TalkBack reads the
+`Text`/`Button`/`CheckBox` content inside the clickable element instead, so
+there's nothing to add.
+
+`a11y_check.py` now skips any file that imports
+`androidx.glance.action.clickable` rather than trying to distinguish the two
+APIs line by line. Don't "fix" Glance widget code by adding a `.semantics {
+role = Role.X }` call: it doesn't exist for `GlanceModifier` and won't
+compile.

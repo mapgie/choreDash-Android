@@ -1,6 +1,7 @@
 package com.mapgie.dash.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
@@ -28,6 +29,9 @@ import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
+import com.mapgie.dash.widget.WIDGET_DEST_CHORES
+import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_TASK
+import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Chores : Screen("chores", "Chores", Icons.Filled.CleaningServices)
@@ -50,6 +54,8 @@ private val Screen.addMenuOption: AddMenuOption?
 fun DashNavGraph(
     pendingNfcTagId: String?,
     onNfcConsumed: () -> Unit,
+    pendingWidgetDestination: String? = null,
+    onWidgetDestinationConsumed: () -> Unit = {},
     startOnSettings: Boolean = false
 ) {
     val navController = rememberNavController()
@@ -58,6 +64,28 @@ fun DashNavGraph(
 
     var fabExpanded by remember { mutableStateOf(false) }
     var pendingAddIntent by remember { mutableStateOf<AddMenuOption?>(null) }
+
+    LaunchedEffect(pendingWidgetDestination) {
+        val targetRoute = when (pendingWidgetDestination) {
+            WIDGET_DEST_QUICK_ADD_TASK -> {
+                pendingAddIntent = AddMenuOption.TASK
+                Screen.Tasks.route
+            }
+            WIDGET_DEST_TASKS -> Screen.Tasks.route
+            WIDGET_DEST_CHORES -> Screen.Chores.route
+            else -> null
+        }
+        if (targetRoute != null) {
+            navController.navigate(targetRoute) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onWidgetDestinationConsumed()
+        }
+    }
 
     val showFab = navItems
         .filter { it.addMenuOption != null }
