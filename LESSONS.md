@@ -166,3 +166,21 @@ client reference.
 Do not set `color` inside `Typography` definitions. Hardcoded text colors
 break dark-mode support. Always let individual composables set color via
 `MaterialTheme.colorScheme.*` at the call site.
+
+---
+
+## 11. `role = Role.Button` inside `.semantics {}` needs its own import
+
+`import androidx.compose.ui.semantics.Role` and
+`import androidx.compose.ui.semantics.semantics` are not enough — `role`
+is an extension property on `SemanticsPropertyReceiver` and needs its own
+import:
+
+```kotlin
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+```
+
+Missing it compiles fine in some IDE setups (auto-import resolves it) but
+fails `compileDebugKotlin` in CI with `Unresolved reference 'role'`.
