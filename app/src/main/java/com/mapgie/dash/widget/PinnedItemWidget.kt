@@ -10,7 +10,7 @@ import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.Button
+import androidx.glance.Button
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -25,11 +25,11 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.defaultWeight
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.material3.GlanceTheme
+import androidx.glance.GlanceTheme
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextDecoration
@@ -123,7 +123,7 @@ private fun PinnedTaskContent(task: TaskDto, compact: Boolean) {
         )
         Column(
             modifier = GlanceModifier
-                .defaultWeight()
+                .fillMaxWidth()
                 .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_TASKS)))
         ) {
             Text(

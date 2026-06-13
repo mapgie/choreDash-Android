@@ -34,7 +34,8 @@ private val LICENSES = listOf(
     License("Supabase postgrest-kt", "2.6.1", "MIT", "https://github.com/supabase-community/supabase-kt"),
     License("Ktor (OkHttp engine)", "2.3.12", "Apache-2.0", "https://ktor.io"),
     License("kotlinx.serialization JSON", "1.7.3", "Apache-2.0", "https://github.com/Kotlin/kotlinx.serialization"),
-    License("kotlinx.coroutines", "1.8.1", "Apache-2.0", "https://github.com/Kotlin/kotlinx.coroutines")
+    License("kotlinx.coroutines", "1.8.1", "Apache-2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
+    License("Jetpack Glance", "1.1.1", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/glance")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
