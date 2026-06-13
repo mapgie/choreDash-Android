@@ -14,6 +14,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `a11y_check.py` accessibility role checker (ported from Android App Template)
 
 ### Fixed
+- Restored a consistent debug signing config pointing at the committed
+  `app/debug.keystore` (unique to this app). Previously CI relied on AGP's
+  auto-generated debug keystore, so every clean build produced a different
+  signing certificate, making sideloaded installs repeatedly look like a
+  brand-new "unrecognized developer" to Play Protect.
 - `ChoreRepository.logChore` and `TaskRepository.addTask`/`updateTask` now
   request `select()` on insert/update so Supabase returns the affected row
   instead of an empty body — fixes "Expected start of the array '[', but
