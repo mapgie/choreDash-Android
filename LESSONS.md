@@ -248,7 +248,7 @@ intent to know which repository to update.
 
 ---
 
-## 14. CodeQL `java/android/pending-intents` always fires on Kotlin, even with FLAG_IMMUTABLE
+## 14. CodeQL `java/android/implicit-pendingintents` always fires on Kotlin, even with FLAG_IMMUTABLE
 
 The "Use of implicit PendingIntents" query (CWE-927) only treats a
 `PendingIntent` as immutable if `FLAG_IMMUTABLE` reaches the flags argument
@@ -265,9 +265,15 @@ exclude the query in `.github/codeql/codeql-config.yml`:
 ```yaml
 query-filters:
   - exclude:
-      id: java/android/pending-intents
+      id: java/android/implicit-pendingintents
 ```
 
 and point `codeql.yml`'s `init` step at `config-file:
 ./.github/codeql/codeql-config.yml` instead of `queries: security-extended`
 (the config file's `queries:` block re-adds `security-extended`).
+
+The query's display name ("Use of implicit PendingIntents") and its short ID
+(`pending-intents`, as it appears in some GitHub UI/alert URLs) don't match
+the `@id` declared in the `.ql` file's metadata, which is what
+`query-filters` actually matches against. Get the real ID from the CodeQL
+job log line `Interpreted pathproblem query "..." (<id>) at path ...`.

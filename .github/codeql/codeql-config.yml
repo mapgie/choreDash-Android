@@ -1,6 +1,6 @@
 name: "CodeQL config"
 
-# java/android/pending-intents ("Use of implicit PendingIntents", CWE-927) is
+# java/android/implicit-pendingintents ("Use of implicit PendingIntents", CWE-927) is
 # excluded for this Kotlin codebase. The query's mutability check only
 # recognises FLAG_IMMUTABLE when combined via Java's `|` BinaryExpr; Kotlin's
 # `or` infix function is a MethodCall, not a BinaryExpr, so the query can
@@ -11,7 +11,7 @@ name: "CodeQL config"
 # query's own documented mitigations.
 query-filters:
   - exclude:
-      id: java/android/pending-intents
+      id: java/android/implicit-pendingintents
 
 queries:
   - uses: security-extended
