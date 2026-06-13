@@ -33,7 +33,6 @@ fun EditChoreSheet(
         onDismissRequest = { sheetScope.launch { sheetState.show() } },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
-            isFocusable = true,
             shouldDismissOnBackPress = false
         )
     ) {

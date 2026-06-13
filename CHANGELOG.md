@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- Removed stale `<receiver android:name=".alarm.DailyChoreCheckReceiver">` entry from
+  AndroidManifest.xml — the class was never implemented; the daily overdue-chore
+  check is already handled by `DailyStaleChoreWorker` via WorkManager.
+- Suppressed `MissingPermission` lint errors on `NotificationManagerCompat.notify()` calls — `POST_NOTIFICATIONS` is already declared in the manifest and requested at runtime; lint cannot see across that boundary in these helper/worker classes.
+- Fixed `ModalBottomSheetProperties` constructor call in `EditChoreSheet`, `EditTaskSheet`, and `LogBottomSheet`. The `(isFocusable, shouldDismissOnBackPress)` overload without `securePolicy` does not exist in Material3 1.3.0; removed `isFocusable` (defaults to true).
 - CI: provision Gradle 8.13 directly via `gradle/actions/setup-gradle` instead of
   relying on `gradle-wrapper.jar`, which cannot be committed through the GitHub API
 - Compose BOM bumped to 2024.09.00 (Material3 1.3.0) to gain `PullToRefreshBox`
