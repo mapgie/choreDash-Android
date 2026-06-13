@@ -190,3 +190,36 @@ import androidx.compose.ui.semantics.semantics
 
 Missing it compiles fine in some IDE setups (auto-import resolves it) but
 fails `compileDebugKotlin` in CI with `Unresolved reference 'role'`.
+
+---
+
+## 12. Debug builds need a stable signing key, or sideloads look "new" every time
+
+If `signingConfigs` doesn't pin a debug keystore, AGP auto-generates one
+per clean checkout/CI run. Every resulting APK is signed with a different
+certificate, so each install looks like a brand-new, unrecognized signer to
+Play Protect — even though it's "the same app" to you.
+
+Fix: commit a dedicated `app/debug.keystore` for the project and pin it:
+
+```kotlin
+signingConfigs {
+    getByName("debug") {
+        storeFile = file("debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+    }
+}
+buildTypes {
+    debug {
+        signingConfig = signingConfigs.getByName("debug")
+    }
+}
+```
+
+Do **not** reuse the same debug keystore across multiple unrelated apps —
+sharing one signing cert across different `applicationId`s is itself a
+pattern that looks suspicious to malware scanners, and it doesn't transfer
+any "reputation" between apps anyway. Each app should have its own
+dedicated debug keystore.
