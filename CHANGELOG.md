@@ -22,8 +22,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Added explicit `setPackage(context.packageName)` to all `PendingIntent`-wrapped
-  intents in `AlarmScheduler` and `NotificationHelper` to satisfy CodeQL's
-  implicit-`PendingIntent` check.
+  intents in `AlarmScheduler` and `NotificationHelper` as defense-in-depth
+  alongside the existing `FLAG_IMMUTABLE` and explicit `Intent(context, Class)`.
+- CodeQL: excluded `java/android/pending-intents` via a new
+  `.github/codeql/codeql-config.yml`. The query only recognises
+  `FLAG_IMMUTABLE` through Java's `|` `BinaryExpr`; Kotlin's `or` infix
+  function is a `MethodCall`, so the query always flags Kotlin
+  `PendingIntent.getActivity`/`getBroadcast` calls regardless of flags.
 - Restored a consistent debug signing config pointing at the committed
   `app/debug.keystore` (unique to this app). Previously CI relied on AGP's
   auto-generated debug keystore, so every clean build produced a different

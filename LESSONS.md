@@ -245,3 +245,29 @@ The same prefix must be used for both the notification id
 (`NotificationManagerCompat.notify`) and the `PendingIntent` request code,
 and `AlarmReceiver` must branch on which `EXTRA_*_ID` is present in the
 intent to know which repository to update.
+
+---
+
+## 14. CodeQL `java/android/pending-intents` always fires on Kotlin, even with FLAG_IMMUTABLE
+
+The "Use of implicit PendingIntents" query (CWE-927) only treats a
+`PendingIntent` as immutable if `FLAG_IMMUTABLE` reaches the flags argument
+through a `BinaryExpr`/`BitwiseExpr` (Java's `|` operator). Kotlin's `or`
+infix function compiles to a `MethodCall`, not a `BinaryExpr`, so CodeQL can
+never see `FLAG_IMMUTABLE` in `FLAG_UPDATE_CURRENT or FLAG_IMMUTABLE` and
+flags every `PendingIntent.getActivity`/`getBroadcast` call in Kotlin
+regardless of the flags actually passed.
+
+Adding `setPackage()` or making the `Intent` more explicit does not fix
+this — the alert is about the flags argument, not the intent. The fix is to
+exclude the query in `.github/codeql/codeql-config.yml`:
+
+```yaml
+query-filters:
+  - exclude:
+      id: java/android/pending-intents
+```
+
+and point `codeql.yml`'s `init` step at `config-file:
+./.github/codeql/codeql-config.yml` instead of `queries: security-extended`
+(the config file's `queries:` block re-adds `security-extended`).
