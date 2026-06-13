@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Sort
@@ -22,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,12 +43,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.TaskCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskListScreen(
+    pendingAddIntent: AddMenuOption? = null,
+    onPendingAddIntentConsumed: () -> Unit = {},
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,6 +69,14 @@ fun TaskListScreen(
         }
     }
 
+    LaunchedEffect(pendingAddIntent) {
+        if (pendingAddIntent == AddMenuOption.TASK) {
+            editingTask = null
+            showTaskSheet = true
+            onPendingAddIntentConsumed()
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
@@ -79,11 +88,6 @@ fun TaskListScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { editingTask = null; showTaskSheet = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add task")
-            }
         }
     ) { innerPadding ->
         Column(

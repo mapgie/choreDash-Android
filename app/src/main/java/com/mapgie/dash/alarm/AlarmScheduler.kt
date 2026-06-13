@@ -33,7 +33,29 @@ class AlarmScheduler @Inject constructor(
         val pending = PendingIntent.getBroadcast(
             context,
             taskId.hashCode(),
-            Intent(context, AlarmReceiver::class.java),
+            Intent(context, AlarmReceiver::class.java).setPackage(context.packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pending)
+    }
+
+    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant) {
+        if (remindAt.isBefore(Instant.now())) return
+        if (!canScheduleExactAlarms()) return
+
+        val pending = buildReminderPendingIntent(reminderId, subject)
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            remindAt.toEpochMilli(),
+            pending
+        )
+    }
+
+    fun cancelReminder(reminderId: String) {
+        val pending = PendingIntent.getBroadcast(
+            context,
+            reminderRequestCode(reminderId),
+            Intent(context, AlarmReceiver::class.java).setPackage(context.packageName),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pending)
@@ -45,6 +67,7 @@ class AlarmScheduler @Inject constructor(
 
     private fun buildPendingIntent(taskId: String, taskTitle: String): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
+            setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_TASK_ID, taskId)
             putExtra(NotificationHelper.EXTRA_TASK_TITLE, taskTitle)
         }
@@ -55,4 +78,21 @@ class AlarmScheduler @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
+
+    private fun buildReminderPendingIntent(reminderId: String, subject: String): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            setPackage(context.packageName)
+            putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
+            putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            reminderRequestCode(reminderId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    // Distinct request-code namespace so reminder alarms never collide with task alarms
+    private fun reminderRequestCode(reminderId: String): Int = ("reminder_$reminderId").hashCode()
 }

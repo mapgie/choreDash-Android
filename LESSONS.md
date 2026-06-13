@@ -223,3 +223,57 @@ sharing one signing cert across different `applicationId`s is itself a
 pattern that looks suspicious to malware scanners, and it doesn't transfer
 any "reputation" between apps anyway. Each app should have its own
 dedicated debug keystore.
+
+---
+
+## 13. AlarmManager PendingIntent request codes must be namespaced per entity type
+
+`PendingIntent.getBroadcast` request codes are a single shared integer
+space for the whole app. `AlarmScheduler.scheduleTask`/`cancelTask` use
+`taskId.hashCode()` as the request code. When adding a second alarm-backed
+entity (e.g. standalone reminders), do not reuse the raw id's hash code —
+two different tables can produce UUIDs whose hash codes collide, silently
+cancelling or overwriting the wrong alarm.
+
+Prefix the id before hashing so each entity type gets its own namespace:
+
+```kotlin
+private fun reminderRequestCode(reminderId: String): Int = ("reminder_$reminderId").hashCode()
+```
+
+The same prefix must be used for both the notification id
+(`NotificationManagerCompat.notify`) and the `PendingIntent` request code,
+and `AlarmReceiver` must branch on which `EXTRA_*_ID` is present in the
+intent to know which repository to update.
+
+---
+
+## 14. CodeQL `java/android/implicit-pendingintents` always fires on Kotlin, even with FLAG_IMMUTABLE
+
+The "Use of implicit PendingIntents" query (CWE-927) only treats a
+`PendingIntent` as immutable if `FLAG_IMMUTABLE` reaches the flags argument
+through a `BinaryExpr`/`BitwiseExpr` (Java's `|` operator). Kotlin's `or`
+infix function compiles to a `MethodCall`, not a `BinaryExpr`, so CodeQL can
+never see `FLAG_IMMUTABLE` in `FLAG_UPDATE_CURRENT or FLAG_IMMUTABLE` and
+flags every `PendingIntent.getActivity`/`getBroadcast` call in Kotlin
+regardless of the flags actually passed.
+
+Adding `setPackage()` or making the `Intent` more explicit does not fix
+this — the alert is about the flags argument, not the intent. The fix is to
+exclude the query in `.github/codeql/codeql-config.yml`:
+
+```yaml
+query-filters:
+  - exclude:
+      id: java/android/implicit-pendingintents
+```
+
+and point `codeql.yml`'s `init` step at `config-file:
+./.github/codeql/codeql-config.yml` instead of `queries: security-extended`
+(the config file's `queries:` block re-adds `security-extended`).
+
+The query's display name ("Use of implicit PendingIntents") and its short ID
+(`pending-intents`, as it appears in some GitHub UI/alert URLs) don't match
+the `@id` declared in the `.ql` file's metadata, which is what
+`query-filters` actually matches against. Get the real ID from the CodeQL
+job log line `Interpreted pathproblem query "..." (<id>) at path ...`.

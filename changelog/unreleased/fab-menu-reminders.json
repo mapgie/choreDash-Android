@@ -1,0 +1,11 @@
+{
+  "bump": "minor",
+  "added": [
+    "New expandable \"Add\" FAB on the Chores, Tasks, and Reminders tabs to quickly create a chore, task, or reminder from anywhere in the app",
+    "New \"Reminders\" tab for simple, on-device-only reminders (not synced to Supabase)"
+  ],
+  "fixed": [
+    "PendingIntents for task/reminder alarms and notifications now set an explicit package to satisfy Android's implicit-intent security requirements",
+    "Excluded the java/android/pending-intents CodeQL query, which produces false positives on Kotlin's `or` flag syntax even when FLAG_IMMUTABLE is present"
+  ]
+}
