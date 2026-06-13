@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- Restored a consistent debug signing config pointing at the committed
+  `app/debug.keystore` (unique to this app). Previously CI relied on AGP's
+  auto-generated debug keystore, so every clean build produced a different
+  signing certificate, making sideloaded installs repeatedly look like a
+  brand-new "unrecognized developer" to Play Protect.
 - Removed stale `<receiver android:name=".alarm.DailyChoreCheckReceiver">` entry from
   AndroidManifest.xml — the class was never implemented; the daily overdue-chore
   check is already handled by `DailyStaleChoreWorker` via WorkManager.
