@@ -32,13 +32,16 @@ class TaskRepository @Inject constructor(
 
     suspend fun addTask(task: TaskInsert): TaskDto {
         val client = requireClient()
-        return client.from("todos").insert(task).decodeSingle<TaskDto>()
+        return client.from("todos").insert(task) { select() }.decodeSingle<TaskDto>()
     }
 
     suspend fun updateTask(taskId: String, update: TaskUpdate): TaskDto {
         val client = requireClient()
         return client.from("todos")
-            .update(update) { filter { eq("id", taskId) } }
+            .update(update) {
+                select()
+                filter { eq("id", taskId) }
+            }
             .decodeSingle<TaskDto>()
     }
 

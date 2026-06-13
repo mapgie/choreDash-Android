@@ -4,6 +4,7 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.ScanInsert
 import com.mapgie.dash.data.model.TagDto
+import com.mapgie.dash.data.model.TagInsert
 import com.mapgie.dash.data.supabase.SupabaseClientProvider
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -76,7 +77,7 @@ class ChoreRepository @Inject constructor(
     suspend fun logChore(tagId: String, scannedAt: Instant = Instant.now()): String {
         val client = requireClient()
         val result = client.from("scans")
-            .insert(ScanInsert(tagId = tagId, scannedAt = scannedAt.toString()))
+            .insert(ScanInsert(tagId = tagId, scannedAt = scannedAt.toString())) { select() }
             .decodeSingle<ScanDto>()
         return result.id
     }
@@ -93,6 +94,27 @@ class ChoreRepository @Inject constructor(
         ) {
             filter { eq("tag_id", tagId) }
         }
+    }
+
+    suspend fun createTag(
+        tagId: String,
+        label: String,
+        category: String?,
+        owner: String?,
+        intervalDays: Double?
+    ): TagDto {
+        val client = requireClient()
+        return client.from("tags")
+            .insert(
+                TagInsert(
+                    tagId = tagId,
+                    label = label,
+                    category = category,
+                    owner = owner,
+                    intervalDays = intervalDays
+                )
+            ) { select() }
+            .decodeSingle<TagDto>()
     }
 
     suspend fun archiveTag(tagId: String, archived: Boolean) {

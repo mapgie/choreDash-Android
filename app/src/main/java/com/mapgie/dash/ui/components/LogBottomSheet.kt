@@ -29,10 +29,12 @@ fun LogBottomSheet(
     var showDatePicker by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
-        onDismissRequest = { sheetScope.launch { sheetState.show() } },
+        onDismissRequest = {
+            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
-            shouldDismissOnBackPress = false
+            shouldDismissOnBackPress = true
         )
     ) {
         Column(

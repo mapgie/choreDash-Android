@@ -22,7 +22,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
         NotificationHelper.showTaskReminder(context, taskId, taskTitle)
 
-        // Mark reminded=true in Supabase so the web app knows the alert was sent.
+        // Mark reminded=true in Supabase so other clients know the alert was sent.
         val result = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
