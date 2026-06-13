@@ -223,3 +223,34 @@ sharing one signing cert across different `applicationId`s is itself a
 pattern that looks suspicious to malware scanners, and it doesn't transfer
 any "reputation" between apps anyway. Each app should have its own
 dedicated debug keystore.
+
+---
+
+## 13. Denied "exact alarms" / notifications permissions need a Settings link, not a retry
+
+`AlarmManager.canScheduleExactAlarms()` and notification permission denials
+can't be re-prompted with the normal runtime permission dialog once the user
+says no (or the OS defaults them off on some builds). `AlarmScheduler` already
+guards `scheduleTask()` with `canScheduleExactAlarms()` and silently returns,
+so a denied permission looks like "reminders just don't fire" with no
+indication why.
+
+Fix: surface the state in Settings and deep-link to the right system screen:
+
+```kotlin
+// permission/PermissionHelper.kt
+fun exactAlarmSettingsIntent(context: Context): Intent =
+    Intent(
+        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+        Uri.fromParts("package", context.packageName, null)
+    )
+
+fun notificationSettingsIntent(context: Context): Intent =
+    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+```
+
+`SettingsScreen` re-checks `canScheduleExactAlarms()` /
+`NotificationManagerCompat.areNotificationsEnabled()` on `ON_RESUME` (via a
+`LifecycleEventObserver`), since the user returns from the Settings app
+without the Activity restarting.

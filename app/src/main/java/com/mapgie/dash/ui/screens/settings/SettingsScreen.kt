@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.settings
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,12 +46,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.mapgie.dash.data.preferences.ThemeMode
+import com.mapgie.dash.permission.PermissionHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +74,22 @@ fun SettingsScreen(
     var owner by rememberSaveable(settings?.ownerHandle) { mutableStateOf(settings?.ownerHandle ?: "") }
     var keyVisible by remember { mutableStateOf(false) }
     var ownerExpanded by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
+    var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
+                notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadOwners() }
 
@@ -182,6 +205,60 @@ fun SettingsScreen(
                         label = { Text(mode.label) }
                     )
                 }
+            }
+
+            HorizontalDivider()
+
+            Text(
+                "Reminders & alerts",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                "Task reminders use a dedicated alarm so they can sound even when Do Not " +
+                    "Disturb is on. If reminders stop arriving, check these settings.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            if (!notificationsEnabled) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Notifications are turned off",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { context.startActivity(PermissionHelper.notificationSettingsIntent(context)) }) {
+                        Text("Open settings")
+                    }
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !exactAlarmsAllowed) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Exact alarms are turned off, reminders may be delayed",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { context.startActivity(PermissionHelper.exactAlarmSettingsIntent(context)) }) {
+                        Text("Open settings")
+                    }
+                }
+            }
+
+            if (notificationsEnabled && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed)) {
+                Text(
+                    "Reminders are fully enabled.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             HorizontalDivider()
