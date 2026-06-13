@@ -228,29 +228,19 @@ dedicated debug keystore.
 
 ## 13. Denied "exact alarms" / notifications permissions need a Settings link, not a retry
 
-`AlarmManager.canScheduleExactAlarms()` and notification permission denials
-can't be re-prompted with the normal runtime permission dialog once the user
-says no (or the OS defaults them off on some builds). `AlarmScheduler` already
-guards `scheduleTask()` with `canScheduleExactAlarms()` and silently returns,
-so a denied permission looks like "reminders just don't fire" with no
-indication why.
+`AlarmManager.canScheduleExactAlarms()` (API 31+) and the `POST_NOTIFICATIONS`
+runtime permission can't be re-prompted with the normal permission dialog once
+denied, calling the same request again is a no-op. If an app schedules
+reminders, a denied permission silently means "nothing fires", with no
+indication to the user why.
 
-Fix: surface the state in Settings and deep-link to the right system screen:
-
-```kotlin
-// permission/PermissionHelper.kt
-fun exactAlarmSettingsIntent(context: Context): Intent =
-    Intent(
-        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-        Uri.fromParts("package", context.packageName, null)
-    )
-
-fun notificationSettingsIntent(context: Context): Intent =
-    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-```
-
-`SettingsScreen` re-checks `canScheduleExactAlarms()` /
-`NotificationManagerCompat.areNotificationsEnabled()` on `ON_RESUME` (via a
-`LifecycleEventObserver`), since the user returns from the Settings app
-without the Activity restarting.
+Implementation suggestion: add a small `permission/PermissionHelper.kt` with
+intent builders that deep-link into the right system screen
+(`Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM` with a `package:` URI, and
+`Settings.ACTION_APP_NOTIFICATION_SETTINGS`), then surface the current
+permission state in the settings screen with a button or link using those
+intents. Re-check the permission state on `ON_RESUME` (via a
+`LifecycleEventObserver`) since the user returns from the Settings app
+without the Activity restarting. `permission/PermissionHelper.kt` and the
+"Reminders & alerts" section of `SettingsScreen` in this repo are a working
+example of the pattern.
