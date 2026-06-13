@@ -51,6 +51,7 @@ object NotificationHelper {
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
             Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
                 putExtra(EXTRA_TASK_ID, taskId)
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
@@ -76,6 +77,7 @@ object NotificationHelper {
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
             Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
                 putExtra(EXTRA_REMINDER_ID, reminderId)
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
@@ -101,6 +103,7 @@ object NotificationHelper {
         val openIntent = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

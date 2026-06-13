@@ -21,6 +21,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `a11y_check.py` accessibility role checker (ported from Android App Template)
 
 ### Fixed
+- Added explicit `setPackage(context.packageName)` to all `PendingIntent`-wrapped
+  intents in `AlarmScheduler` and `NotificationHelper` to satisfy CodeQL's
+  implicit-`PendingIntent` check.
 - Restored a consistent debug signing config pointing at the committed
   `app/debug.keystore` (unique to this app). Previously CI relied on AGP's
   auto-generated debug keystore, so every clean build produced a different
