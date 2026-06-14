@@ -31,6 +31,20 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.3.0] - 2026-06-14
+
+### Added
+- New expandable "Add" FAB on the Chores, Tasks, and Reminders tabs to quickly create a chore, task, or reminder from anywhere in the app
+- New "Reminders" tab for simple, on-device-only reminders (not synced to Supabase)
+- Home screen widgets: Quick Add Task, Next Up (your most urgent task or chore), and a Pinned Task/Chore widget, all resizable from small to large
+- Pin a task or chore from its card in the app to show it in the Pinned widget, with a checkbox or Log Now button to complete it without opening the app
+- Settings now shows whether notifications and exact alarms are enabled, with links to the system settings screens to fix them
+
+### Fixed
+- PendingIntents for task/reminder alarms and notifications now set an explicit package to satisfy Android's implicit-intent security requirements
+- Excluded the java/android/pending-intents CodeQL query, which produces false positives on Kotlin's `or` flag syntax even when FLAG_IMMUTABLE is present
+
+---
 ## [0.1.2] - 2026-06-13
 
 ### Added
