@@ -4,6 +4,17 @@ import android.content.Intent
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.NfcAdapter
+import android.nfc.Tag
+import android.nfc.tech.Ndef
+import android.nfc.tech.NdefFormatable
+
+/** Result of attempting to write a chore tag ID onto a physical NFC tag. */
+sealed class NfcWriteResult {
+    object Success : NfcWriteResult()
+    object NotWritable : NfcWriteResult()
+    object TooSmall : NfcWriteResult()
+    data class Error(val message: String?) : NfcWriteResult()
+}
 
 /**
  * Extracts the chore tag_id from an NFC intent.
@@ -37,6 +48,38 @@ object NfcHandler {
         // Fallback: raw hardware tag ID as hex
         val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
         return tag?.id?.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Writes a chore tag ID onto [tag] as a single NDEF URI record
+     * (`chordash://tag?tag=<tagId>`), formatting blank tags if needed.
+     */
+    fun writeTagId(tag: Tag, tagId: String): NfcWriteResult {
+        val message = NdefMessage(arrayOf(NdefRecord.createUri("chordash://tag?tag=$tagId")))
+        return try {
+            val ndef = Ndef.get(tag)
+            if (ndef != null) {
+                if (!ndef.isWritable) return NfcWriteResult.NotWritable
+                if (ndef.maxSize < message.toByteArray().size) return NfcWriteResult.TooSmall
+                ndef.connect()
+                try {
+                    ndef.writeNdefMessage(message)
+                } finally {
+                    ndef.close()
+                }
+            } else {
+                val formatable = NdefFormatable.get(tag) ?: return NfcWriteResult.NotWritable
+                formatable.connect()
+                try {
+                    formatable.format(message)
+                } finally {
+                    formatable.close()
+                }
+            }
+            NfcWriteResult.Success
+        } catch (e: Exception) {
+            NfcWriteResult.Error(e.message)
+        }
     }
 
     private fun extractFromRecord(record: NdefRecord): String? = when {

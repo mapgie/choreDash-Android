@@ -18,6 +18,7 @@ fun EditChoreSheet(
     sheetState: SheetState,
     onSave: (tagId: String, label: String, owner: String?, intervalDays: Double?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
+    onWriteTag: (chore: Chore) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetScope = rememberCoroutineScope()
@@ -100,6 +101,17 @@ fun EditChoreSheet(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+
+            OutlinedButton(
+                onClick = {
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                        onWriteTag(chore)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Write tag")
+            }
 
             OutlinedButton(
                 onClick = { showArchiveConfirm = true },

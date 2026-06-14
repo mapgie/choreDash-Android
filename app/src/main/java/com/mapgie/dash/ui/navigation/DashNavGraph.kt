@@ -21,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuFab
 import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.screens.changelog.ChangelogScreen
@@ -56,6 +57,11 @@ fun DashNavGraph(
     onNfcConsumed: () -> Unit,
     pendingWidgetDestination: String? = null,
     onWidgetDestinationConsumed: () -> Unit = {},
+    nfcWriteRequest: String?,
+    nfcWriteResult: NfcWriteResult?,
+    onStartNfcWrite: (String) -> Unit,
+    onCancelNfcWrite: () -> Unit,
+    onNfcWriteResultConsumed: () -> Unit,
     startOnSettings: Boolean = false
 ) {
     val navController = rememberNavController()
@@ -163,6 +169,11 @@ fun DashNavGraph(
                 ChoreListScreen(
                     pendingNfcTagId = pendingNfcTagId,
                     onNfcConsumed = onNfcConsumed,
+                    nfcWriteRequest = nfcWriteRequest,
+                    nfcWriteResult = nfcWriteResult,
+                    onStartNfcWrite = onStartNfcWrite,
+                    onCancelNfcWrite = onCancelNfcWrite,
+                    onNfcWriteResultConsumed = onNfcWriteResultConsumed,
                     pendingAddIntent = pendingAddIntent,
                     onPendingAddIntentConsumed = { pendingAddIntent = null }
                 )

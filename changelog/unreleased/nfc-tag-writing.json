@@ -1,0 +1,6 @@
+{
+  "bump": "minor",
+  "added": [
+    "Write a chore's tag ID to an NFC tag directly from the edit sheet"
+  ]
+}

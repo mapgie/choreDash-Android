@@ -20,6 +20,7 @@ jobs:
       - name: Accessibility role check
         run: python3 a11y_check.py --fails-only
       - name: Check version is new
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
