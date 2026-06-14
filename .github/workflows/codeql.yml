@@ -12,24 +12,4 @@ permissions:
   contents: read
 jobs:
   analyze:
-    name: Analyze (java-kotlin)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v4
-        with:
-          languages: java-kotlin
-          config-file: ./.github/codeql/codeql-config.yml
-      - uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: temurin
-      - uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.13'
-          cache-read-only: false
-      - run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-      - run: gradle :app:assembleDebug --no-daemon
-      - uses: github/codeql-action/analyze@v4
-        with:
-          category: /language:java-kotlin
+    uses: mapgie/android-Actions/.github/workflows/codeql.yml@87b0b6408e7168235e4977377add51c312ebab71

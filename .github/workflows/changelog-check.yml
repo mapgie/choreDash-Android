@@ -1,5 +1,4 @@
 name: Changelog bump check
-
 on:
   pull_request:
     branches: [main]
@@ -8,17 +7,8 @@ on:
       - "**/*.xml"
       - "**/*.gradle.kts"
       - "gradle/libs.versions.toml"
-
 permissions:
   contents: read
-
 jobs:
   check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check for a changelog fragment
-        run: python3 check_changelog_fragment.py origin/${{ github.base_ref }}
+    uses: mapgie/android-Actions/.github/workflows/changelog-check.yml@87b0b6408e7168235e4977377add51c312ebab71
