@@ -31,6 +31,13 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.5.0] - 2026-06-14
+
+### Changed
+- Settings screen now uses a flat, grouped list with dedicated sub-screens for Connection, Appearance, Reminders & Alerts, and About
+- Replaced the full-screen Changelog screen with a "What's New" dialog on the About sub-screen showing the 5 most recent changelog entries
+
+---
 ## [0.4.0] - 2026-06-14
 
 ### Added
