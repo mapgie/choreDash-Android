@@ -1,6 +1,9 @@
 package com.mapgie.dash.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Alarm
@@ -26,24 +34,27 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,13 +84,110 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.mapgie.dash.BuildConfig
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.permission.PermissionHelper
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
-@OptIn(ExperimentalMaterial3Api::class)
+private enum class SettingsSubScreen {
+    NONE, CONNECTION, APPEARANCE, REMINDERS, ABOUT
+}
+
+private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
+
 @Composable
 fun SettingsScreen(
     onNavigateToLicenses: () -> Unit,
-    onNavigateToChangelog: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
+) {
+    var subScreen by rememberSaveable { mutableStateOf(SettingsSubScreen.NONE) }
+
+    BackHandler(enabled = subScreen != SettingsSubScreen.NONE) {
+        subScreen = SettingsSubScreen.NONE
+    }
+
+    when (subScreen) {
+        SettingsSubScreen.NONE -> SettingsMainList(
+            onNavigate = { subScreen = it }
+        )
+        SettingsSubScreen.CONNECTION -> ConnectionSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.APPEARANCE -> AppearanceSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.REMINDERS -> RemindersSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+        )
+        SettingsSubScreen.ABOUT -> AboutSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            onNavigateToLicenses = onNavigateToLicenses,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsMainList(
+    onNavigate: (SettingsSubScreen) -> Unit,
+) {
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Settings") }) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+        ) {
+            SettingsSectionHeader("Account")
+            SettingsNavItem(
+                title = "Supabase connection",
+                subtitle = "Project URL, anon key, and your owner handle",
+                icon = Icons.Filled.Storage,
+                onClick = { onNavigate(SettingsSubScreen.CONNECTION) }
+            )
+
+            HorizontalDivider()
+
+            SettingsSectionHeader("Personalisation")
+            SettingsNavItem(
+                title = "Appearance",
+                subtitle = "Light, dark, or system theme",
+                icon = Icons.Filled.Palette,
+                onClick = { onNavigate(SettingsSubScreen.APPEARANCE) }
+            )
+
+            HorizontalDivider()
+
+            SettingsSectionHeader("Reminders")
+            SettingsNavItem(
+                title = "Reminders & alerts",
+                subtitle = "Notifications, exact alarms, and Do Not Disturb access",
+                icon = Icons.Filled.Notifications,
+                onClick = { onNavigate(SettingsSubScreen.REMINDERS) }
+            )
+
+            HorizontalDivider()
+
+            SettingsSectionHeader("About")
+            SettingsNavItem(
+                title = "About choreDash",
+                subtitle = "Version, what's new, and licenses",
+                icon = Icons.Filled.Info,
+                onClick = { onNavigate(SettingsSubScreen.ABOUT) }
+            )
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConnectionSubScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel,
 ) {
     val settings by viewModel.settings.collectAsState()
     val owners by viewModel.owners.collectAsState()
@@ -92,24 +200,6 @@ fun SettingsScreen(
     var keyVisible by remember { mutableStateOf(false) }
     var ownerExpanded by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-    var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
-    var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
-    var dndAccessGranted by remember { mutableStateOf(PermissionHelper.isDndAccessGranted(context)) }
-
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
-                notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
-                dndAccessGranted = PermissionHelper.isDndAccessGranted(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
     LaunchedEffect(Unit) { viewModel.loadOwners() }
 
     LaunchedEffect(saveError) {
@@ -121,7 +211,21 @@ fun SettingsScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
-        topBar = { TopAppBar(title = { Text("Settings") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Supabase connection") },
+                navigationIcon = {
+                    IconButton(onClick = onBack, modifier = Modifier.semantics { role = Role.Button }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -131,11 +235,6 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                "Supabase connection",
-                style = MaterialTheme.typography.titleMedium
-            )
-
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
@@ -203,15 +302,31 @@ fun SettingsScreen(
             ) {
                 Text("Save")
             }
+        }
+    }
+}
 
-            HorizontalDivider()
+@Composable
+private fun AppearanceSubScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel,
+) {
+    val settings by viewModel.settings.collectAsState()
+    val currentTheme = settings?.themeMode ?: ThemeMode.SYSTEM
 
+    SettingsSubScreenScaffold(title = "Appearance", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
-                "Appearance",
+                "Theme",
                 style = MaterialTheme.typography.titleMedium
             )
 
-            val currentTheme = settings?.themeMode ?: ThemeMode.SYSTEM
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 ThemeMode.entries.forEachIndexed { index, mode ->
                     SegmentedButton(
@@ -221,18 +336,50 @@ fun SettingsScreen(
                             index = index,
                             count = ThemeMode.entries.size
                         ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
                         label = { Text(mode.label) }
                     )
                 }
             }
+        }
+    }
+}
 
-            HorizontalDivider()
+@Composable
+private fun RemindersSubScreen(
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
+    var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
+    var dndAccessGranted by remember { mutableStateOf(PermissionHelper.isDndAccessGranted(context)) }
 
-            Text(
-                "Reminders & alerts",
-                style = MaterialTheme.typography.titleMedium
-            )
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
+                notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
+                dndAccessGranted = PermissionHelper.isDndAccessGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
+    val remindersFullyEnabled = notificationsEnabled &&
+        (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed) &&
+        dndAccessGranted
+
+    SettingsSubScreenScaffold(title = "Reminders & alerts", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
                 "Task reminders use a dedicated alarm so they can sound even when Do Not " +
                     "Disturb is on. If reminders stop arriving, check these permissions.",
@@ -263,31 +410,53 @@ fun SettingsScreen(
                 onClick = { context.startActivity(PermissionHelper.dndAccessSettingsIntent(context)) }
             )
 
-            val remindersFullyEnabled = notificationsEnabled &&
-                (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed) &&
-                dndAccessGranted
-
             Text(
                 if (remindersFullyEnabled) "Reminders are fully enabled." else "Reminders are not fully enabled.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
+        }
+    }
+}
 
-            HorizontalDivider()
+@Composable
+private fun AboutSubScreen(
+    onBack: () -> Unit,
+    onNavigateToLicenses: () -> Unit,
+) {
+    val context = LocalContext.current
+    var showChangelog by remember { mutableStateOf(false) }
 
+    SettingsSubScreenScaffold(title = "About", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(
-                "About",
-                style = MaterialTheme.typography.titleMedium
+                "choreDash helps your household share chores and tasks, synced through " +
+                    "your own Supabase project.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            TextButton(
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            FilledTonalButton(
+                onClick = { showChangelog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("What's New")
+            }
+
+            OutlinedButton(
                 onClick = onNavigateToLicenses,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    "Open-source licenses",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Open-source licenses")
             }
 
             Text(
@@ -297,13 +466,27 @@ fun SettingsScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { role = Role.Button }
-                    .clickable { onNavigateToChangelog() }
                     .padding(vertical = 4.dp)
             )
-
-            Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (showChangelog) {
+        val entries = remember {
+            runCatching {
+                val text = context.assets.open("CHANGELOG.md").use { input ->
+                    BufferedReader(InputStreamReader(input)).readText()
+                }
+                parseChangelog(text)
+            }.getOrDefault(emptyList())
+        }
+        ChangelogDialog(
+            entries = entries,
+            onDismiss = { showChangelog = false },
+            onViewFullChangelog = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CHANGELOG_URL)))
+            }
+        )
     }
 }
 

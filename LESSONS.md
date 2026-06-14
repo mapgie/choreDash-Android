@@ -343,3 +343,28 @@ fun createChannels(context: Context) {
 
 Any future change to a channel's importance/sound/vibration/DND-bypass needs
 the same treatment: new id, delete the old one.
+
+---
+
+## 18. Migrating composables to a shared file: re-check imports on both ends
+
+When splitting reusable composables out of a screen file into a shared
+`SettingsComponents.kt` (per `docs/SETTINGS_PATTERN.md`), check imports in
+*both* files:
+
+- The original screen file may still use APIs (e.g. `Modifier.clickable {}`
+  for a row that wasn't extracted, like a local `PermissionRow`) whose import
+  only existed because the extracted code also used it. Removing the
+  extracted code can silently delete a still-needed import.
+- The new shared file often accumulates imports added out of order during
+  iterative edits (e.g. duplicate-looking but distinct `PaddingValues`
+  re-exports from `foundation.layout` vs `material3`, or imports appended at
+  the bottom of the block instead of sorted). Neither breaks the build, but
+  sort them for readability before committing.
+
+Also, when removing a full-screen modal (e.g. the old `ChangelogScreen.kt`)
+in favour of an in-sheet dialog, grep the nav graph for the route string
+*and* the now-unused screen-level callback parameter (e.g.
+`onNavigateToChangelog`) — Compose Navigation routes and composable function
+signatures drift independently, so removing one doesn't surface a compile
+error for the other reviewer to catch by inspection.

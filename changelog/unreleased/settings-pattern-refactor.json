@@ -1,0 +1,7 @@
+{
+  "bump": "minor",
+  "changed": [
+    "Settings screen now uses a flat, grouped list with dedicated sub-screens for Connection, Appearance, Reminders & Alerts, and About",
+    "Replaced the full-screen Changelog screen with a \"What's New\" dialog on the About sub-screen showing the 5 most recent changelog entries"
+  ]
+}

@@ -24,7 +24,6 @@ import androidx.navigation.compose.rememberNavController
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuFab
 import com.mapgie.dash.ui.components.AddMenuOption
-import com.mapgie.dash.ui.screens.changelog.ChangelogScreen
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
@@ -193,14 +192,10 @@ fun DashNavGraph(
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToLicenses = { navController.navigate("licenses") },
-                    onNavigateToChangelog = { navController.navigate("changelog") }
                 )
             }
             composable("licenses") {
                 LicensesScreen(onBack = { navController.popBackStack() })
-            }
-            composable("changelog") {
-                ChangelogScreen(onBack = { navController.popBackStack() })
             }
         }
     }
