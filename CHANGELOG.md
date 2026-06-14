@@ -31,6 +31,22 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.4.0] - 2026-06-14
+
+### Added
+- Write a chore's tag ID to an NFC tag directly from the edit sheet
+
+### Changed
+- Settings now shows live status for Notifications, Exact alarms, and Do Not Disturb access, and only says reminders are fully enabled when all three are granted
+- Tasks screen now matches the Chores screen layout: pull to refresh, sticky category headers, and icon-button controls for sort, grouping, and owner filtering
+- Swipe a task to mark it done (or undo), mirroring the swipe-to-log gesture on Chores
+- Task owner filter is now a two-state My tasks / All toggle, matching the Chores owner filter
+
+### Fixed
+- Task reminder alarms now request to bypass Do Not Disturb, matching the claim in Settings
+- Task reminder notification channel is recreated so the Do Not Disturb bypass takes effect on existing installs (notification channel settings cannot be changed after creation)
+
+---
 ## [0.3.0] - 2026-06-14
 
 ### Added
