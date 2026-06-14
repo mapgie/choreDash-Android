@@ -31,6 +31,9 @@ object NotificationHelper {
             ).apply {
                 description = context.getString(R.string.channel_task_reminders_desc)
                 enableVibration(true)
+                // Only takes effect if the user has granted Do Not Disturb access;
+                // see SettingsScreen's "Do Not Disturb access" permission row.
+                setBypassDnd(true)
             }
         )
 

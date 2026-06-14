@@ -1,5 +1,6 @@
 package com.mapgie.dash.permission
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -11,7 +12,7 @@ import androidx.core.app.NotificationManagerCompat
  * Settings deep links for the permissions AlarmScheduler and NotificationHelper depend on.
  * Neither "exact alarms" nor "notifications" can be re-requested with a runtime permission
  * dialog once denied, so reminders silently stop working unless the user is sent to the
- * right Settings page.
+ * right Settings page. Do Not Disturb access likewise has no runtime prompt.
  */
 object PermissionHelper {
 
@@ -24,6 +25,11 @@ object PermissionHelper {
     fun areNotificationsEnabled(context: Context): Boolean =
         NotificationManagerCompat.from(context).areNotificationsEnabled()
 
+    /** Whether this app can let its alarms sound while Do Not Disturb is on. */
+    fun isDndAccessGranted(context: Context): Boolean =
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .isNotificationPolicyAccessGranted
+
     /** Opens the per-app "Alarms & reminders" page (API 31+). */
     fun exactAlarmSettingsIntent(context: Context): Intent =
         Intent(
@@ -35,4 +41,8 @@ object PermissionHelper {
     fun notificationSettingsIntent(context: Context): Intent =
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+
+    /** Opens the system "Do Not Disturb access" page where this app can be allowed. */
+    fun dndAccessSettingsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
 }

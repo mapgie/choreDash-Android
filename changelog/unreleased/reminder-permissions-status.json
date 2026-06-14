@@ -1,0 +1,9 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Settings now shows live status for Notifications, Exact alarms, and Do Not Disturb access, and only says reminders are fully enabled when all three are granted"
+  ],
+  "fixed": [
+    "Task reminder alarms now request to bypass Do Not Disturb, matching the claim in Settings"
+  ]
+}
