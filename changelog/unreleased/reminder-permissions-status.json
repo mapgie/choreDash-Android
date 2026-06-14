@@ -4,6 +4,7 @@
     "Settings now shows live status for Notifications, Exact alarms, and Do Not Disturb access, and only says reminders are fully enabled when all three are granted"
   ],
   "fixed": [
-    "Task reminder alarms now request to bypass Do Not Disturb, matching the claim in Settings"
+    "Task reminder alarms now request to bypass Do Not Disturb, matching the claim in Settings",
+    "Task reminder notification channel is recreated so the Do Not Disturb bypass takes effect on existing installs (notification channel settings cannot be changed after creation)"
   ]
 }

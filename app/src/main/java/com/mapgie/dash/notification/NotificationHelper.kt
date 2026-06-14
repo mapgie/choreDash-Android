@@ -12,7 +12,12 @@ import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
 
 object NotificationHelper {
-    const val CHANNEL_TASK_REMINDERS = "dash_task_reminders"
+    // v2: bypasses Do Not Disturb. NotificationChannel settings like importance
+    // and bypassDnd are immutable once created, so existing installs need a new
+    // channel id for the DND bypass to actually take effect. The old channel is
+    // deleted in createChannels() below.
+    const val CHANNEL_TASK_REMINDERS = "dash_task_reminders_v2"
+    private const val CHANNEL_TASK_REMINDERS_LEGACY = "dash_task_reminders"
     const val CHANNEL_CHORE_ALERTS = "dash_chore_alerts"
 
     const val EXTRA_TASK_ID = "task_id"
@@ -22,6 +27,8 @@ object NotificationHelper {
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_LEGACY)
 
         nm.createNotificationChannel(
             NotificationChannel(
