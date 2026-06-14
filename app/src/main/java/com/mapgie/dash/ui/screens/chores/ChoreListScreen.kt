@@ -21,11 +21,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddChoreSheet
 import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.LogBottomSheet
+import com.mapgie.dash.ui.components.WriteTagDialog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -33,6 +35,11 @@ import kotlinx.coroutines.launch
 fun ChoreListScreen(
     pendingNfcTagId: String?,
     onNfcConsumed: () -> Unit,
+    nfcWriteRequest: String?,
+    nfcWriteResult: NfcWriteResult?,
+    onStartNfcWrite: (String) -> Unit,
+    onCancelNfcWrite: () -> Unit,
+    onNfcWriteResultConsumed: () -> Unit,
     pendingAddIntent: AddMenuOption? = null,
     onPendingAddIntentConsumed: () -> Unit = {},
     viewModel: ChoreListViewModel = hiltViewModel()
@@ -305,7 +312,20 @@ fun ChoreListScreen(
                 viewModel.archiveChore(chore.tagId, archive)
                 showEditSheet = false
             },
+            onWriteTag = { chore ->
+                showEditSheet = false
+                onStartNfcWrite(chore.tagId)
+            },
             onDismiss = { showEditSheet = false }
+        )
+    }
+
+    if (nfcWriteRequest != null) {
+        WriteTagDialog(
+            result = nfcWriteResult,
+            onDismiss = {
+                if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
+            }
         )
     }
 
