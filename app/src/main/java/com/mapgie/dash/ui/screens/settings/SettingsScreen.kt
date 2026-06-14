@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.screens.settings
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,12 +11,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DoNotDisturbOn
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +31,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -49,7 +57,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
@@ -85,6 +95,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
     var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
+    var dndAccessGranted by remember { mutableStateOf(PermissionHelper.isDndAccessGranted(context)) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -92,6 +103,7 @@ fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
                 notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
+                dndAccessGranted = PermissionHelper.isDndAccessGranted(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -223,50 +235,43 @@ fun SettingsScreen(
 
             Text(
                 "Task reminders use a dedicated alarm so they can sound even when Do Not " +
-                    "Disturb is on. If reminders stop arriving, check these settings.",
+                    "Disturb is on. If reminders stop arriving, check these permissions.",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            if (!notificationsEnabled) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Notifications are turned off",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { context.startActivity(PermissionHelper.notificationSettingsIntent(context)) }) {
-                        Text("Open settings")
-                    }
-                }
-            }
+            PermissionRow(
+                title = "Notifications",
+                granted = notificationsEnabled,
+                icon = { Icon(Icons.Outlined.NotificationsNone, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                onClick = { context.startActivity(PermissionHelper.notificationSettingsIntent(context)) }
+            )
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !exactAlarmsAllowed) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Exact alarms are turned off, reminders may be delayed",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { context.startActivity(PermissionHelper.exactAlarmSettingsIntent(context)) }) {
-                        Text("Open settings")
-                    }
-                }
-            }
-
-            if (notificationsEnabled && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed)) {
-                Text(
-                    "Reminders are fully enabled.",
-                    style = MaterialTheme.typography.bodyMedium
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PermissionRow(
+                    title = "Exact alarms",
+                    granted = exactAlarmsAllowed,
+                    icon = { Icon(Icons.Outlined.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    onClick = { context.startActivity(PermissionHelper.exactAlarmSettingsIntent(context)) }
                 )
             }
+
+            PermissionRow(
+                title = "Do Not Disturb access",
+                subtitle = "Lets alarms sound when Do Not Disturb is on",
+                granted = dndAccessGranted,
+                icon = { Icon(Icons.Outlined.DoNotDisturbOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                onClick = { context.startActivity(PermissionHelper.dndAccessSettingsIntent(context)) }
+            )
+
+            val remindersFullyEnabled = notificationsEnabled &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed) &&
+                dndAccessGranted
+
+            Text(
+                if (remindersFullyEnabled) "Reminders are fully enabled." else "Reminders are not fully enabled.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
 
             HorizontalDivider()
 
@@ -300,6 +305,41 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+/**
+ * A permission entry showing its live grant state. The status is communicated
+ * by both an icon (shape) and a text label, never colour alone, so it remains
+ * legible for colour-blind users.
+ */
+@Composable
+private fun PermissionRow(
+    title: String,
+    granted: Boolean,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    subtitle: String? = null,
+) {
+    val statusText = if (granted) "Allowed" else "Tap to allow"
+    val statusIcon = if (granted) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline
+    val statusTint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = subtitle?.let { s -> { Text(s) } },
+        leadingContent = {
+            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() }
+        },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(statusIcon, contentDescription = null, tint = statusTint, modifier = Modifier.size(18.dp))
+                Text(statusText, style = MaterialTheme.typography.labelMedium, color = statusTint)
+            }
+        },
+        modifier = Modifier
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick)
+    )
 }
 
 private val ThemeMode.label: String

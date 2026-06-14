@@ -315,3 +315,31 @@ there's nothing to add.
 APIs line by line. Don't "fix" Glance widget code by adding a `.semantics {
 role = Role.X }` call: it doesn't exist for `GlanceModifier` and won't
 compile.
+
+---
+
+## 17. `NotificationChannel` settings are immutable after creation, even via `createNotificationChannel()` again
+
+`importance`, `enableVibration`, `setSound`, and `setBypassDnd` are only read
+the *first* time a channel id is created on a device. Calling
+`createNotificationChannel()` again with the same id and different settings
+is silently ignored, so shipping a change like "make this channel bypass Do
+Not Disturb" does nothing for users who already have the app installed: the
+channel already exists from a previous version with the old settings.
+
+Fix: give the channel a new id (e.g. append `_v2`) and delete the old one in
+`createChannels()`:
+
+```kotlin
+const val CHANNEL_TASK_REMINDERS = "dash_task_reminders_v2"
+private const val CHANNEL_TASK_REMINDERS_LEGACY = "dash_task_reminders"
+
+fun createChannels(context: Context) {
+    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_LEGACY)
+    nm.createNotificationChannel(NotificationChannel(CHANNEL_TASK_REMINDERS, ...).apply { ... })
+}
+```
+
+Any future change to a channel's importance/sound/vibration/DND-bypass needs
+the same treatment: new id, delete the old one.
