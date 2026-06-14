@@ -1,0 +1,6 @@
+{
+  "bump": "minor",
+  "added": [
+    "Settings now shows whether notifications and exact alarms are enabled, with links to the system settings screens to fix them"
+  ]
+}

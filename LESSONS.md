@@ -277,3 +277,24 @@ The query's display name ("Use of implicit PendingIntents") and its short ID
 the `@id` declared in the `.ql` file's metadata, which is what
 `query-filters` actually matches against. Get the real ID from the CodeQL
 job log line `Interpreted pathproblem query "..." (<id>) at path ...`.
+
+---
+
+## 15. Denied "exact alarms" / notifications permissions need a Settings link, not a retry
+
+`AlarmManager.canScheduleExactAlarms()` (API 31+) and the `POST_NOTIFICATIONS`
+runtime permission can't be re-prompted with the normal permission dialog once
+denied, calling the same request again is a no-op. If an app schedules
+reminders, a denied permission silently means "nothing fires", with no
+indication to the user why.
+
+Implementation suggestion: add a small `permission/PermissionHelper.kt` with
+intent builders that deep-link into the right system screen
+(`Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM` with a `package:` URI, and
+`Settings.ACTION_APP_NOTIFICATION_SETTINGS`), then surface the current
+permission state in the settings screen with a button or link using those
+intents. Re-check the permission state on `ON_RESUME` (via a
+`LifecycleEventObserver`) since the user returns from the Settings app
+without the Activity restarting. `permission/PermissionHelper.kt` and the
+"Reminders & alerts" section of `SettingsScreen` in this repo are a working
+example of the pattern.

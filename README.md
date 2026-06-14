@@ -58,6 +58,8 @@ app/src/main/java/com/mapgie/dash/
     AppModule.kt              # Hilt modules
   notification/
     NotificationHelper.kt     # Channel creation + show helpers
+  permission/
+    PermissionHelper.kt       # Settings deep links for exact alarms + notifications
   nfc/
     NfcHandler.kt             # NDEF/URI/raw-hex tag-ID extraction
   ui/
