@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.5.1] - 2026-06-14
+
+### Fixed
+- Added the ACCESS_NOTIFICATION_POLICY permission so the app can actually be granted Do Not Disturb access; without it the permission row in Settings could never be granted
+
+---
 ## [0.5.0] - 2026-06-14
 
 ### Changed
