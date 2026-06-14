@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required for the app to appear in Settings > Do Not Disturb access, and for
+         NotificationManager.isNotificationPolicyAccessGranted() / NotificationChannel
+         .setBypassDnd() to have any effect. Without it the "Do Not Disturb access"
+         permission row in Settings can never be granted. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <application
         android:name=".DashApplication"
