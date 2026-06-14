@@ -1,0 +1,8 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Tasks screen now matches the Chores screen layout: pull to refresh, sticky category headers, and icon-button controls for sort, grouping, and owner filtering",
+    "Swipe a task to mark it done (or undo), mirroring the swipe-to-log gesture on Chores",
+    "Task owner filter is now a two-state My tasks / All toggle, matching the Chores owner filter"
+  ]
+}

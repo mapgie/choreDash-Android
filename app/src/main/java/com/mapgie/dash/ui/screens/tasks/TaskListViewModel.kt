@@ -31,7 +31,7 @@ import javax.inject.Inject
 
 enum class TaskFilter { ALL, ACTIVE, DONE }
 enum class TaskSort { PRIORITY, DUE, CREATED }
-enum class OwnerFilter { ALL, MINE, UNASSIGNED }
+enum class OwnerFilter { ALL, MINE }
 
 data class TaskUiState(
     val loading: Boolean = true,
@@ -55,8 +55,7 @@ data class TaskUiState(
                 }
                 val matchesOwner = when (ownerFilter) {
                     OwnerFilter.ALL -> true
-                    OwnerFilter.MINE -> task.owner == ownerHandle
-                    OwnerFilter.UNASSIGNED -> task.owner.isNullOrBlank()
+                    OwnerFilter.MINE -> task.owner == null || task.owner == ownerHandle
                 }
                 matchesStatus && matchesOwner
             }
