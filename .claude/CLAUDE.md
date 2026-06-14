@@ -79,7 +79,7 @@ Promoting out of beta (dropping the `-beta.N` suffix) remains a manual edit.
 - **Theme:** Single sage-green Material 3 palette (`ui/theme/Color.kt`) with light, dark, and system-following variants (`DashTheme` in `ui/theme/Theme.kt`). Body and UI text use the system default font (`ui/theme/Type.kt`) — no brand font.
 - **Background work:** WorkManager (`BootWorker`, `DailyStaleChoreWorker`) + AlarmManager (`AlarmScheduler`, `AlarmReceiver`) for task reminders, scheduled via Hilt-injected workers.
 - **NFC:** `MainActivity` handles NFC foreground dispatch; `NfcHandler` extracts tag IDs to match against chores.
-- **Permissions:** `NFC`, `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `INTERNET` (required for Supabase). Do not add new permissions without discussion, and document the reason for each one in the manifest.
+- **Permissions:** `NFC`, `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `INTERNET` (required for Supabase), `ACCESS_NOTIFICATION_POLICY` (lets the app appear in Settings > Do Not Disturb access and lets reminder alarms bypass Do Not Disturb). Do not add new permissions without discussion, and document the reason for each one in the manifest.
 
 ## Key Rules
 

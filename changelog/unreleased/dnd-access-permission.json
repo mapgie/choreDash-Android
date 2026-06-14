@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Added the ACCESS_NOTIFICATION_POLICY permission so the app can actually be granted Do Not Disturb access; without it the permission row in Settings could never be granted"
+  ]
+}
