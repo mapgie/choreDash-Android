@@ -1,9 +1,0 @@
-name: Prepare release
-on:
-  workflow_dispatch:
-permissions:
-  contents: write
-  pull-requests: write
-jobs:
-  prepare:
-    uses: mapgie/android-Actions/.github/workflows/prepare-release.yml@87b0b6408e7168235e4977377add51c312ebab71
