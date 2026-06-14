@@ -43,15 +43,19 @@ fragment is added. See `changelog/unreleased/README.md` for details.
 
 ### Cutting a release
 
-The "Prepare release" GitHub Actions workflow (`workflow_dispatch`,
-`.github/workflows/prepare-release.yml`) runs `consolidate_changelog.py`, which:
+The "Release" GitHub Actions workflow (`workflow_dispatch`,
+`.github/workflows/release.yml`) first runs `consolidate_changelog.py`, which:
 - gathers all fragments in `changelog/unreleased/`
 - computes the overall bump as the highest severity among them
 - bumps `versionCode` (+1) and `versionName` in `app/build.gradle.kts` — increments the
   PATCH/MINOR/MAJOR digit per the bump and resets `-beta.N` to `beta.1`
 - writes one consolidated entry at the top of `CHANGELOG.md`
 - deletes the consumed fragments
-- opens a `Release vX.Y.Z` PR for review
+
+If there were fragments to consolidate, this commit is pushed directly to `main` (no PR),
+and the workflow then builds, tests, lints, and creates a GitHub Release from that commit.
+If there were no fragments, the workflow stops after the consolidation step with nothing
+to do.
 
 Promoting out of beta (dropping the `-beta.N` suffix) remains a manual edit.
 

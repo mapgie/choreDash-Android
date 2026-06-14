@@ -1,0 +1,13 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: mapgie/android-Actions/.github/workflows/release.yml@fc6908971deae6cf00b537ab90538e51b2293db4
+    with:
+      app-name: Dash
