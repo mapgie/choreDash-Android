@@ -52,10 +52,10 @@ The "Release" GitHub Actions workflow (`workflow_dispatch`,
 - writes one consolidated entry at the top of `CHANGELOG.md`
 - deletes the consumed fragments
 
-If there were fragments to consolidate, this commit is pushed directly to `main` (no PR),
-and the workflow then builds, tests, lints, and creates a GitHub Release from that commit.
-If there were no fragments, the workflow stops after the consolidation step with nothing
-to do.
+This commit is pushed directly to `main` (no PR), and the workflow then builds, tests,
+lints, and creates a GitHub Release from that commit. If there are no fragments to
+consolidate, the workflow fails immediately rather than reporting success with nothing
+released, since this workflow is only run manually when a release is expected.
 
 Promoting out of beta (dropping the `-beta.N` suffix) remains a manual edit.
 
