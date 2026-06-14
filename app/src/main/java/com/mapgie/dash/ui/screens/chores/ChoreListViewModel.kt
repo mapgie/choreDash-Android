@@ -1,12 +1,18 @@
 package com.mapgie.dash.ui.screens.chores
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.widget.PinnedItemStore
+import com.mapgie.dash.widget.PinnedItemType
+import com.mapgie.dash.widget.PinnedWidgetItem
+import com.mapgie.dash.widget.WidgetUpdater
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +37,8 @@ data class ChoreUiState(
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
     val pendingNfcTagId: String? = null,
-    val recentScan: RecentScan? = null
+    val recentScan: RecentScan? = null,
+    val pinnedChoreId: String? = null
 ) {
     val displayed: List<Chore>
         get() {
@@ -55,7 +62,9 @@ data class ChoreUiState(
 @HiltViewModel
 class ChoreListViewModel @Inject constructor(
     private val choreRepository: ChoreRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val pinnedItemStore: PinnedItemStore,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChoreUiState(loading = true))
@@ -68,7 +77,20 @@ class ChoreListViewModel @Inject constructor(
                 _uiState.update { it.copy(ownerHandle = settings.ownerHandle) }
             }
         }
+        viewModelScope.launch {
+            pinnedItemStore.pinnedItem.collect { pinned ->
+                val pinnedChoreId = pinned?.takeIf { it.type == PinnedItemType.CHORE }?.id
+                _uiState.update { it.copy(pinnedChoreId = pinnedChoreId) }
+            }
+        }
         load()
+    }
+
+    fun togglePin(choreId: String) {
+        viewModelScope.launch {
+            pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.CHORE, choreId))
+            WidgetUpdater.updateAll(appContext)
+        }
     }
 
     fun load() {
@@ -101,6 +123,7 @@ class ChoreListViewModel @Inject constructor(
                 val scanId = choreRepository.logChore(tagId, at ?: Instant.now())
                 load()
                 _uiState.update { it.copy(recentScan = RecentScan(choreLabel, scanId)) }
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -112,6 +135,7 @@ class ChoreListViewModel @Inject constructor(
             runCatching {
                 choreRepository.deleteScan(scanId)
                 load()
+                WidgetUpdater.updateAll(appContext)
             }
         }
     }

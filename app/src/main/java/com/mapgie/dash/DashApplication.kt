@@ -7,6 +7,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mapgie.dash.alarm.DailyStaleChoreWorker
 import com.mapgie.dash.notification.NotificationHelper
+import com.mapgie.dash.widget.WidgetRefreshWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -20,10 +21,16 @@ class DashApplication : Application(), Configuration.Provider {
         super.onCreate()
         NotificationHelper.createChannels(this)
         scheduleDailyChoreCheck()
+        scheduleWidgetRefresh()
     }
     private fun scheduleDailyChoreCheck() {
         val request = PeriodicWorkRequestBuilder<DailyStaleChoreWorker>(1, TimeUnit.DAYS).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "daily_chore_check", ExistingPeriodicWorkPolicy.KEEP, request)
+    }
+    private fun scheduleWidgetRefresh() {
+        val request = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(30, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "widget_refresh", ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }
