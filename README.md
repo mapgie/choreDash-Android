@@ -84,10 +84,27 @@ app/src/main/java/com/mapgie/dash/
 
 ---
 
-## Supabase schema
+## Supabase setup
 
-This app connects to the same Supabase project as the web app.  
-Expected tables: `chores`, `chore_logs`, `todos`, `owners`.
+This app has no backend of its own. It reads/writes a Supabase project directly
+(optionally the same project as the taskDash web app). Each install needs its own
+project and credentials:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor → New query**, paste the entire contents of
+   [`supabase/schema.sql`](supabase/schema.sql), and run it. This creates the
+   `owners`, `tags`, `scans`, and `todos` tables with the columns and row-level
+   security policies the app expects.
+3. Add at least one row to `owners` (e.g. `INSERT INTO owners (handle) VALUES ('alex');`)
+   so the "I am" picker in Settings has something to show.
+4. In Supabase, go to **Settings → API** and copy the **Project URL** and the
+   **anon / public key**.
+5. In the app, open **Settings → Supabase connection** and enter the Project URL,
+   anon key, and your owner handle, then tap **Save**.
+
+If you're pairing this app with the taskDash web app, point both at the same
+Supabase project; `schema.sql` covers both apps' tables (including `todos` and
+`owners`), so you only need to run it once.
 
 ---
 
