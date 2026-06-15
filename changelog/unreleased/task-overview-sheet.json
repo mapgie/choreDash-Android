@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Tapping a task now opens an overview sheet showing its due status, a mark done/restore action, and an edit option"
+  ],
+  "changed": [
+    "Pinning a task to the home screen widget now happens from the overview sheet instead of an icon on the task card"
+  ]
+}

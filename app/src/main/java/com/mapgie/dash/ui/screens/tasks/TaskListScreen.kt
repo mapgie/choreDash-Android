@@ -34,6 +34,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +51,7 @@ import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.TaskCard
+import com.mapgie.dash.ui.components.TaskOverviewSheet
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -64,6 +66,10 @@ fun TaskListScreen(
     var showTaskSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<TaskDto?>(null) }
     var doneExpanded by remember { mutableStateOf(false) }
+
+    var showOverviewSheet by remember { mutableStateOf(false) }
+    var overviewTask by remember { mutableStateOf<TaskDto?>(null) }
+    val overviewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Error snackbar
     LaunchedEffect(uiState.error) {
@@ -191,11 +197,9 @@ fun TaskListScreen(
                                 items(tasks, key = { it.id }) { task ->
                                     SwipeToCompleteCard(
                                         task = task,
-                                        onClick = { editingTask = task; showTaskSheet = true },
+                                        onClick = { overviewTask = task; showOverviewSheet = true },
                                         onToggleDone = { viewModel.markDone(task.id) },
-                                        onSwipeToggleDone = { viewModel.markDone(task.id) },
-                                        isPinned = task.id == uiState.pinnedTaskId,
-                                        onTogglePin = { viewModel.togglePin(task.id) }
+                                        onSwipeToggleDone = { viewModel.markDone(task.id) }
                                     )
                                 }
                             }
@@ -203,11 +207,9 @@ fun TaskListScreen(
                             items(active, key = { it.id }) { task ->
                                 SwipeToCompleteCard(
                                     task = task,
-                                    onClick = { editingTask = task; showTaskSheet = true },
+                                    onClick = { overviewTask = task; showOverviewSheet = true },
                                     onToggleDone = { viewModel.markDone(task.id) },
-                                    onSwipeToggleDone = { viewModel.markDone(task.id) },
-                                    isPinned = task.id == uiState.pinnedTaskId,
-                                    onTogglePin = { viewModel.togglePin(task.id) }
+                                    onSwipeToggleDone = { viewModel.markDone(task.id) }
                                 )
                             }
                         }
@@ -238,11 +240,9 @@ fun TaskListScreen(
                                 items(done, key = { it.id }) { task ->
                                     SwipeToCompleteCard(
                                         task = task,
-                                        onClick = { editingTask = task; showTaskSheet = true },
+                                        onClick = { overviewTask = task; showOverviewSheet = true },
                                         onToggleDone = { viewModel.markUndone(task.id) },
-                                        onSwipeToggleDone = { viewModel.markUndone(task.id) },
-                                        isPinned = task.id == uiState.pinnedTaskId,
-                                        onTogglePin = { viewModel.togglePin(task.id) }
+                                        onSwipeToggleDone = { viewModel.markUndone(task.id) }
                                     )
                                 }
                             }
@@ -264,6 +264,26 @@ fun TaskListScreen(
             onDismiss = { showTaskSheet = false; editingTask = null }
         )
     }
+
+    if (showOverviewSheet && overviewTask != null) {
+        TaskOverviewSheet(
+            task = overviewTask!!,
+            isPinned = overviewTask!!.id == uiState.pinnedTaskId,
+            sheetState = overviewSheetState,
+            onToggleDone = { task ->
+                if (task.completedAt != null) viewModel.markUndone(task.id)
+                else viewModel.markDone(task.id)
+                showOverviewSheet = false
+            },
+            onTogglePin = { task -> viewModel.togglePin(task.id) },
+            onEdit = { task ->
+                showOverviewSheet = false
+                editingTask = task
+                showTaskSheet = true
+            },
+            onDismiss = { showOverviewSheet = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -272,9 +292,7 @@ private fun SwipeToCompleteCard(
     task: TaskDto,
     onClick: () -> Unit,
     onToggleDone: () -> Unit,
-    onSwipeToggleDone: () -> Unit,
-    isPinned: Boolean,
-    onTogglePin: () -> Unit
+    onSwipeToggleDone: () -> Unit
 ) {
     val isDone = task.completedAt != null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -314,8 +332,6 @@ private fun SwipeToCompleteCard(
             task = task,
             onClick = onClick,
             onToggleDone = onToggleDone,
-            isPinned = isPinned,
-            onTogglePin = onTogglePin,
             modifier = Modifier.padding(horizontal = 12.dp)
         )
     }
