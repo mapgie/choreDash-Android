@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -139,54 +141,84 @@ fun ChoreListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ChoreFilter.values().forEach { f ->
-                        FilterChip(
-                            selected = uiState.filter == f,
-                            onClick = { viewModel.setFilter(f) },
-                            label = {
-                                Text(
-                                    when (f) {
-                                        ChoreFilter.ALL -> "All"
-                                        ChoreFilter.OVERDUE -> "Overdue"
-                                        ChoreFilter.SOON -> "Soon"
-                                    }
+                    if (!uiState.zenMode) {
+                        ChoreFilter.values().forEach { f ->
+                            FilterChip(
+                                selected = uiState.filter == f,
+                                onClick = { viewModel.setFilter(f) },
+                                label = {
+                                    Text(
+                                        when (f) {
+                                            ChoreFilter.ALL -> "All"
+                                            ChoreFilter.OVERDUE -> "Overdue"
+                                            ChoreFilter.SOON -> "Soon"
+                                        }
+                                    )
+                                },
+                                // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
-                            },
-                            // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
-                        )
+                        }
                     }
                     Spacer(Modifier.weight(1f))
+                    if (!uiState.zenMode) {
+                        IconButton(
+                            onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.GridView,
+                                contentDescription = if (uiState.groupByCategory)
+                                    "Ungroup categories" else "Group by category",
+                                tint = if (uiState.groupByCategory)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.setOwnerFilter(
+                                    if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
+                                    else OwnerFilter.ME
+                                )
+                            },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
+                                    "Show all owners" else "Show my chores",
+                                tint = if (uiState.ownerFilter == OwnerFilter.ME)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     IconButton(
-                        onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
+                        onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            Icons.Filled.GridView,
-                            contentDescription = if (uiState.groupByCategory)
-                                "Ungroup categories" else "Group by category",
-                            tint = if (uiState.groupByCategory)
+                            Icons.Filled.Bolt,
+                            contentDescription = if (uiState.showDueCountdown)
+                                "Hide due countdown" else "Show due countdown",
+                            tint = if (uiState.showDueCountdown)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(
-                        onClick = {
-                            viewModel.setOwnerFilter(
-                                if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
-                                else OwnerFilter.ME
-                            )
-                        },
+                        onClick = { viewModel.setZenMode(!uiState.zenMode) },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Person,
-                            contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
-                                "Show all owners" else "Show my chores",
-                            tint = if (uiState.ownerFilter == OwnerFilter.ME)
+                            Icons.Filled.Spa,
+                            contentDescription = if (uiState.zenMode)
+                                "Exit zen mode" else "Enter zen mode",
+                            tint = if (uiState.zenMode)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -211,7 +243,7 @@ fun ChoreListScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
-                            if (uiState.groupByCategory) {
+                            if (uiState.groupByCategory && !uiState.zenMode) {
                                 val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
                                 grouped.forEach { (category, chores) ->
                                     stickyHeader {
@@ -229,6 +261,8 @@ fun ChoreListScreen(
                                         SwipeToLogCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            zenMode = uiState.zenMode,
+                                            showDueCountdown = uiState.showDueCountdown,
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetChore = it; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -240,6 +274,8 @@ fun ChoreListScreen(
                                     SwipeToLogCard(
                                         chore = chore,
                                         showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                        zenMode = uiState.zenMode,
+                                        showDueCountdown = uiState.showDueCountdown,
                                         onTap = { logTargetChore = it; showLogSheet = true },
                                         onLongPress = { editTargetChore = it; showEditSheet = true },
                                         onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -269,6 +305,8 @@ fun ChoreListScreen(
                                         ChoreCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            zenMode = uiState.zenMode,
+                                            showDueCountdown = uiState.showDueCountdown,
                                             modifier = Modifier
                                                 .semantics { role = Role.Button }
                                                 .combinedClickable(
@@ -380,6 +418,8 @@ fun ChoreListScreen(
 private fun SwipeToLogCard(
     chore: Chore,
     showOwner: Boolean,
+    zenMode: Boolean,
+    showDueCountdown: Boolean,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit
@@ -420,6 +460,8 @@ private fun SwipeToLogCard(
         ChoreCard(
             chore = chore,
             showOwner = showOwner,
+            zenMode = zenMode,
+            showDueCountdown = showDueCountdown,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

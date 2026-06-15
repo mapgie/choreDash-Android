@@ -6,6 +6,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
@@ -13,19 +15,27 @@ import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.ui.theme.StatusAging
 import com.mapgie.dash.ui.theme.StatusFresh
 import com.mapgie.dash.ui.theme.StatusStale
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import com.mapgie.dash.util.formatAbsoluteDate
+import com.mapgie.dash.util.relativeTime
 
 @Composable
 fun ChoreCard(
     chore: Chore,
     showOwner: Boolean,
+    zenMode: Boolean = false,
+    showDueCountdown: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val barColor = when (chore.status) {
+    val statusColor = when (chore.status) {
         ChoreStatus.STALE, ChoreStatus.NEVER -> StatusStale
         ChoreStatus.AGING -> StatusAging
         ChoreStatus.FRESH -> StatusFresh
+    }
+    val barColor = if (zenMode) Color.Transparent else statusColor
+    val dateColor = when (chore.status) {
+        ChoreStatus.STALE, ChoreStatus.NEVER -> StatusStale
+        ChoreStatus.AGING -> StatusAging
+        ChoreStatus.FRESH -> MaterialTheme.colorScheme.onSurface
     }
 
     Card(
@@ -67,20 +77,51 @@ fun ChoreCard(
                 }
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (chore.category != null) {
+                    if (!zenMode && chore.category != null) {
                         Text(
                             chore.category.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    } else {
+                        Spacer(Modifier)
                     }
-                    Text(
-                        lastScannedText(chore.lastScanned),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (chore.lastScanned == null) {
+                            Text(
+                                "Never",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontStyle = FontStyle.Italic,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                formatAbsoluteDate(chore.lastScanned),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant else dateColor
+                            )
+                            if (showDueCountdown && !zenMode) {
+                                chore.nextDueText()?.let { dueText ->
+                                    Text(
+                                        dueText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = dateColor
+                                    )
+                                }
+                            }
+                            if (!zenMode) {
+                                Text(
+                                    relativeTime(chore.lastScanned),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -103,15 +144,5 @@ private fun OwnerBadge(initial: Char) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
-    }
-}
-
-private fun lastScannedText(lastScanned: Instant?): String {
-    if (lastScanned == null) return "Never"
-    val days = ChronoUnit.DAYS.between(lastScanned, Instant.now())
-    return when {
-        days == 0L -> "Today"
-        days == 1L -> "Yesterday"
-        else -> "${days}d ago"
     }
 }
