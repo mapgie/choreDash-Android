@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -118,7 +119,8 @@ fun RemindersListScreen(
                     reminder = reminder,
                     linkedLabel = uiState.linkedLabel(reminder),
                     onClick = { editTarget = reminder },
-                    onToggleDone = { viewModel.markDone(reminder.id) }
+                    onToggleDone = { viewModel.markDone(reminder.id) },
+                    onDelete = { viewModel.deleteReminder(reminder.id) }
                 )
             }
 
@@ -150,7 +152,11 @@ fun RemindersListScreen(
                             reminder = reminder,
                             linkedLabel = uiState.linkedLabel(reminder),
                             onClick = { editTarget = reminder },
-                            onToggleDone = { viewModel.markUndone(reminder.id) }
+                            onToggleDone = {
+                                if (reminder.completedAt == null) viewModel.markDone(reminder.id)
+                                else viewModel.markUndone(reminder.id)
+                            },
+                            onDelete = { viewModel.deleteReminder(reminder.id) }
                         )
                     }
                 }
@@ -187,7 +193,8 @@ fun RemindersListScreen(
                             onToggleDone = {
                                 if (reminder.completedAt == null) viewModel.markDone(reminder.id)
                                 else viewModel.markUndone(reminder.id)
-                            }
+                            },
+                            onDelete = { viewModel.deleteReminder(reminder.id) }
                         )
                     }
                 }
@@ -223,13 +230,17 @@ private fun SwipeToCompleteReminderCard(
     reminder: ReminderDto,
     linkedLabel: String?,
     onClick: () -> Unit,
-    onToggleDone: () -> Unit
+    onToggleDone: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val isDone = reminder.completedAt != null
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onToggleDone()
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> onToggleDone()
+                SwipeToDismissBoxValue.EndToStart -> showDeleteConfirm = true
+                SwipeToDismissBoxValue.Settled -> {}
             }
             false // never actually dismiss the item
         },
@@ -238,24 +249,47 @@ private fun SwipeToCompleteReminderCard(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
+        enableDismissFromEndToStart = true,
         backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    if (isDone) "Undo" else "Done✔",
-                    modifier = Modifier.padding(start = 24.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            when (dismissState.dismissDirection) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .background(
+                                MaterialTheme.colorScheme.errorContainer,
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            "Delete",
+                            modifier = Modifier.padding(end = 24.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            if (isDone) "Undo" else "Done✔",
+                            modifier = Modifier.padding(start = 24.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         }
     ) {
@@ -265,6 +299,23 @@ private fun SwipeToCompleteReminderCard(
             onClick = onClick,
             onToggleDone = onToggleDone,
             modifier = Modifier.padding(horizontal = 12.dp)
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete reminder?") },
+            text = { Text("This reminder will be permanently removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete()
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
         )
     }
 }

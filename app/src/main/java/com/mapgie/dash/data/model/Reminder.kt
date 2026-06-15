@@ -27,3 +27,6 @@ data class ReminderInsert(
 
 fun ReminderDto.remindAtInstant(): Instant? =
     runCatching { Instant.parse(remindAt) }.getOrNull()
+
+fun ReminderDto.isPast(): Boolean =
+    remindAtInstant()?.isBefore(Instant.now()) ?: false

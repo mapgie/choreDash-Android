@@ -7,6 +7,7 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.isPast
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -28,10 +29,14 @@ data class ReminderUiState(
     val tasks: List<TaskDto> = emptyList()
 ) {
     val active: List<ReminderDto>
-        get() = reminders.filter { it.archivedAt == null && it.completedAt == null }.sortedBy { it.remindAt }
+        get() = reminders.filter {
+            it.archivedAt == null && it.completedAt == null && !it.isPast()
+        }.sortedBy { it.remindAt }
 
     val done: List<ReminderDto>
-        get() = reminders.filter { it.archivedAt == null && it.completedAt != null }.sortedByDescending { it.remindAt }
+        get() = reminders.filter {
+            it.archivedAt == null && (it.completedAt != null || it.isPast())
+        }.sortedByDescending { it.remindAt }
 
     val archived: List<ReminderDto>
         get() = reminders.filter { it.archivedAt != null }.sortedByDescending { it.remindAt }
