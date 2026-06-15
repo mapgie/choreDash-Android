@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.widget.PinnedItemStore
@@ -38,7 +39,8 @@ data class ChoreUiState(
     val ownerHandle: String = "",
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
-    val pinnedChoreId: String? = null
+    val pinnedChoreId: String? = null,
+    val scanHistory: List<ScanDto> = emptyList()
 ) {
     val displayed: List<Chore>
         get() {
@@ -138,6 +140,31 @@ class ChoreListViewModel @Inject constructor(
                 WidgetUpdater.updateAll(appContext)
             }
         }
+    }
+
+    fun removeLastLog(chore: Chore) {
+        val scanId = chore.lastScanId ?: return
+        viewModelScope.launch {
+            runCatching {
+                choreRepository.deleteScan(scanId)
+                load()
+                loadScanHistory(chore.tagId)
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun loadScanHistory(tagId: String) {
+        viewModelScope.launch {
+            runCatching { choreRepository.scanHistory(tagId) }
+                .onSuccess { history -> _uiState.update { it.copy(scanHistory = history) } }
+        }
+    }
+
+    fun clearScanHistory() {
+        _uiState.update { it.copy(scanHistory = emptyList()) }
     }
 
     fun clearRecentScan() {

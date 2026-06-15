@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Tapping a chore now opens an overview sheet with last-done info, a custom-time log option, recent history (last 4 logs), and a remove-last-log action"
+  ],
+  "changed": [
+    "Pinning a chore to the home screen widget now happens from the overview sheet instead of an icon on the chore card"
+  ]
+}

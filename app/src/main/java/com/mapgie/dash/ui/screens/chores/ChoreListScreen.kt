@@ -25,8 +25,8 @@ import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddChoreSheet
 import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.ChoreCard
+import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
-import com.mapgie.dash.ui.components.LogBottomSheet
 import com.mapgie.dash.ui.components.WriteTagDialog
 import kotlinx.coroutines.launch
 
@@ -85,6 +85,24 @@ fun ChoreListScreen(
             addSheetTagId = ""
             showAddSheet = true
             onPendingAddIntentConsumed()
+        }
+    }
+
+    // Keep the overview sheet's chore data fresh after actions like "Remove last log"
+    LaunchedEffect(uiState.active, uiState.archived) {
+        val current = logTargetChore ?: return@LaunchedEffect
+        (uiState.active + uiState.archived).find { it.id == current.id }?.let { fresh ->
+            if (fresh != current) logTargetChore = fresh
+        }
+    }
+
+    // Load recent scan history whenever the overview sheet is opened for a chore
+    LaunchedEffect(showLogSheet, logTargetChore) {
+        val chore = logTargetChore
+        if (showLogSheet && chore != null) {
+            viewModel.loadScanHistory(chore.tagId)
+        } else {
+            viewModel.clearScanHistory()
         }
     }
 
@@ -211,8 +229,6 @@ fun ChoreListScreen(
                                         SwipeToLogCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                            isPinned = chore.id == uiState.pinnedChoreId,
-                                            onTogglePin = { viewModel.togglePin(chore.id) },
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetChore = it; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -224,8 +240,6 @@ fun ChoreListScreen(
                                     SwipeToLogCard(
                                         chore = chore,
                                         showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                        isPinned = chore.id == uiState.pinnedChoreId,
-                                        onTogglePin = { viewModel.togglePin(chore.id) },
                                         onTap = { logTargetChore = it; showLogSheet = true },
                                         onLongPress = { editTargetChore = it; showEditSheet = true },
                                         onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -255,8 +269,6 @@ fun ChoreListScreen(
                                         ChoreCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                            isPinned = chore.id == uiState.pinnedChoreId,
-                                            onTogglePin = { viewModel.togglePin(chore.id) },
                                             modifier = Modifier
                                                 .semantics { role = Role.Button }
                                                 .combinedClickable(
@@ -278,16 +290,25 @@ fun ChoreListScreen(
     }
 
     if (showLogSheet && logTargetChore != null) {
-        LogBottomSheet(
+        ChoreOverviewSheet(
             chore = logTargetChore!!,
+            isPinned = logTargetChore!!.id == uiState.pinnedChoreId,
+            scanHistory = uiState.scanHistory,
             sheetState = logSheetState,
-            onConfirm = { chore, at ->
+            onConfirmLog = { chore, at ->
                 viewModel.logChore(chore.tagId, at)
                 showLogSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()
                     onNfcConsumed()
                 }
+            },
+            onRemoveLastLog = { chore -> viewModel.removeLastLog(chore) },
+            onTogglePin = { chore -> viewModel.togglePin(chore.id) },
+            onMoreOptions = { chore ->
+                showLogSheet = false
+                editTargetChore = chore
+                showEditSheet = true
             },
             onDismiss = {
                 showLogSheet = false
@@ -359,8 +380,6 @@ fun ChoreListScreen(
 private fun SwipeToLogCard(
     chore: Chore,
     showOwner: Boolean,
-    isPinned: Boolean = false,
-    onTogglePin: (() -> Unit)? = null,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit
@@ -401,8 +420,6 @@ private fun SwipeToLogCard(
         ChoreCard(
             chore = chore,
             showOwner = showOwner,
-            isPinned = isPinned,
-            onTogglePin = onTogglePin,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

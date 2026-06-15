@@ -2,9 +2,6 @@ package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,8 +20,6 @@ import java.time.temporal.ChronoUnit
 fun ChoreCard(
     chore: Chore,
     showOwner: Boolean,
-    isPinned: Boolean = false,
-    onTogglePin: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val barColor = when (chore.status) {
@@ -66,19 +61,6 @@ fun ChoreCard(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f)
                     )
-                    if (onTogglePin != null) {
-                        IconButton(
-                            onClick = onTogglePin,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                                contentDescription = if (isPinned) "Unpin from widget" else "Pin to widget",
-                                tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
                     if (showOwner && chore.owner != null) {
                         OwnerBadge(initial = chore.owner.firstOrNull()?.uppercaseChar() ?: '?')
                     }
