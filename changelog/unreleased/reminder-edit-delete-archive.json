@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Reminders can now be edited, archived, and unarchived by long-pressing a reminder"
+  ],
+  "changed": [
+    "The Reminders screen now shows an archived section for hidden reminders"
+  ]
+}

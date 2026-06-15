@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
@@ -49,6 +50,8 @@ fun RemindersListScreen(
 
     var showAddSheet by remember { mutableStateOf(false) }
     var doneExpanded by remember { mutableStateOf(false) }
+    var archivedExpanded by remember { mutableStateOf(false) }
+    var editTarget by remember { mutableStateOf<ReminderDto?>(null) }
 
     LaunchedEffect(pendingAddIntent) {
         if (pendingAddIntent == AddMenuOption.REMINDER) {
@@ -82,8 +85,9 @@ fun RemindersListScreen(
 
         val active = uiState.active
         val done = uiState.done
+        val archived = uiState.archived
 
-        if (active.isEmpty() && done.isEmpty()) {
+        if (active.isEmpty() && done.isEmpty() && archived.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
@@ -109,7 +113,8 @@ fun RemindersListScreen(
                 ReminderCard(
                     reminder = reminder,
                     linkedLabel = uiState.linkedLabel(reminder),
-                    onToggleDone = { viewModel.markDone(reminder.id) }
+                    onToggleDone = { viewModel.markDone(reminder.id) },
+                    onLongPress = { editTarget = reminder }
                 )
             }
 
@@ -140,7 +145,45 @@ fun RemindersListScreen(
                         ReminderCard(
                             reminder = reminder,
                             linkedLabel = uiState.linkedLabel(reminder),
-                            onToggleDone = { viewModel.markUndone(reminder.id) }
+                            onToggleDone = { viewModel.markUndone(reminder.id) },
+                            onLongPress = { editTarget = reminder }
+                        )
+                    }
+                }
+            }
+
+            if (archived.isNotEmpty()) {
+                item(key = "archived_header") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        Text(
+                            text = "Archived (${archived.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { archivedExpanded = !archivedExpanded }) {
+                            Icon(
+                                if (archivedExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (archivedExpanded) "Collapse" else "Expand"
+                            )
+                        }
+                    }
+                }
+                if (archivedExpanded) {
+                    items(archived, key = { "archived_${it.id}" }) { reminder ->
+                        ReminderCard(
+                            reminder = reminder,
+                            linkedLabel = uiState.linkedLabel(reminder),
+                            onToggleDone = {
+                                if (reminder.completedAt == null) viewModel.markDone(reminder.id)
+                                else viewModel.markUndone(reminder.id)
+                            },
+                            onLongPress = { editTarget = reminder }
                         )
                     }
                 }
@@ -154,6 +197,18 @@ fun RemindersListScreen(
             tasks = uiState.tasks,
             onSave = { insert -> viewModel.addReminder(insert) },
             onDismiss = { showAddSheet = false }
+        )
+    }
+
+    editTarget?.let { reminder ->
+        AddReminderSheet(
+            chores = uiState.chores,
+            tasks = uiState.tasks,
+            existing = reminder,
+            onSave = { insert -> viewModel.editReminder(reminder.id, insert) },
+            onArchiveToggle = { archived -> viewModel.archiveReminder(reminder.id, archived) },
+            onDelete = { viewModel.deleteReminder(reminder.id) },
+            onDismiss = { editTarget = null }
         )
     }
 }

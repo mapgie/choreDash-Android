@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.components
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,6 +31,7 @@ fun ReminderCard(
     reminder: ReminderDto,
     linkedLabel: String?,
     onToggleDone: () -> Unit,
+    onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDone = reminder.completedAt != null
@@ -38,7 +43,13 @@ fun ReminderCard(
         ?.format(formatter)
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { role = Role.Button }
+            .combinedClickable(
+                onClick = {},
+                onLongClick = onLongPress
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

@@ -28,10 +28,13 @@ data class ReminderUiState(
     val tasks: List<TaskDto> = emptyList()
 ) {
     val active: List<ReminderDto>
-        get() = reminders.filter { it.completedAt == null }.sortedBy { it.remindAt }
+        get() = reminders.filter { it.archivedAt == null && it.completedAt == null }.sortedBy { it.remindAt }
 
     val done: List<ReminderDto>
-        get() = reminders.filter { it.completedAt != null }.sortedByDescending { it.remindAt }
+        get() = reminders.filter { it.archivedAt == null && it.completedAt != null }.sortedByDescending { it.remindAt }
+
+    val archived: List<ReminderDto>
+        get() = reminders.filter { it.archivedAt != null }.sortedByDescending { it.remindAt }
 
     fun linkedLabel(reminder: ReminderDto): String? {
         reminder.choreId?.let { id -> chores.find { it.id == id }?.let { return "Chore: ${it.label}" } }
@@ -108,6 +111,49 @@ class RemindersListViewModel @Inject constructor(
                         }
                     }
                 }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun editReminder(id: String, insert: ReminderInsert) {
+        viewModelScope.launch {
+            runCatching {
+                alarmScheduler.cancelReminder(id)
+                val reminder = reminderRepository.updateReminder(id, insert)
+                if (reminder.completedAt == null) {
+                    reminder.remindAtInstant()?.let { at ->
+                        if (at.isAfter(Instant.now())) {
+                            alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
+                        }
+                    }
+                }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun archiveReminder(id: String, archived: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                if (archived) {
+                    alarmScheduler.cancelReminder(id)
+                } else {
+                    _uiState.value.reminders.find { it.id == id }?.let { reminder ->
+                        if (reminder.completedAt == null) {
+                            reminder.remindAtInstant()?.let { at ->
+                                if (at.isAfter(Instant.now())) {
+                                    alarmScheduler.scheduleReminder(id, reminder.subject, at)
+                                }
+                            }
+                        }
+                    }
+                }
+                reminderRepository.archiveReminder(id, archived)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
