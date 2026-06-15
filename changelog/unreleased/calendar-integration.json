@@ -1,0 +1,7 @@
+{
+  "bump": "minor",
+  "added": [
+    "Add a chore or task to your calendar directly from its edit screen",
+    "Share a chore or task as a calendar event (.ics file) or as plain text"
+  ]
+}
