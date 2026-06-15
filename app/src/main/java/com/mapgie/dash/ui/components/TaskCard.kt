@@ -15,14 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,10 +44,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun TaskCard(
     task: TaskDto,
-    onClick: () -> Unit,
     onToggleDone: () -> Unit,
-    isPinned: Boolean = false,
-    onTogglePin: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDone = task.completedAt != null
@@ -61,7 +55,6 @@ fun TaskCard(
     }
 
     Card(
-        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)
@@ -128,22 +121,6 @@ fun TaskCard(
                         )
                     }
                     DueBadge(task = task)
-                }
-            }
-            // Pin to widget
-            if (onTogglePin != null) {
-                IconButton(
-                    onClick = onTogglePin,
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                        contentDescription = if (isPinned) "Unpin from widget" else "Pin to widget",
-                        tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
                 }
             }
             // Owner badge
