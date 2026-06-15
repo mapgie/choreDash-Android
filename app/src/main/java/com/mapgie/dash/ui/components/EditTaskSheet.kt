@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -20,6 +24,8 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
@@ -39,6 +45,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.TaskDto
@@ -46,6 +57,10 @@ import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.util.CalendarShareUtils
+import com.mapgie.dash.util.calendarEventForInstant
+import com.mapgie.dash.util.calendarEventForDate
+import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -67,6 +82,8 @@ fun EditTaskSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showShareChoice by remember { mutableStateOf(false) }
 
     var title by remember { mutableStateOf(task?.title ?: "") }
     var notes by remember { mutableStateOf(task?.notes ?: "") }
@@ -133,6 +150,18 @@ fun EditTaskSheet(
         reminderAt = resolvedReminderInstant()
     )
 
+    fun calendarInfo() = when {
+        dueType == "date" && dueDate != null ->
+            calendarEventForDate(title = title.trim(), description = notes.trim().ifBlank { null }, date = dueDate!!)
+        reminderEnabled ->
+            calendarEventForInstant(
+                title = title.trim(),
+                description = notes.trim().ifBlank { null },
+                instant = Instant.parse(resolvedReminderInstant())
+            )
+        else -> calendarEventWithoutTime(title = title.trim(), description = notes.trim().ifBlank { null })
+    }
+
     fun buildUpdate() = TaskUpdate(
         title = title.trim(),
         notes = notes.trim().ifBlank { null },
@@ -163,10 +192,43 @@ fun EditTaskSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = if (task == null) "New Task" else "Edit Task",
-                style = MaterialTheme.typography.titleLarge
-            )
+            if (task == null) {
+                Text(
+                    text = "New Task",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Edit Task",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Row {
+                        IconButton(
+                            onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Add to calendar"
+                                role = Role.Button
+                            }
+                        ) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = null)
+                        }
+                        IconButton(
+                            onClick = { showShareChoice = true },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Share"
+                                role = Role.Button
+                            }
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = null)
+                        }
+                    }
+                }
+            }
 
             OutlinedTextField(
                 value = title,
@@ -445,5 +507,25 @@ fun EditTaskSheet(
                 TextButton(onClick = { showReminderDatePicker = false }) { Text("Cancel") }
             }
         ) { DatePicker(state = reminderPickerState) }
+    }
+
+    if (showShareChoice) {
+        AlertDialog(
+            onDismissRequest = { showShareChoice = false },
+            title = { Text("Share task") },
+            text = { Text("Choose how to share \"${title.trim()}\".") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showShareChoice = false
+                    context.startActivity(CalendarShareUtils.buildShareIcsIntent(context, calendarInfo()))
+                }) { Text("As calendar event") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showShareChoice = false
+                    context.startActivity(CalendarShareUtils.buildSharePlainTextIntent(calendarInfo()))
+                }) { Text("As plain text") }
+            }
+        )
     }
 }

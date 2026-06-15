@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exposes app/cache/ics/ so generated .ics files can be shared via FileProvider
+     (Intent.ACTION_SEND, text/calendar) without granting broad storage access. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="ics" path="ics/" />
+</paths>

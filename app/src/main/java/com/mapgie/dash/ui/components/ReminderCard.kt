@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,10 +23,12 @@ import com.mapgie.dash.data.model.remindAtInstant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderCard(
     reminder: ReminderDto,
     linkedLabel: String?,
+    onClick: () -> Unit,
     onToggleDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -38,6 +41,7 @@ fun ReminderCard(
         ?.format(formatter)
 
     Card(
+        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)

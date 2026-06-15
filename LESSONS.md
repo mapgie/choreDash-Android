@@ -368,3 +368,35 @@ in favour of an in-sheet dialog, grep the nav graph for the route string
 `onNavigateToChangelog`) — Compose Navigation routes and composable function
 signatures drift independently, so removing one doesn't surface a compile
 error for the other reviewer to catch by inspection.
+
+---
+
+## 19. "Add to calendar" / "share as .ics" needs no new permissions, but needs a FileProvider
+
+`Intent.ACTION_INSERT` on `CalendarContract.Events.CONTENT_URI` (pre-filled via
+`EXTRA_EVENT_BEGIN_TIME` / `EXTRA_EVENT_END_TIME` / `EXTRA_EVENT_ALL_DAY` etc.)
+just launches the system calendar app's "create event" UI for the user to
+review and save. It requires **no** `READ_CALENDAR`/`WRITE_CALENDAR`
+permission.
+
+Sharing a generated `.ics` file via `Intent.ACTION_SEND` (`text/calendar`)
+does need a `FileProvider`:
+- `<provider android:name="androidx.core.content.FileProvider" ...
+  android:exported="false" android:grantUriPermissions="true">` plus a
+  `res/xml/file_paths.xml` with a `<cache-path>` entry, both new but neither
+  requiring a `<uses-permission>`.
+- `androidx.core:core-ktx` (already a dependency in most apps) is sufficient;
+  FileProvider lives in that artifact.
+
+Factor date/time derivation (all-day vs timed event, "no date at all" cases)
+into one shared utility (`util/CalendarShareUtils.kt` in this repo) so the
+ACTION_INSERT intent, the `.ics` body, and the plain-text share summary all
+agree on the same begin/end/all-day logic.
+
+Before adding "add to calendar" / "share" actions to every entity type, check
+whether each type actually has an edit/detail view to put the icons in. In
+this repo, reminders (`ReminderCard.kt`) only render as a checklist row with
+no edit sheet, unlike chores (`EditChoreSheet.kt`) and tasks
+(`EditTaskSheet.kt`) which have one. Don't build a new detail sheet just to
+host these two icons, scope to the entity types that already have a natural
+home for them.

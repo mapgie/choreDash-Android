@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -37,8 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.remindAtInstant
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -61,17 +65,22 @@ private sealed class LinkedItem {
 fun AddReminderSheet(
     chores: List<Chore>,
     tasks: List<TaskDto>,
+    existing: ReminderDto? = null,
     onSave: (ReminderInsert) -> Unit,
+    onArchiveToggle: ((archived: Boolean) -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
 
-    var subject by remember { mutableStateOf("") }
+    var subject by remember { mutableStateOf(existing?.subject ?: "") }
 
-    var remindBase by remember {
-        mutableStateOf(ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0))
+    val initialRemind = remember {
+        existing?.remindAtInstant()?.atZone(ZoneId.systemDefault())
+            ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
     }
+    var remindBase by remember { mutableStateOf(initialRemind) }
     var remindHour by remember { mutableStateOf(remindBase.hour.toString().padStart(2, '0')) }
     var remindMinute by remember { mutableStateOf(remindBase.minute.toString().padStart(2, '0')) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -84,8 +93,18 @@ fun AddReminderSheet(
             chores.map { LinkedItem.ChoreLink(it.id, "Chore: ${it.label}") } +
             tasks.map { LinkedItem.TaskLink(it.id, "Task: ${it.title}") }
     }
-    var linkedItem by remember { mutableStateOf<LinkedItem>(LinkedItem.None) }
+    val initialLinkedItem = remember {
+        when {
+            existing?.choreId != null -> linkOptions.filterIsInstance<LinkedItem.ChoreLink>()
+                .find { it.id == existing.choreId }
+            existing?.taskId != null -> linkOptions.filterIsInstance<LinkedItem.TaskLink>()
+                .find { it.id == existing.taskId }
+            else -> null
+        } ?: LinkedItem.None
+    }
+    var linkedItem by remember { mutableStateOf(initialLinkedItem) }
     var linkExpanded by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     fun resolvedRemindAt(): String {
         val h = remindHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
@@ -118,7 +137,7 @@ fun AddReminderSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "New Reminder",
+                text = if (existing != null) "Edit Reminder" else "New Reminder",
                 style = MaterialTheme.typography.titleLarge
             )
 
@@ -201,9 +220,53 @@ fun AddReminderSheet(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Add")
+                Text(if (existing != null) "Save" else "Add")
+            }
+
+            if (existing != null) {
+                val isArchived = existing.archivedAt != null
+                if (onArchiveToggle != null) {
+                    OutlinedButton(
+                        onClick = {
+                            sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                                onArchiveToggle(!isArchived)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (isArchived) "Unarchive" else "Archive")
+                    }
+                }
+                if (onDelete != null) {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete")
+                    }
+                }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete reminder?") },
+            text = { Text("This reminder will be permanently removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDelete?.invoke() }
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showDatePicker) {
