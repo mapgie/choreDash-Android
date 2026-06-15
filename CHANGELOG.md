@@ -31,6 +31,22 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.6.0] - 2026-06-15
+
+### Added
+- Add a chore or task to your calendar directly from its edit screen
+- Share a chore or task as a calendar event (.ics file) or as plain text
+- Tapping a chore now opens an overview sheet with last-done info, a custom-time log option, recent history (last 4 logs), and a remove-last-log action
+- Reminders can now be edited, archived, and unarchived by tapping a reminder
+- Swipe a reminder left to reveal a delete option
+
+### Changed
+- Pinning a chore to the home screen widget now happens from the overview sheet instead of an icon on the chore card
+- The Reminders screen now shows an archived section for hidden reminders
+- Swiping a reminder right toggles done/undone, matching tasks and chores
+- Reminders whose time has passed now move to the Done section even if not checked off
+
+---
 ## [0.5.1] - 2026-06-14
 
 ### Fixed
