@@ -44,7 +44,6 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun TaskCard(
     task: TaskDto,
-    onClick: () -> Unit,
     onToggleDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -56,7 +55,6 @@ fun TaskCard(
     }
 
     Card(
-        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)
