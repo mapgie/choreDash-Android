@@ -31,6 +31,13 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.7.1] - 2026-06-15
+
+### Changed
+- The task overview sheet now shows icons on the Mark done/Restore task and Edit task actions, matching the taskDash web app
+- The chore overview sheet now shows the category before the chore name and its tag ID, icons on the Log it and Remove last log actions, and a Recent History list styled to match the taskDash web app
+
+---
 ## [0.7.0] - 2026-06-15
 
 ### Added
