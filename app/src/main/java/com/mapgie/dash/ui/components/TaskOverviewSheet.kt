@@ -56,6 +56,7 @@ fun TaskOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Text(task.title, style = MaterialTheme.typography.titleMedium)
                     if (task.category != null) {
                         Text(
                             task.category.uppercase(),
@@ -63,7 +64,6 @@ fun TaskOverviewSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(task.title, style = MaterialTheme.typography.titleMedium)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isPinned) {
@@ -118,7 +118,7 @@ fun TaskOverviewSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Edit task...") }
+            ) { Text("More options...") }
         }
     }
 }
