@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.8.0] - 2026-06-15
+
+### Added
+- Zen mode toggle on the Chores screen for a distraction-free view that hides filters, categories, and badges
+- Due countdown toggle on the Chores screen showing "in Xd" / "Xd overdue" and sorting the most urgent chores to the top
+- Documented Supabase setup for new installs, including a ready-to-run schema.sql covering owners, tags, scans, and todos
+- Added a setup hint to Settings > Supabase connection pointing new users to the schema and README
+
+### Changed
+- Chore cards now show the last-scanned date alongside a relative time (e.g. "2w ago"), matching the choreDash web app
+
+---
 ## [0.7.1] - 2026-06-15
 
 ### Changed

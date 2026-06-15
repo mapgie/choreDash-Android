@@ -1,7 +1,0 @@
-{
-  "bump": "patch",
-  "added": [
-    "Documented Supabase setup for new installs, including a ready-to-run schema.sql covering owners, tags, scans, and todos",
-    "Added a setup hint to Settings > Supabase connection pointing new users to the schema and README"
-  ]
-}
