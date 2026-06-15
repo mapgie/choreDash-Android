@@ -31,6 +31,16 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.7.0] - 2026-06-15
+
+### Added
+- Tapping a task now opens an overview sheet showing its due status, a mark done/restore action, and an edit option
+- Long-pressing a task card opens its edit sheet directly, matching chore cards
+
+### Changed
+- Pinning a task to the home screen widget now happens from the overview sheet instead of an icon on the task card
+
+---
 ## [0.6.0] - 2026-06-15
 
 ### Added
