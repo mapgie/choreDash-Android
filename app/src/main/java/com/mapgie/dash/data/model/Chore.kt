@@ -2,6 +2,7 @@ package com.mapgie.dash.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -53,6 +54,35 @@ data class Chore(
     val lastScanId: String?,
     val status: ChoreStatus
 ) {
+    /** Hours until this chore is considered no longer "fresh", per its own thresholds. */
+    private fun freshThresholdHours(): Long {
+        return if (intervalDays != null) {
+            (intervalDays * 0.5).coerceAtLeast(1.0).let { (it * 24).toLong() }
+        } else {
+            (CATEGORY_FRESH_DAYS[category] ?: 2L) * 24
+        }
+    }
+
+    /**
+     * Countdown text matching choreDash web's nextDueText(), e.g. "in 2d", "in 5h",
+     * "1d overdue", "3h overdue". Returns null if never scanned.
+     */
+    fun nextDueText(): String? {
+        val last = lastScanned ?: return null
+        val due = last.plus(freshThresholdHours(), ChronoUnit.HOURS)
+        val diff = Duration.between(Instant.now(), due)
+        val overdue = diff.isNegative
+        val absDiff = diff.abs()
+        val hours = absDiff.toHours()
+        val days = hours / 24
+        return when {
+            overdue && days >= 1 -> "${days}d overdue"
+            overdue -> "${hours}h overdue"
+            days >= 1 -> "in ${days}d"
+            else -> "in ${hours}h"
+        }
+    }
+
     companion object {
         private val CATEGORY_FRESH_DAYS = mapOf(
             "Laundry" to 3L,

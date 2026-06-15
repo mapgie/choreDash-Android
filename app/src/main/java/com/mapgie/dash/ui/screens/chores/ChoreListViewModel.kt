@@ -37,6 +37,8 @@ data class ChoreUiState(
     val groupByCategory: Boolean = false,
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
+    val zenMode: Boolean = false,
+    val showDueCountdown: Boolean = false,
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     val pinnedChoreId: String? = null,
@@ -48,13 +50,24 @@ data class ChoreUiState(
             if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
-            return when (filter) {
+            result = when (filter) {
                 ChoreFilter.ALL -> result
                 ChoreFilter.OVERDUE -> result.filter {
                     it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER
                 }
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
+            // When showing the due countdown, surface the most urgent chores first
+            // (matches choreDash web's due-button behaviour of sorting overdue to the top)
+            if (showDueCountdown) {
+                result = result.sortedWith(
+                    compareBy(
+                        { it.status != ChoreStatus.NEVER && it.status != ChoreStatus.STALE },
+                        { it.lastScanned ?: Instant.MIN }
+                    )
+                )
+            }
+            return result
         }
 
     val categories: List<String>
@@ -76,7 +89,13 @@ class ChoreListViewModel @Inject constructor(
         // Keep ownerHandle in sync so ME filter works correctly across settings changes
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
-                _uiState.update { it.copy(ownerHandle = settings.ownerHandle) }
+                _uiState.update {
+                    it.copy(
+                        ownerHandle = settings.ownerHandle,
+                        zenMode = settings.zenMode,
+                        showDueCountdown = settings.showDueCountdown
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -222,5 +241,13 @@ class ChoreListViewModel @Inject constructor(
 
     fun setOwnerFilter(ownerFilter: OwnerFilter) {
         _uiState.update { it.copy(ownerFilter = ownerFilter) }
+    }
+
+    fun setZenMode(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setZenMode(enabled) }
+    }
+
+    fun setShowDueCountdown(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowDueCountdown(enabled) }
     }
 }

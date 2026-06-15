@@ -20,7 +20,9 @@ data class AppSettings(
     val supabaseUrl: String = "",
     val supabaseKey: String = "",
     val ownerHandle: String = "",
-    val themeMode: ThemeMode = ThemeMode.SYSTEM
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val zenMode: Boolean = false,
+    val showDueCountdown: Boolean = false
 )
 
 @Singleton
@@ -32,6 +34,8 @@ class SettingsRepository @Inject constructor(
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val OWNER_HANDLE = stringPreferencesKey("owner_handle")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val ZEN_MODE = booleanPreferencesKey("zen_mode")
+        val SHOW_DUE_COUNTDOWN = booleanPreferencesKey("show_due_countdown")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -43,7 +47,9 @@ class SettingsRepository @Inject constructor(
                 ownerHandle = prefs[Keys.OWNER_HANDLE] ?: "",
                 themeMode = prefs[Keys.THEME_MODE]
                     ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
-                    ?: ThemeMode.SYSTEM
+                    ?: ThemeMode.SYSTEM,
+                zenMode = prefs[Keys.ZEN_MODE] ?: false,
+                showDueCountdown = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false
             )
         }
 
@@ -57,5 +63,13 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
+    }
+
+    suspend fun setZenMode(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.ZEN_MODE] = enabled }
+    }
+
+    suspend fun setShowDueCountdown(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_DUE_COUNTDOWN] = enabled }
     }
 }

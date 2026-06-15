@@ -1,0 +1,10 @@
+{
+  "bump": "minor",
+  "added": [
+    "Zen mode toggle on the Chores screen for a distraction-free view that hides filters, categories, and badges",
+    "Due countdown toggle on the Chores screen showing \"in Xd\" / \"Xd overdue\" and sorting the most urgent chores to the top"
+  ],
+  "changed": [
+    "Chore cards now show the last-scanned date alongside a relative time (e.g. \"2w ago\"), matching the choreDash web app"
+  ]
+}
