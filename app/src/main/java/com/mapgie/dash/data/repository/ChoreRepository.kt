@@ -82,6 +82,17 @@ class ChoreRepository @Inject constructor(
         return result.id
     }
 
+    suspend fun scanHistory(tagId: String, limit: Long = 4): List<ScanDto> {
+        val client = requireClient()
+        return client.from("scans")
+            .select {
+                filter { eq("tag_id", tagId) }
+                order("scanned_at", Order.DESCENDING)
+                limit(limit)
+            }
+            .decodeList<ScanDto>()
+    }
+
     suspend fun deleteScan(scanId: String) {
         val client = requireClient()
         client.from("scans").delete { filter { eq("id", scanId) } }
