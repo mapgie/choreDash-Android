@@ -2,7 +2,10 @@ package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -108,7 +111,15 @@ fun TaskOverviewSheet(
                         }
                     },
                     modifier = Modifier.weight(1f)
-                ) { Text(if (isDone) "Restore task" else "Mark done") }
+                ) {
+                    Icon(
+                        imageVector = if (isDone) Icons.AutoMirrored.Filled.Undo else Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isDone) "Restore task" else "Mark done")
+                }
             }
 
             TextButton(
@@ -118,7 +129,15 @@ fun TaskOverviewSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Edit task...") }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Edit task...")
+            }
         }
     }
 }

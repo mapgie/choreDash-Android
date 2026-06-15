@@ -1,7 +1,10 @@
 package com.mapgie.dash.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
@@ -65,7 +68,6 @@ fun ChoreOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(chore.label, style = MaterialTheme.typography.titleMedium)
                     if (chore.category != null) {
                         Text(
                             chore.category.uppercase(),
@@ -73,6 +75,12 @@ fun ChoreOverviewSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Text(chore.label, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        chore.tagId,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isPinned) {
@@ -166,14 +174,33 @@ fun ChoreOverviewSheet(
                         }
                     },
                     modifier = Modifier.weight(1f)
-                ) { Text("Log it") }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Log it")
+                }
             }
 
             OutlinedButton(
                 onClick = { showRemoveLastLogConfirm = true },
                 enabled = chore.lastScanId != null,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Remove last log") }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Remove last log")
+            }
 
             TextButton(
                 onClick = {
@@ -186,7 +213,11 @@ fun ChoreOverviewSheet(
 
             HorizontalDivider()
 
-            Text("Recent history", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "RECENT HISTORY",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             if (scanHistory.isEmpty()) {
                 Text(
                     "No logs yet",
@@ -197,11 +228,26 @@ fun ChoreOverviewSheet(
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     scanHistory.forEach { scan ->
                         val scannedAt = runCatching { Instant.parse(scan.scannedAt) }.getOrNull()
-                        Text(
-                            historyRowText(scannedAt),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.small
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                historyDateText(scannedAt),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                relativeDays(scannedAt),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -253,21 +299,21 @@ fun ChoreOverviewSheet(
     }
 }
 
-private val MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM")
+private val MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
 
 private fun lastDoneText(lastScanned: Instant?): String {
     if (lastScanned == null) return "Never logged"
     val date = lastScanned.atZone(ZoneId.systemDefault()).format(MONTH_DAY_FORMATTER)
-    return "Last done $date • ${relativeDays(lastScanned)}"
+    return "Last done $date · ${relativeDays(lastScanned)}"
 }
 
-private fun historyRowText(scannedAt: Instant?): String {
+private fun historyDateText(scannedAt: Instant?): String {
     if (scannedAt == null) return "Unknown date"
-    val date = scannedAt.atZone(ZoneId.systemDefault()).format(MONTH_DAY_FORMATTER)
-    return "$date • ${relativeDays(scannedAt)}"
+    return scannedAt.atZone(ZoneId.systemDefault()).format(MONTH_DAY_FORMATTER)
 }
 
-private fun relativeDays(instant: Instant): String {
+private fun relativeDays(instant: Instant?): String {
+    if (instant == null) return ""
     val days = ChronoUnit.DAYS.between(instant, Instant.now())
     return when {
         days <= 0L -> "Today"
