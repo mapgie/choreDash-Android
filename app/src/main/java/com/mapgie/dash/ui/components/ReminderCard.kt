@@ -1,6 +1,5 @@
 package com.mapgie.dash.ui.components
 
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,15 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,12 +23,13 @@ import com.mapgie.dash.data.model.remindAtInstant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderCard(
     reminder: ReminderDto,
     linkedLabel: String?,
+    onClick: () -> Unit,
     onToggleDone: () -> Unit,
-    onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDone = reminder.completedAt != null
@@ -43,13 +41,8 @@ fun ReminderCard(
         ?.format(formatter)
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics { role = Role.Button }
-            .combinedClickable(
-                onClick = {},
-                onLongClick = onLongPress
-            ),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

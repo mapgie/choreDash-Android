@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.reminders
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,9 +20,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -110,11 +114,11 @@ fun RemindersListScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(active, key = { it.id }) { reminder ->
-                ReminderCard(
+                SwipeToCompleteReminderCard(
                     reminder = reminder,
                     linkedLabel = uiState.linkedLabel(reminder),
-                    onToggleDone = { viewModel.markDone(reminder.id) },
-                    onLongPress = { editTarget = reminder }
+                    onClick = { editTarget = reminder },
+                    onToggleDone = { viewModel.markDone(reminder.id) }
                 )
             }
 
@@ -142,11 +146,11 @@ fun RemindersListScreen(
                 }
                 if (doneExpanded) {
                     items(done, key = { it.id }) { reminder ->
-                        ReminderCard(
+                        SwipeToCompleteReminderCard(
                             reminder = reminder,
                             linkedLabel = uiState.linkedLabel(reminder),
-                            onToggleDone = { viewModel.markUndone(reminder.id) },
-                            onLongPress = { editTarget = reminder }
+                            onClick = { editTarget = reminder },
+                            onToggleDone = { viewModel.markUndone(reminder.id) }
                         )
                     }
                 }
@@ -176,14 +180,14 @@ fun RemindersListScreen(
                 }
                 if (archivedExpanded) {
                     items(archived, key = { "archived_${it.id}" }) { reminder ->
-                        ReminderCard(
+                        SwipeToCompleteReminderCard(
                             reminder = reminder,
                             linkedLabel = uiState.linkedLabel(reminder),
+                            onClick = { editTarget = reminder },
                             onToggleDone = {
                                 if (reminder.completedAt == null) viewModel.markDone(reminder.id)
                                 else viewModel.markUndone(reminder.id)
-                            },
-                            onLongPress = { editTarget = reminder }
+                            }
                         )
                     }
                 }
@@ -209,6 +213,58 @@ fun RemindersListScreen(
             onArchiveToggle = { archived -> viewModel.archiveReminder(reminder.id, archived) },
             onDelete = { viewModel.deleteReminder(reminder.id) },
             onDismiss = { editTarget = null }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToCompleteReminderCard(
+    reminder: ReminderDto,
+    linkedLabel: String?,
+    onClick: () -> Unit,
+    onToggleDone: () -> Unit
+) {
+    val isDone = reminder.completedAt != null
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.StartToEnd) {
+                onToggleDone()
+            }
+            false // never actually dismiss the item
+        },
+        positionalThreshold = { it * 0.3f }
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.medium
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    if (isDone) "Undo" else "Done✔",
+                    modifier = Modifier.padding(start = 24.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    ) {
+        ReminderCard(
+            reminder = reminder,
+            linkedLabel = linkedLabel,
+            onClick = onClick,
+            onToggleDone = onToggleDone,
+            modifier = Modifier.padding(horizontal = 12.dp)
         )
     }
 }
