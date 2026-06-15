@@ -1,6 +1,7 @@
 {
   "bump": "patch",
   "changed": [
-    "The task overview sheet now shows icons on the Mark done/Restore task and Edit task actions, matching the taskDash web app"
+    "The task overview sheet now shows icons on the Mark done/Restore task and Edit task actions, matching the taskDash web app",
+    "The chore overview sheet now shows the category before the chore name and its tag ID, icons on the Log it and Remove last log actions, and a Recent History list styled to match the taskDash web app"
   ]
 }
