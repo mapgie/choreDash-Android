@@ -13,7 +13,8 @@ data class ReminderDto(
     @SerialName("task_id") val taskId: String? = null,
     @SerialName("completed_at") val completedAt: String? = null,
     @SerialName("reminded") val reminded: Boolean = false,
-    @SerialName("created_at") val createdAt: String = ""
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("archived_at") val archivedAt: String? = null
 )
 
 @Serializable
@@ -26,3 +27,6 @@ data class ReminderInsert(
 
 fun ReminderDto.remindAtInstant(): Instant? =
     runCatching { Instant.parse(remindAt) }.getOrNull()
+
+fun ReminderDto.isPast(): Boolean =
+    remindAtInstant()?.isBefore(Instant.now()) ?: false

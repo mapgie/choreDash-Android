@@ -71,13 +71,31 @@ class ReminderRepository @Inject constructor(
         update(id) { it.copy(reminded = true) }
     }
 
+    suspend fun updateReminder(id: String, insert: ReminderInsert): ReminderDto {
+        var updated: ReminderDto? = null
+        update(id) {
+            it.copy(
+                subject = insert.subject,
+                remindAt = insert.remindAt,
+                choreId = insert.choreId,
+                taskId = insert.taskId,
+                reminded = false
+            ).also { reminder -> updated = reminder }
+        }
+        return requireNotNull(updated) { "Reminder $id not found" }
+    }
+
+    suspend fun archiveReminder(id: String, archived: Boolean) {
+        update(id) { it.copy(archivedAt = if (archived) Instant.now().toString() else null) }
+    }
+
     suspend fun deleteReminder(id: String) {
         saveAll(loadReminders().filterNot { it.id == id })
     }
 
     suspend fun pendingReminders(): List<ReminderDto> {
         return loadReminders().filter { dto ->
-            if (dto.reminded || dto.completedAt != null) return@filter false
+            if (dto.reminded || dto.completedAt != null || dto.archivedAt != null) return@filter false
             val remindAt = dto.remindAtInstant() ?: return@filter false
             remindAt.isAfter(Instant.now())
         }
