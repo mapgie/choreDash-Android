@@ -2,12 +2,23 @@ package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.util.CalendarShareUtils
+import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,13 +33,20 @@ fun EditChoreSheet(
     onDismiss: () -> Unit
 ) {
     val sheetScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var label by remember { mutableStateOf(chore.label) }
     var selectedOwner by remember { mutableStateOf(chore.owner ?: "") }
     var intervalText by remember { mutableStateOf(chore.intervalDays?.toInt()?.toString() ?: "") }
     var ownerExpanded by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
+    var showShareChoice by remember { mutableStateOf(false) }
 
     val isArchived = chore.archivedAt != null
+
+    fun calendarInfo() = calendarEventWithoutTime(
+        title = chore.label,
+        description = chore.category?.let { "Category: $it" }
+    )
 
     ModalBottomSheet(
         onDismissRequest = {
@@ -47,10 +65,36 @@ fun EditChoreSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                if (isArchived) "Archived chore" else "Edit chore",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (isArchived) "Archived chore" else "Edit chore",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Row {
+                    IconButton(
+                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Add to calendar"
+                            role = Role.Button
+                        }
+                    ) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = null)
+                    }
+                    IconButton(
+                        onClick = { showShareChoice = true },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Share"
+                            role = Role.Button
+                        }
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = null)
+                    }
+                }
+            }
 
             OutlinedTextField(
                 value = label,
@@ -146,6 +190,26 @@ fun EditChoreSheet(
                 ) { Text("Save") }
             }
         }
+    }
+
+    if (showShareChoice) {
+        AlertDialog(
+            onDismissRequest = { showShareChoice = false },
+            title = { Text("Share chore") },
+            text = { Text("Choose how to share \"${chore.label}\".") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showShareChoice = false
+                    context.startActivity(CalendarShareUtils.buildShareIcsIntent(context, calendarInfo()))
+                }) { Text("As calendar event") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showShareChoice = false
+                    context.startActivity(CalendarShareUtils.buildSharePlainTextIntent(calendarInfo()))
+                }) { Text("As plain text") }
+            }
+        )
     }
 
     if (showArchiveConfirm) {

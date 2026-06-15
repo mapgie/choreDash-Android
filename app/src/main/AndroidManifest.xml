@@ -69,5 +69,15 @@
             <meta-data android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup" tools:node="remove" />
         </provider>
+        <!-- Used to share generated .ics calendar files (Feature: "Share as calendar
+             event") via Intent.ACTION_SEND without granting broad file access. Does
+             not require any <uses-permission>. -->
+        <provider android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
