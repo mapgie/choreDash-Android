@@ -99,7 +99,7 @@ fun EditTaskSheet(
         mutableStateOf(
             task?.reminderAt
                 ?.let { runCatching { Instant.parse(it).atZone(ZoneId.systemDefault()) }.getOrNull() }
-                ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
+                ?: ZonedDateTime.now().plusMinutes(1).withSecond(0).withNano(0)
         )
     }
     var reminderHour by remember { mutableStateOf(reminderBase.hour.toString().padStart(2, '0')) }

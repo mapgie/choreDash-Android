@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "changed": [
+    "New reminders and task reminders default to a time about a minute from now today instead of the same time tomorrow, making it easier to set a reminder for later today"
+  ]
+}

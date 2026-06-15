@@ -70,7 +70,7 @@ fun AddReminderSheet(
     var subject by remember { mutableStateOf("") }
 
     var remindBase by remember {
-        mutableStateOf(ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0))
+        mutableStateOf(ZonedDateTime.now().plusMinutes(1).withSecond(0).withNano(0))
     }
     var remindHour by remember { mutableStateOf(remindBase.hour.toString().padStart(2, '0')) }
     var remindMinute by remember { mutableStateOf(remindBase.minute.toString().padStart(2, '0')) }
