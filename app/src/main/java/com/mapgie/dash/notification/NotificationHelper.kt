@@ -125,6 +125,7 @@ object NotificationHelper {
         val snoozeIntent = Intent(context, AlarmActionReceiver::class.java).apply {
             action = "com.mapgie.dash.ACTION_SNOOZE_TASK"
             putExtra(EXTRA_TASK_ID, taskId)
+            putExtra(EXTRA_TASK_TITLE, taskTitle)
             putExtra("EXTRA_DELIVERY_MODE", channelId)
         }
         val snoozePI = PendingIntent.getBroadcast(
@@ -172,6 +173,7 @@ object NotificationHelper {
         val snoozeIntent = Intent(context, AlarmActionReceiver::class.java).apply {
             action = "com.mapgie.dash.ACTION_SNOOZE_REMINDER"
             putExtra(EXTRA_REMINDER_ID, reminderId)
+            putExtra(EXTRA_REMINDER_SUBJECT, subject)
             putExtra("EXTRA_DELIVERY_MODE", channelId)
         }
         val snoozePI = PendingIntent.getBroadcast(
