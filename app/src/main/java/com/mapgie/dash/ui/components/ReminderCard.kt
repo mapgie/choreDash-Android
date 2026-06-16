@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.isPast
 import com.mapgie.dash.data.model.remindAtInstant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -33,6 +34,10 @@ fun ReminderCard(
     modifier: Modifier = Modifier
 ) {
     val isDone = reminder.completedAt != null
+    val isPast = reminder.isPast()
+    // Overdue: time has passed but user hasn't explicitly marked it done
+    val isOverdue = isPast && !isDone
+
     val formatter = remember(reminder.remindAt) {
         DateTimeFormatter.ofPattern("MMM d, yyyy 'at' HH:mm")
     }
@@ -40,15 +45,27 @@ fun ReminderCard(
         ?.atZone(ZoneId.systemDefault())
         ?.format(formatter)
 
+    val containerColor = when {
+        isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        isOverdue -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    val timeColor = when {
+        isDone -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        isOverdue -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val timeText = when {
+        isOverdue -> whenLabel?.let { "Overdue: $it" } ?: "Overdue"
+        else -> whenLabel
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDone)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
@@ -73,11 +90,11 @@ fun ReminderCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    whenLabel?.let {
+                    timeText?.let {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = timeColor
                         )
                     }
                     linkedLabel?.let {

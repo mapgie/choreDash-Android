@@ -3,6 +3,8 @@ package com.mapgie.dash.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAlert
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
@@ -11,9 +13,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ScanDto
+import com.mapgie.dash.util.CalendarShareUtils
+import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -32,11 +41,18 @@ fun ChoreOverviewSheet(
     onConfirmLog: (Chore, Instant?) -> Unit,
     onRemoveLastLog: (Chore) -> Unit,
     onTogglePin: (Chore) -> Unit,
+    onAddReminder: (Chore) -> Unit,
     onMoreOptions: (Chore) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var useCustomTime by remember { mutableStateOf(false) }
+
+    fun calendarInfo() = calendarEventWithoutTime(
+        title = chore.label,
+        description = chore.category?.let { "Category: $it" }
+    )
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedHour by remember { mutableIntStateOf(LocalTime.now().hour) }
     var selectedMinute by remember { mutableIntStateOf(LocalTime.now().minute) }
@@ -90,6 +106,15 @@ fun ChoreOverviewSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(4.dp))
+                    }
+                    IconButton(
+                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Add to calendar"
+                            role = Role.Button
+                        }
+                    ) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = { onTogglePin(chore) }) {
                         Icon(
@@ -200,6 +225,19 @@ fun ChoreOverviewSheet(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text("Remove last log")
+            }
+
+            TextButton(
+                onClick = {
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                        onAddReminder(chore)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.AddAlert, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add reminder...")
             }
 
             TextButton(

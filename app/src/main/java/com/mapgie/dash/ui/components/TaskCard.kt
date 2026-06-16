@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,7 @@ import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.ui.theme.StatusAging
 import com.mapgie.dash.ui.theme.StatusFresh
 import com.mapgie.dash.ui.theme.StatusStale
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -101,10 +103,17 @@ fun TaskCard(
                         modifier = Modifier.weight(1f)
                     )
                     if (task.reminderAt != null && task.reminded != true && !isDone) {
+                        val reminderInstant = remember(task.reminderAt) {
+                            runCatching { Instant.parse(task.reminderAt) }.getOrNull()
+                        }
+                        val isReminderPast = reminderInstant != null && reminderInstant.isBefore(Instant.now())
                         Icon(
                             Icons.Filled.NotificationsActive,
-                            contentDescription = "Reminder set",
-                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = if (isReminderPast) "Reminder passed" else "Reminder set",
+                            tint = if (isReminderPast)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }

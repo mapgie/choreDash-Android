@@ -39,11 +39,11 @@ class AlarmScheduler @Inject constructor(
         alarmManager.cancel(pending)
     }
 
-    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant) {
+    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant, taskId: String? = null) {
         if (remindAt.isBefore(Instant.now())) return
         if (!canScheduleExactAlarms()) return
 
-        val pending = buildReminderPendingIntent(reminderId, subject)
+        val pending = buildReminderPendingIntent(reminderId, subject, taskId)
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             remindAt.toEpochMilli(),
@@ -79,11 +79,12 @@ class AlarmScheduler @Inject constructor(
         )
     }
 
-    private fun buildReminderPendingIntent(reminderId: String, subject: String): PendingIntent {
+    private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
             putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
+            taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }
         }
         return PendingIntent.getBroadcast(
             context,

@@ -21,15 +21,22 @@ class BootWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = runCatching {
+        val pendingReminders = reminderRepository.pendingReminders()
+        // Tasks that already have a linked ReminderDto use scheduleReminder() below;
+        // only reschedule the old-style task alarm for tasks without one.
+        val taskIdsWithReminder = pendingReminders.mapNotNull { it.taskId }.toSet()
+
         val pendingTasks = taskRepository.pendingReminders()
         pendingTasks.forEach { task ->
-            val reminderAt = task.reminderInstant() ?: return@forEach
-            alarmScheduler.scheduleTask(task.id, task.title, reminderAt)
+            if (task.id !in taskIdsWithReminder) {
+                val reminderAt = task.reminderInstant() ?: return@forEach
+                alarmScheduler.scheduleTask(task.id, task.title, reminderAt)
+            }
         }
-        val pendingReminders = reminderRepository.pendingReminders()
+
         pendingReminders.forEach { reminder ->
             val remindAt = reminder.remindAtInstant() ?: return@forEach
-            alarmScheduler.scheduleReminder(reminder.id, reminder.subject, remindAt)
+            alarmScheduler.scheduleReminder(reminder.id, reminder.subject, remindAt, reminder.taskId)
         }
         Result.success()
     }.getOrElse { Result.retry() }

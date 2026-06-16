@@ -19,10 +19,29 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var reminderRepository: ReminderRepository
 
     override fun onReceive(context: Context, intent: Intent) {
-        val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
+        val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
 
         when {
+            // Check reminderId first: a task-linked reminder alarm carries BOTH extras,
+            // and must be handled as a reminder, not an old-style task alarm.
+            reminderId != null -> {
+                val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
+                NotificationHelper.showReminderAlert(context, reminderId, subject)
+
+                val result = goAsync()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        reminderRepository.markReminded(reminderId)
+                        // If this reminder is linked to a task, also mark it reminded in Supabase.
+                        taskId?.let { taskRepository.markReminded(it) }
+                    } catch (_: Exception) {
+                        // Non-fatal: notification already shown; sync will happen on next open.
+                    } finally {
+                        result.finish()
+                    }
+                }
+            }
             taskId != null -> {
                 val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
                 NotificationHelper.showTaskReminder(context, taskId, taskTitle)
@@ -32,21 +51,6 @@ class AlarmReceiver : BroadcastReceiver() {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         taskRepository.markReminded(taskId)
-                    } catch (_: Exception) {
-                        // Non-fatal: notification already shown; sync will happen on next open.
-                    } finally {
-                        result.finish()
-                    }
-                }
-            }
-            reminderId != null -> {
-                val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
-                NotificationHelper.showReminderAlert(context, reminderId, subject)
-
-                val result = goAsync()
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        reminderRepository.markReminded(reminderId)
                     } catch (_: Exception) {
                         // Non-fatal: notification already shown; sync will happen on next open.
                     } finally {

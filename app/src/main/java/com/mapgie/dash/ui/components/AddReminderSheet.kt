@@ -72,6 +72,9 @@ fun AddReminderSheet(
     chores: List<Chore>,
     tasks: List<TaskDto>,
     existing: ReminderDto? = null,
+    initialChoreId: String? = null,
+    initialTaskId: String? = null,
+    initialSubject: String? = null,
     onSave: (ReminderInsert) -> Unit,
     onArchiveToggle: ((archived: Boolean) -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
@@ -82,7 +85,7 @@ fun AddReminderSheet(
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
 
-    var subject by remember { mutableStateOf(existing?.subject ?: "") }
+    var subject by remember { mutableStateOf(existing?.subject ?: initialSubject ?: "") }
 
     val initialRemind = remember {
         existing?.remindAtInstant()?.atZone(ZoneId.systemDefault())
@@ -110,6 +113,10 @@ fun AddReminderSheet(
                 .find { it.id == existing.choreId }
             existing?.taskId != null -> linkOptions.filterIsInstance<LinkedItem.TaskLink>()
                 .find { it.id == existing.taskId }
+            initialChoreId != null -> linkOptions.filterIsInstance<LinkedItem.ChoreLink>()
+                .find { it.id == initialChoreId }
+            initialTaskId != null -> linkOptions.filterIsInstance<LinkedItem.TaskLink>()
+                .find { it.id == initialTaskId }
             else -> null
         } ?: LinkedItem.None
     }

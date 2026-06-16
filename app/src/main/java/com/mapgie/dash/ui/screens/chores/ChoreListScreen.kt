@@ -23,9 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddChoreSheet
 import com.mapgie.dash.ui.components.AddMenuOption
+import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
@@ -62,6 +64,7 @@ fun ChoreListScreen(
     var showArchivedSection by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
     var addSheetTagId by remember { mutableStateOf("") }
+    var reminderTargetChore by remember { mutableStateOf<Chore?>(null) }
 
     // Handle incoming NFC tag from MainActivity
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
@@ -343,6 +346,10 @@ fun ChoreListScreen(
             },
             onRemoveLastLog = { chore -> viewModel.removeLastLog(chore) },
             onTogglePin = { chore -> viewModel.togglePin(chore.id) },
+            onAddReminder = { chore ->
+                showLogSheet = false
+                reminderTargetChore = chore
+            },
             onMoreOptions = { chore ->
                 showLogSheet = false
                 editTargetChore = chore
@@ -385,6 +392,26 @@ fun ChoreListScreen(
             onDismiss = {
                 if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
             }
+        )
+    }
+
+    reminderTargetChore?.let { chore ->
+        AddReminderSheet(
+            chores = uiState.active,
+            tasks = emptyList(),
+            initialChoreId = chore.id,
+            initialSubject = chore.label,
+            onSave = { insert ->
+                viewModel.addReminderForChore(
+                    ReminderInsert(
+                        subject = insert.subject,
+                        remindAt = insert.remindAt,
+                        choreId = chore.id,
+                        taskId = null
+                    )
+                )
+            },
+            onDismiss = { reminderTargetChore = null }
         )
     }
 
