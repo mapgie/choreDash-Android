@@ -31,6 +31,24 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.9.0] - 2026-06-16
+
+### Added
+- Chores now support reminders: tap 'Add reminder...' in the chore view sheet to create a reminder linked to a chore
+- Task reminders now appear in the Reminders list, so all scheduled reminders are visible in one place
+- Add to calendar button is now available in the task and chore view sheets, not just the edit sheets
+
+### Changed
+- Reminder edit sheet now uses a native time picker instead of separate HH and MM text fields
+- Archive and Delete actions on the reminder edit sheet are now lower-emphasis text buttons to better reflect their secondary role
+- Reminder edit sheet shows a metadata summary (scheduled date, creation date, archived state) when editing an existing reminder
+
+### Fixed
+- Past and overdue reminders in the Reminders list now display with a distinct style (red timestamp prefix and warm background) instead of looking like scheduled future alarms
+- Past task reminder bell icons on task cards now appear muted instead of highlighted, reflecting that the alarm time has passed
+- Reminder notifications now reliably play a sound on all devices
+
+---
 ## [0.8.0] - 2026-06-15
 
 ### Added

@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": ["Reminder notifications now reliably play a sound on all devices"]
-}
