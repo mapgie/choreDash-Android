@@ -6,17 +6,20 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
 
 object NotificationHelper {
-    // v2: bypasses Do Not Disturb. NotificationChannel settings like importance
-    // and bypassDnd are immutable once created, so existing installs need a new
-    // channel id for the DND bypass to actually take effect. The old channel is
-    // deleted in createChannels() below.
-    const val CHANNEL_TASK_REMINDERS = "dash_task_reminders_v2"
+    // v3: adds explicit notification sound. Channel settings (importance, sound,
+    // vibration) are immutable once created, so a new channel id is required for
+    // changes to take effect on existing installs. Legacy channels are deleted
+    // in createChannels() below.
+    const val CHANNEL_TASK_REMINDERS = "dash_task_reminders_v3"
+    private const val CHANNEL_TASK_REMINDERS_V2 = "dash_task_reminders_v2"
     private const val CHANNEL_TASK_REMINDERS_LEGACY = "dash_task_reminders"
     const val CHANNEL_CHORE_ALERTS = "dash_chore_alerts"
 
@@ -29,6 +32,13 @@ object NotificationHelper {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_LEGACY)
+        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_V2)
+
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val soundAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .build()
 
         nm.createNotificationChannel(
             NotificationChannel(
@@ -37,6 +47,7 @@ object NotificationHelper {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = context.getString(R.string.channel_task_reminders_desc)
+                setSound(soundUri, soundAttributes)
                 enableVibration(true)
                 // Only takes effect if the user has granted Do Not Disturb access;
                 // see SettingsScreen's "Do Not Disturb access" permission row.
