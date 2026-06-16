@@ -1,11 +1,10 @@
 package com.mapgie.dash.ui.components
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,23 +18,29 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
@@ -48,6 +53,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 private sealed class LinkedItem {
     abstract val label: String
@@ -73,6 +79,8 @@ fun AddReminderSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val is24Hour = remember { DateFormat.is24HourFormat(context) }
 
     var subject by remember { mutableStateOf(existing?.subject ?: "") }
 
@@ -81,9 +89,12 @@ fun AddReminderSheet(
             ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
     }
     var remindBase by remember { mutableStateOf(initialRemind) }
-    var remindHour by remember { mutableStateOf(remindBase.hour.toString().padStart(2, '0')) }
-    var remindMinute by remember { mutableStateOf(remindBase.minute.toString().padStart(2, '0')) }
+    var remindHour by remember { mutableIntStateOf(initialRemind.hour) }
+    var remindMinute by remember { mutableIntStateOf(initialRemind.minute) }
+
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = remindBase.toInstant().toEpochMilli()
     )
@@ -106,11 +117,13 @@ fun AddReminderSheet(
     var linkExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    fun resolvedRemindAt(): String {
-        val h = remindHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
-        val m = remindMinute.toIntOrNull()?.coerceIn(0, 59) ?: 0
-        return remindBase.withHour(h).withMinute(m).withSecond(0).withNano(0).toInstant().toString()
-    }
+    val displayDateTime = remindBase.withHour(remindHour).withMinute(remindMinute)
+    val displayDate = displayDateTime.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+    val displayTime = displayDateTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+
+    fun resolvedRemindAt(): String =
+        remindBase.withHour(remindHour).withMinute(remindMinute).withSecond(0).withNano(0)
+            .toInstant().toString()
 
     fun buildInsert() = ReminderInsert(
         subject = subject.trim(),
@@ -124,9 +137,7 @@ fun AddReminderSheet(
             sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
         },
         sheetState = sheetState,
-        properties = ModalBottomSheetProperties(
-            shouldDismissOnBackPress = true
-        )
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = true)
     ) {
         Column(
             modifier = Modifier
@@ -134,12 +145,16 @@ fun AddReminderSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = if (existing != null) "Edit Reminder" else "New Reminder",
                 style = MaterialTheme.typography.titleLarge
             )
+
+            if (existing != null) {
+                ReminderMetadata(existing = existing, displayDate = displayDate, displayTime = displayTime)
+            }
 
             OutlinedTextField(
                 value = subject,
@@ -150,38 +165,28 @@ fun AddReminderSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     "Remind me on",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { showDatePicker = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(remindBase.format(DateTimeFormatter.ofPattern("MMM d, yyyy")))
-                }
-                Spacer(Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = remindHour,
-                        onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) remindHour = it },
-                        label = { Text("HH") },
-                        singleLine = true,
+                    OutlinedButton(
+                        onClick = { showDatePicker = true },
                         modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = remindMinute,
-                        onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) remindMinute = it },
-                        label = { Text("MM") },
-                        singleLine = true,
+                    ) {
+                        Text(displayDate)
+                    }
+                    OutlinedButton(
+                        onClick = { showTimePicker = true },
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        Text(displayTime)
+                    }
                 }
             }
 
@@ -218,34 +223,41 @@ fun AddReminderSheet(
                     onSave(buildInsert())
                     sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-                Text(if (existing != null) "Save" else "Add")
+                Text(if (existing != null) "Save" else "Add Reminder")
             }
 
-            if (existing != null) {
+            if (existing != null && (onArchiveToggle != null || onDelete != null)) {
+                HorizontalDivider()
                 val isArchived = existing.archivedAt != null
-                if (onArchiveToggle != null) {
-                    OutlinedButton(
-                        onClick = {
-                            sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                                onArchiveToggle(!isArchived)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (isArchived) "Unarchive" else "Archive")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (onArchiveToggle != null) {
+                        TextButton(
+                            onClick = {
+                                sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    onArchiveToggle(!isArchived)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(if (isArchived) "Unarchive" else "Archive")
+                        }
                     }
-                }
-                if (onDelete != null) {
-                    OutlinedButton(
-                        onClick = { showDeleteConfirm = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("Delete")
+                    if (onDelete != null) {
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Delete")
+                        }
                     }
                 }
             }
@@ -275,11 +287,10 @@ fun AddReminderSheet(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val h = remindHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
-                        val m = remindMinute.toIntOrNull()?.coerceIn(0, 59) ?: 0
                         remindBase = Instant.ofEpochMilli(millis)
                             .atZone(ZoneId.systemDefault())
-                            .withHour(h).withMinute(m).withSecond(0).withNano(0)
+                            .withHour(remindHour).withMinute(remindMinute)
+                            .withSecond(0).withNano(0)
                     }
                     showDatePicker = false
                 }) { Text("OK") }
@@ -289,4 +300,88 @@ fun AddReminderSheet(
             }
         ) { DatePicker(state = datePickerState) }
     }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            initialHour = remindHour,
+            initialMinute = remindMinute,
+            is24Hour = is24Hour,
+            onConfirm = { h, m ->
+                remindHour = h
+                remindMinute = m
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false }
+        )
+    }
+}
+
+@Composable
+private fun ReminderMetadata(existing: ReminderDto, displayDate: String, displayTime: String) {
+    val createdDate = remember(existing.createdAt) {
+        existing.createdAt.takeIf { it.isNotEmpty() }?.let { raw ->
+            runCatching {
+                Instant.parse(raw).atZone(ZoneId.systemDefault())
+                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+            }.getOrNull()
+        }
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                "Scheduled for $displayDate at $displayTime",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (createdDate != null) {
+                Text(
+                    "Created $createdDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (existing.archivedAt != null) {
+                Text(
+                    "Archived",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    is24Hour: Boolean,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = is24Hour
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        text = { TimeInput(state = state) }
+    )
 }

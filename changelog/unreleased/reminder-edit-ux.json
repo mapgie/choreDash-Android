@@ -1,0 +1,8 @@
+{
+  "bump": "minor",
+  "changed": [
+    "Reminder edit sheet now uses a native time picker instead of separate HH and MM text fields",
+    "Archive and Delete actions on the reminder edit sheet are now lower-emphasis text buttons to better reflect their secondary role",
+    "Reminder edit sheet shows a metadata summary (scheduled date, creation date, archived state) when editing an existing reminder"
+  ]
+}
