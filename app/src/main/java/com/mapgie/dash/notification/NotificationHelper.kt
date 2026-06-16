@@ -12,15 +12,22 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
+import com.mapgie.dash.alarm.AlarmActionReceiver
 
 object NotificationHelper {
-    // v3: adds explicit notification sound. Channel settings (importance, sound,
-    // vibration) are immutable once created, so a new channel id is required for
-    // changes to take effect on existing installs. Legacy channels are deleted
-    // in createChannels() below.
-    const val CHANNEL_TASK_REMINDERS = "dash_task_reminders_v3"
+    // Three-way split replacing the old single dash_task_reminders_v3 channel.
+    // Channel settings (importance, sound, vibration) are immutable once created,
+    // so new channel ids are required for changes to take effect on existing installs.
+    // Legacy channels are deleted in createChannels() below.
+    const val CHANNEL_TASK_REMINDERS_ALARM = "dash_task_reminders_alarm_v1"
+    const val CHANNEL_TASK_REMINDERS_NOTIF = "dash_task_reminders_notif_v1"
+    const val CHANNEL_TASK_REMINDERS_SILENT = "dash_task_reminders_silent_v1"
+
+    // Legacy channel ids — deleted on first run after upgrade
+    private const val CHANNEL_TASK_REMINDERS_V3 = "dash_task_reminders_v3"
     private const val CHANNEL_TASK_REMINDERS_V2 = "dash_task_reminders_v2"
     private const val CHANNEL_TASK_REMINDERS_LEGACY = "dash_task_reminders"
+
     const val CHANNEL_CHORE_ALERTS = "dash_chore_alerts"
 
     const val EXTRA_TASK_ID = "task_id"
@@ -33,25 +40,61 @@ object NotificationHelper {
 
         nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_LEGACY)
         nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_V2)
+        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_V3)
 
-        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val soundAttributes = AudioAttributes.Builder()
+        // Alarm channel: uses alarm sound and bypasses DND (only if access granted)
+        val alarmSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val alarmAudioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .build()
+
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_TASK_REMINDERS_ALARM,
+                context.getString(R.string.channel_task_reminders_alarm_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = context.getString(R.string.channel_task_reminders_alarm_desc)
+                setSound(alarmSoundUri, alarmAudioAttributes)
+                enableVibration(true)
+                // Only takes effect if the user has granted Do Not Disturb access;
+                // see SettingsScreen's "Do Not Disturb access" permission row.
+                if (nm.isNotificationPolicyAccessGranted) {
+                    setBypassDnd(true)
+                }
+            }
+        )
+
+        // Notification channel: uses standard notification sound, no DND bypass
+        val notifSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val notifAudioAttributes = AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .build()
 
         nm.createNotificationChannel(
             NotificationChannel(
-                CHANNEL_TASK_REMINDERS,
-                context.getString(R.string.channel_task_reminders_name),
+                CHANNEL_TASK_REMINDERS_NOTIF,
+                context.getString(R.string.channel_task_reminders_notif_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = context.getString(R.string.channel_task_reminders_desc)
-                setSound(soundUri, soundAttributes)
+                description = context.getString(R.string.channel_task_reminders_notif_desc)
+                setSound(notifSoundUri, notifAudioAttributes)
                 enableVibration(true)
-                // Only takes effect if the user has granted Do Not Disturb access;
-                // see SettingsScreen's "Do Not Disturb access" permission row.
-                setBypassDnd(true)
+            }
+        )
+
+        // Silent channel: low importance, no sound, no vibration
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_TASK_REMINDERS_SILENT,
+                context.getString(R.string.channel_task_reminders_silent_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = context.getString(R.string.channel_task_reminders_silent_desc)
+                setSound(null, null)
+                enableVibration(false)
             }
         )
 
@@ -68,7 +111,7 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showTaskReminder(context: Context, taskId: String, taskTitle: String) {
+    fun showTaskReminder(context: Context, taskId: String, taskTitle: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF) {
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
             Intent(context, MainActivity::class.java).apply {
@@ -79,7 +122,26 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_TASK_REMINDERS)
+        val snoozeIntent = Intent(context, AlarmActionReceiver::class.java).apply {
+            action = "com.mapgie.dash.ACTION_SNOOZE_TASK"
+            putExtra(EXTRA_TASK_ID, taskId)
+            putExtra("EXTRA_DELIVERY_MODE", channelId)
+        }
+        val snoozePI = PendingIntent.getBroadcast(
+            context, "snooze_$taskId".hashCode(),
+            snoozeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val doneIntent = Intent(context, AlarmActionReceiver::class.java).apply {
+            action = "com.mapgie.dash.ACTION_DONE_TASK"
+            putExtra(EXTRA_TASK_ID, taskId)
+        }
+        val donePI = PendingIntent.getBroadcast(
+            context, "done_$taskId".hashCode(),
+            doneIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("Task reminder")
             .setContentText(taskTitle)
@@ -87,13 +149,15 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .addAction(0, "Snooze 15 min", snoozePI)
+            .addAction(0, "Done", donePI)
             .build()
 
         NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
     }
 
     @SuppressLint("MissingPermission")
-    fun showReminderAlert(context: Context, reminderId: String, subject: String) {
+    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF) {
         val notifyId = ("reminder_$reminderId").hashCode()
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
@@ -105,7 +169,26 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_TASK_REMINDERS)
+        val snoozeIntent = Intent(context, AlarmActionReceiver::class.java).apply {
+            action = "com.mapgie.dash.ACTION_SNOOZE_REMINDER"
+            putExtra(EXTRA_REMINDER_ID, reminderId)
+            putExtra("EXTRA_DELIVERY_MODE", channelId)
+        }
+        val snoozePI = PendingIntent.getBroadcast(
+            context, "snooze_reminder_$reminderId".hashCode(),
+            snoozeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val doneIntent = Intent(context, AlarmActionReceiver::class.java).apply {
+            action = "com.mapgie.dash.ACTION_DONE_REMINDER"
+            putExtra(EXTRA_REMINDER_ID, reminderId)
+        }
+        val donePI = PendingIntent.getBroadcast(
+            context, "done_reminder_$reminderId".hashCode(),
+            doneIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("Reminder")
             .setContentText(subject)
@@ -113,6 +196,8 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .addAction(0, "Snooze 15 min", snoozePI)
+            .addAction(0, "Done", donePI)
             .build()
 
         NotificationManagerCompat.from(context).notify(notifyId, notification)

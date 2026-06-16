@@ -17,11 +17,11 @@ class AlarmScheduler @Inject constructor(
 ) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    fun scheduleTask(taskId: String, taskTitle: String, reminderAt: Instant) {
+    fun scheduleTask(taskId: String, taskTitle: String, reminderAt: Instant, deliveryMode: String = "NOTIFICATION") {
         if (reminderAt.isBefore(Instant.now())) return
         if (!canScheduleExactAlarms()) return
 
-        val pending = buildPendingIntent(taskId, taskTitle)
+        val pending = buildPendingIntent(taskId, taskTitle, deliveryMode)
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             reminderAt.toEpochMilli(),
@@ -39,11 +39,11 @@ class AlarmScheduler @Inject constructor(
         alarmManager.cancel(pending)
     }
 
-    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant, taskId: String? = null) {
+    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant, taskId: String? = null, deliveryMode: String = "NOTIFICATION") {
         if (remindAt.isBefore(Instant.now())) return
         if (!canScheduleExactAlarms()) return
 
-        val pending = buildReminderPendingIntent(reminderId, subject, taskId)
+        val pending = buildReminderPendingIntent(reminderId, subject, taskId, deliveryMode)
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             remindAt.toEpochMilli(),
@@ -65,11 +65,12 @@ class AlarmScheduler @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) alarmManager.canScheduleExactAlarms()
         else true
 
-    private fun buildPendingIntent(taskId: String, taskTitle: String): PendingIntent {
+    private fun buildPendingIntent(taskId: String, taskTitle: String, deliveryMode: String): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_TASK_ID, taskId)
             putExtra(NotificationHelper.EXTRA_TASK_TITLE, taskTitle)
+            putExtra("EXTRA_DELIVERY_MODE", deliveryMode)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -79,11 +80,12 @@ class AlarmScheduler @Inject constructor(
         )
     }
 
-    private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null): PendingIntent {
+    private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null, deliveryMode: String = "NOTIFICATION"): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
             putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
+            putExtra("EXTRA_DELIVERY_MODE", deliveryMode)
             taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }
         }
         return PendingIntent.getBroadcast(
