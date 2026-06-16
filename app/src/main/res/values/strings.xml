@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">choreDash + taskDash</string>
-    <string name="channel_task_reminders_name">Task reminders</string>
-    <string name="channel_task_reminders_desc">Alerts when a task reminder is due</string>
+    <string name="channel_task_reminders_alarm_name">Task reminders (Alarm)</string>
+    <string name="channel_task_reminders_alarm_desc">Plays alarm sound and bypasses Do Not Disturb</string>
+    <string name="channel_task_reminders_notif_name">Task reminders (Notification)</string>
+    <string name="channel_task_reminders_notif_desc">Standard notification sound for task reminders</string>
+    <string name="channel_task_reminders_silent_name">Task reminders (Silent)</string>
+    <string name="channel_task_reminders_silent_desc">No sound or vibration for task reminders</string>
     <string name="channel_chore_alerts_name">Overdue chores</string>
     <string name="channel_chore_alerts_desc">Daily summary of overdue chores</string>
     <string name="widget_quick_add_label">Quick Add Task</string>

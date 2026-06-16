@@ -22,12 +22,18 @@ class AlarmReceiver : BroadcastReceiver() {
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
         val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
 
+        val channelId = when (intent.getStringExtra("EXTRA_DELIVERY_MODE") ?: "NOTIFICATION") {
+            "ALARM" -> NotificationHelper.CHANNEL_TASK_REMINDERS_ALARM
+            "SILENT" -> NotificationHelper.CHANNEL_TASK_REMINDERS_SILENT
+            else -> NotificationHelper.CHANNEL_TASK_REMINDERS_NOTIF
+        }
+
         when {
             // Check reminderId first: a task-linked reminder alarm carries BOTH extras,
             // and must be handled as a reminder, not an old-style task alarm.
             reminderId != null -> {
                 val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
-                NotificationHelper.showReminderAlert(context, reminderId, subject)
+                NotificationHelper.showReminderAlert(context, reminderId, subject, channelId)
 
                 val result = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
@@ -44,7 +50,7 @@ class AlarmReceiver : BroadcastReceiver() {
             }
             taskId != null -> {
                 val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
-                NotificationHelper.showTaskReminder(context, taskId, taskTitle)
+                NotificationHelper.showTaskReminder(context, taskId, taskTitle, channelId)
 
                 // Mark reminded=true in Supabase so other clients know the alert was sent.
                 val result = goAsync()

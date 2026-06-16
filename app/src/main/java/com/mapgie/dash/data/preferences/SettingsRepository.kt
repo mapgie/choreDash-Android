@@ -22,7 +22,8 @@ data class AppSettings(
     val ownerHandle: String = "",
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val zenMode: Boolean = false,
-    val showDueCountdown: Boolean = false
+    val showDueCountdown: Boolean = false,
+    val deliveryMode: String = "NOTIFICATION"
 )
 
 @Singleton
@@ -36,6 +37,7 @@ class SettingsRepository @Inject constructor(
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val ZEN_MODE = booleanPreferencesKey("zen_mode")
         val SHOW_DUE_COUNTDOWN = booleanPreferencesKey("show_due_countdown")
+        val DELIVERY_MODE = stringPreferencesKey("delivery_mode")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -49,7 +51,8 @@ class SettingsRepository @Inject constructor(
                     ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                     ?: ThemeMode.SYSTEM,
                 zenMode = prefs[Keys.ZEN_MODE] ?: false,
-                showDueCountdown = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false
+                showDueCountdown = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
+                deliveryMode = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION"
             )
         }
 
@@ -71,5 +74,9 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setShowDueCountdown(enabled: Boolean) {
         context.dataStore.edit { it[Keys.SHOW_DUE_COUNTDOWN] = enabled }
+    }
+
+    suspend fun setDeliveryMode(mode: String) {
+        context.dataStore.edit { it[Keys.DELIVERY_MODE] = mode }
     }
 }

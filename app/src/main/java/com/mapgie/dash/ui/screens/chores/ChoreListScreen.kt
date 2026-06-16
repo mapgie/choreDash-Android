@@ -2,6 +2,7 @@ package com.mapgie.dash.ui.screens.chores
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,14 +15,17 @@ import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mapgie.dash.BuildConfig
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.nfc.NfcWriteResult
@@ -32,6 +36,8 @@ import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.screens.settings.ChangelogDialog
+import com.mapgie.dash.ui.screens.settings.parseChangelog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -51,6 +57,8 @@ fun ChoreListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showChangelog by rememberSaveable { mutableStateOf(false) }
 
     // SheetState hoisted above the composables that use them (GoFlo LESSONS.md)
     val logSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -226,6 +234,15 @@ fun ChoreListScreen(
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .semantics { role = Role.Button }
+                            .clickable { showChangelog = true }
+                    )
                 }
 
                 when {
@@ -436,6 +453,19 @@ fun ChoreListScreen(
                     onNfcConsumed()
                 }
             }
+        )
+    }
+
+    if (showChangelog) {
+        val entries = remember {
+            runCatching {
+                parseChangelog(context.assets.open("CHANGELOG.md").bufferedReader().readText())
+            }.getOrDefault(emptyList())
+        }
+        ChangelogDialog(
+            entries = entries,
+            onDismiss = { showChangelog = false },
+            onViewFullChangelog = { showChangelog = false }
         )
     }
 }

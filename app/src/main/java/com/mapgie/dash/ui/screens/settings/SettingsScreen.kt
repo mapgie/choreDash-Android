@@ -120,6 +120,7 @@ fun SettingsScreen(
         )
         SettingsSubScreen.REMINDERS -> RemindersSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
         )
         SettingsSubScreen.ABOUT -> AboutSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
@@ -376,8 +377,12 @@ private fun AppearanceSubScreen(
 @Composable
 private fun RemindersSubScreen(
     onBack: () -> Unit,
+    viewModel: SettingsViewModel,
 ) {
     val context = LocalContext.current
+    val settings by viewModel.settings.collectAsState()
+    val currentDeliveryMode = settings?.deliveryMode ?: "NOTIFICATION"
+
     var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
     var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
     var dndAccessGranted by remember { mutableStateOf(PermissionHelper.isDndAccessGranted(context)) }
@@ -399,6 +404,9 @@ private fun RemindersSubScreen(
         (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed) &&
         dndAccessGranted
 
+    val deliveryModes = listOf("ALARM", "NOTIFICATION", "SILENT")
+    val deliveryModeLabels = listOf("Alarm", "Notification", "Silent")
+
     SettingsSubScreenScaffold(title = "Reminders & alerts", onBack = onBack) { innerPadding ->
         Column(
             modifier = Modifier
@@ -409,8 +417,39 @@ private fun RemindersSubScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "Task reminders use a dedicated alarm so they can sound even when Do Not " +
-                    "Disturb is on. If reminders stop arriving, check these permissions.",
+                "Notification style",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                deliveryModes.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = currentDeliveryMode == mode,
+                        onClick = { viewModel.setDeliveryMode(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = deliveryModes.size
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        label = { Text(deliveryModeLabels[index]) }
+                    )
+                }
+            }
+
+            Text(
+                text = when (currentDeliveryMode) {
+                    "ALARM" -> "Plays alarm sound, bypasses Do Not Disturb"
+                    "SILENT" -> "No sound or vibration"
+                    else -> "Standard notification sound"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HorizontalDivider()
+
+            Text(
+                "If reminders stop arriving, check these permissions.",
                 style = MaterialTheme.typography.bodyMedium
             )
 

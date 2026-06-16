@@ -41,6 +41,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
+    fun setDeliveryMode(mode: String) {
+        viewModelScope.launch { settingsRepository.setDeliveryMode(mode) }
+    }
+
     fun loadOwners() {
         viewModelScope.launch {
             runCatching { _owners.value = taskRepository.loadOwners() }
