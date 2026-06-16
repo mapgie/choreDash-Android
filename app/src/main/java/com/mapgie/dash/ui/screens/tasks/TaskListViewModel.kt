@@ -5,15 +5,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.DuePeriod
+import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
 import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.data.preferences.SettingsRepository
+import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
@@ -89,6 +93,7 @@ data class TaskUiState(
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
+    private val reminderRepository: ReminderRepository,
     private val settingsRepository: SettingsRepository,
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
@@ -137,8 +142,13 @@ class TaskListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val task = taskRepository.addTask(insert)
-                task.reminderInstant()?.let { at ->
-                    alarmScheduler.scheduleTask(task.id, task.title, at)
+                if (task.reminderAt != null) {
+                    task.reminderInstant()?.let { at ->
+                        val reminder = reminderRepository.addReminder(
+                            ReminderInsert(subject = task.title, remindAt = task.reminderAt, taskId = task.id)
+                        )
+                        alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, task.id)
+                    }
                 }
                 load()
                 WidgetUpdater.updateAll(appContext)
@@ -151,13 +161,25 @@ class TaskListViewModel @Inject constructor(
     fun updateTask(id: String, update: TaskUpdate) {
         viewModelScope.launch {
             runCatching {
-                // Cancel any existing alarm before applying the update
+                // Cancel old-style task alarm (backward compat for reminders created before this change)
                 _uiState.value.tasks.find { it.id == id }?.let { old ->
                     if (old.reminderAt != null) alarmScheduler.cancelTask(id)
                 }
+                // Cancel and delete any existing ReminderDto linked to this task
+                reminderRepository.loadReminders()
+                    .filter { it.taskId == id && it.archivedAt == null }
+                    .forEach { reminder ->
+                        alarmScheduler.cancelReminder(reminder.id)
+                        reminderRepository.deleteReminder(reminder.id)
+                    }
                 val task = taskRepository.updateTask(id, update)
-                task.reminderInstant()?.let { at ->
-                    alarmScheduler.scheduleTask(task.id, task.title, at)
+                if (task.reminderAt != null) {
+                    task.reminderInstant()?.let { at ->
+                        val reminder = reminderRepository.addReminder(
+                            ReminderInsert(subject = task.title, remindAt = task.reminderAt, taskId = task.id)
+                        )
+                        alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, task.id)
+                    }
                 }
                 load()
                 WidgetUpdater.updateAll(appContext)
@@ -171,6 +193,12 @@ class TaskListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 alarmScheduler.cancelTask(id)
+                reminderRepository.loadReminders()
+                    .filter { it.taskId == id && it.archivedAt == null }
+                    .forEach { reminder ->
+                        alarmScheduler.cancelReminder(reminder.id)
+                        reminderRepository.archiveReminder(reminder.id, true)
+                    }
                 taskRepository.markDone(id)
                 load()
                 WidgetUpdater.updateAll(appContext)
@@ -184,11 +212,25 @@ class TaskListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 taskRepository.markUndone(id)
-                // Re-schedule reminder if it's still in the future
-                taskRepository.loadTasks().find { it.id == id }?.let { task ->
-                    task.reminderInstant()?.let { at ->
-                        if (at.isAfter(Instant.now())) {
-                            alarmScheduler.scheduleTask(id, task.title, at)
+                val archivedReminders = reminderRepository.loadReminders()
+                    .filter { it.taskId == id && it.archivedAt != null }
+                archivedReminders.forEach { reminder ->
+                    reminderRepository.archiveReminder(reminder.id, false)
+                    if (!reminder.reminded && reminder.completedAt == null) {
+                        reminder.remindAtInstant()?.let { at ->
+                            if (at.isAfter(Instant.now())) {
+                                alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, id)
+                            }
+                        }
+                    }
+                }
+                if (archivedReminders.isEmpty()) {
+                    // Old-style task: reschedule via task alarm
+                    taskRepository.loadTasks().find { it.id == id }?.let { task ->
+                        task.reminderInstant()?.let { at ->
+                            if (at.isAfter(Instant.now())) {
+                                alarmScheduler.scheduleTask(id, task.title, at)
+                            }
                         }
                     }
                 }
@@ -204,6 +246,12 @@ class TaskListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 alarmScheduler.cancelTask(id)
+                reminderRepository.loadReminders()
+                    .filter { it.taskId == id }
+                    .forEach { reminder ->
+                        alarmScheduler.cancelReminder(reminder.id)
+                        reminderRepository.deleteReminder(reminder.id)
+                    }
                 taskRepository.deleteTask(id)
                 if (_uiState.value.pinnedTaskId == id) {
                     pinnedItemStore.setPinned(null)

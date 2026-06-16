@@ -3,11 +3,15 @@ package com.mapgie.dash.ui.screens.chores
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
+import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
@@ -77,7 +81,9 @@ data class ChoreUiState(
 @HiltViewModel
 class ChoreListViewModel @Inject constructor(
     private val choreRepository: ChoreRepository,
+    private val reminderRepository: ReminderRepository,
     private val settingsRepository: SettingsRepository,
+    private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
@@ -206,6 +212,19 @@ class ChoreListViewModel @Inject constructor(
             runCatching {
                 choreRepository.createTag(tagId, label, category, owner, intervalDays)
                 load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun addReminderForChore(insert: ReminderInsert) {
+        viewModelScope.launch {
+            runCatching {
+                val reminder = reminderRepository.addReminder(insert)
+                reminder.remindAtInstant()?.let { at ->
+                    alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
+                }
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
