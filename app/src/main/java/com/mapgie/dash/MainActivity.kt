@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,23 +23,29 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
+import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.navigation.DashNavGraph
 import com.mapgie.dash.ui.theme.DashTheme
 import com.mapgie.dash.widget.WIDGET_DESTINATION_EXTRA
+import com.mapgie.dash.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var choreRepository: ChoreRepository
 
     private var nfcAdapter: NfcAdapter? = null
     private var nfcPendingIntent: PendingIntent? = null
+    private var isActivityResumed = false
 
     // Compose state: survives recompositions, drives the NFC sheet trigger
     private var pendingNfcTagId by mutableStateOf<String?>(null)
@@ -73,7 +80,7 @@ class MainActivity : ComponentActivity() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
-        handleNfcIntent(intent)
+        handleNfcIntent(intent, fromForeground = false)
 
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = null)
@@ -120,10 +127,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleNfcIntent(intent)
+        handleNfcIntent(intent, fromForeground = isActivityResumed)
     }
 
-    private fun handleNfcIntent(intent: Intent) {
+    private fun handleNfcIntent(intent: Intent, fromForeground: Boolean) {
         val writeTagId = nfcWriteRequest
         if (writeTagId != null) {
             val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
@@ -132,17 +139,39 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        NfcHandler.extractTagId(intent)?.let { pendingNfcTagId = it }
+        val tagId = NfcHandler.extractTagId(intent)
+        if (tagId != null) {
+            if (fromForeground) {
+                pendingNfcTagId = tagId
+            } else {
+                autoLogChore(tagId)
+            }
+        }
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
+    }
+
+    private fun autoLogChore(tagId: String) {
+        lifecycleScope.launch {
+            runCatching {
+                val label = choreRepository.findByTagId(tagId)?.label ?: tagId
+                choreRepository.logChore(tagId)
+                WidgetUpdater.updateAll(applicationContext)
+                Toast.makeText(this@MainActivity, "$label logged", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(this@MainActivity, "Could not log chore", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        isActivityResumed = true
         nfcAdapter?.enableForegroundDispatch(this, nfcPendingIntent, null, null)
     }
 
     override fun onPause() {
         super.onPause()
+        isActivityResumed = false
         nfcAdapter?.disableForegroundDispatch(this)
     }
 }

@@ -1,0 +1,4 @@
+{
+  "bump": "minor",
+  "added": ["NFC tags written by choreDash now open the app and log the chore as done automatically, even when the app is closed or in the background. A toast confirms the log."]
+}
