@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.10.0] - 2026-06-18
+
+### Added
+- Notification delivery mode setting: choose Alarm (bypasses Do Not Disturb), Notification, or Silent
+- Snooze (15 min) and Done actions directly from task and reminder notifications
+- Version number in the Chores screen header opens the What's New changelog
+
+### Changed
+- Task reminders and standalone reminders now use separate notification channels, allowing independent control in system settings
+- Open-source license entries now link directly to their license texts
+
+---
 ## [0.9.0] - 2026-06-16
 
 ### Added
