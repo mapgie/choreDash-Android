@@ -1,22 +1,35 @@
 package com.mapgie.dash.ui.screens.licenses
 
+// MAINTAINER NOTE: keep this list in sync with gradle/libs.versions.toml.
+// Add an entry here whenever a new RUNTIME dependency is added to the project.
+// Compose library versions are pinned via the Compose BOM.
+//
+// Excluded — not shipped in the release APK:
+//   junit                   (testImplementation only)
+//   hilt-android-compiler   (ksp — annotation processor, compile-time only)
+//   hilt-compiler           (ksp — annotation processor, compile-time only)
+//   androidx-ui-tooling     (debugImplementation only)
+
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -25,71 +38,109 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
-private data class License(val name: String, val version: String, val spdx: String, val url: String)
+private data class Library(val name: String, val copyright: String, val url: String)
 
-private val LICENSES = listOf(
-    License("Kotlin", "2.0.21", "Apache-2.0", "https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt"),
-    License("Jetpack Compose BOM", "2024.06.00", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("Material3 for Compose", "1.2.1", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("AndroidX Navigation Compose", "2.7.7", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("Hilt", "2.52", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("Hilt Navigation Compose", "1.2.0", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("WorkManager", "2.9.1", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("DataStore Preferences", "1.1.1", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("Supabase postgrest-kt", "2.6.1", "MIT", "https://github.com/supabase-community/supabase-kt/blob/master/LICENSE"),
-    License("Ktor (OkHttp engine)", "2.3.12", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
-    License("kotlinx.serialization JSON", "1.7.3", "Apache-2.0", "https://github.com/Kotlin/kotlinx.serialization/blob/master/LICENSE.txt"),
-    License("kotlinx.coroutines", "1.8.1", "Apache-2.0", "https://github.com/Kotlin/kotlinx.coroutines/blob/master/LICENSE.txt"),
-    License("Jetpack Glance", "1.1.1", "Apache-2.0", "https://www.apache.org/licenses/LICENSE-2.0")
+private data class LicenseGroup(
+    val spdxId: String,
+    val title: String,
+    val preamble: String,
+    val url: String,
+    val libraries: List<Library>
+)
+
+private val licenseGroups = listOf(
+    LicenseGroup(
+        spdxId = "Apache-2.0",
+        title = "Apache 2.0 Licence",
+        preamble = "The following libraries are included under the Apache 2.0 Licence:",
+        url = "https://www.apache.org/licenses/LICENSE-2.0",
+        libraries = listOf(
+            Library("Kotlin", "JetBrains s.r.o.", "https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt"),
+            Library("AndroidX Compose BOM", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX Compose Material3", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX Navigation Compose", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("Hilt", "Google LLC", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("Hilt Navigation Compose", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX WorkManager", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX DataStore Preferences", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("Ktor (OkHttp engine)", "JetBrains s.r.o.", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("KotlinX Serialization JSON", "JetBrains s.r.o.", "https://github.com/Kotlin/kotlinx.serialization/blob/master/LICENSE.txt"),
+            Library("KotlinX Coroutines Android", "JetBrains s.r.o.", "https://github.com/Kotlin/kotlinx.coroutines/blob/master/LICENSE.txt"),
+            Library("AndroidX Glance", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+        )
+    ),
+    LicenseGroup(
+        spdxId = "MIT",
+        title = "MIT Licence",
+        preamble = "The following libraries are included under the MIT Licence:",
+        url = "https://opensource.org/licenses/MIT",
+        libraries = listOf(
+            Library("Supabase postgrest-kt", "Supabase Community", "https://github.com/supabase-community/supabase-kt/blob/master/LICENSE"),
+        )
+    )
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LicensesScreen(onBack: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Open-source licenses") },
+                title = { Text("Open Source Licences") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
         }
-    ) { innerPadding ->
-        val uriHandler = LocalUriHandler.current
-        LazyColumn(
+    ) { padding ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(bottom = 32.dp)
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(LICENSES) { lic ->
-                ListItem(
-                    headlineContent = { Text(lic.name) },
-                    supportingContent = {
+            licenseGroups.forEach { group ->
+                Text(group.title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    group.preamble,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(4.dp))
+                group.libraries.forEach { lib ->
+                    Column {
+                        Text("• ${lib.name}", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "${lic.version} · ",
+                            "  Copyright © ${lib.copyright}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    },
-                    trailingContent = {
-                        Text(
-                            text = lic.spdx,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .semantics { role = Role.Button }
-                                .clickable { uriHandler.openUri(lic.url) }
-                        )
                     }
+                }
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    group.spdxId,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .semantics { role = Role.Button }
+                        .clickable { uriHandler.openUri(group.url) }
+                        .padding(vertical = 4.dp)
                 )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider()
             }
         }
     }

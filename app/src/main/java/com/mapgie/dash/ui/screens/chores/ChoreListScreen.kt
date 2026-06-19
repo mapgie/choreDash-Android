@@ -2,7 +2,6 @@ package com.mapgie.dash.ui.screens.chores
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -234,15 +233,6 @@ fun ChoreListScreen(
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "v${BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .semantics { role = Role.Button }
-                            .clickable { showChangelog = true }
-                    )
                 }
 
                 when {
@@ -338,6 +328,18 @@ fun ChoreListScreen(
                                                 )
                                         )
                                     }
+                                }
+                            }
+                            item(key = "version_footer") {
+                                TextButton(
+                                    onClick = { showChangelog = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "v${BuildConfig.VERSION_NAME}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
                                 }
                             }
                         }
