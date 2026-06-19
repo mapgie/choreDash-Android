@@ -31,6 +31,16 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.11.0] - 2026-06-19
+
+### Added
+- NFC tags written by choreDash now open the app and log the chore as done automatically, even when the app is closed or in the background. A toast confirms the log.
+
+### Changed
+- Licences screen redesigned to group libraries by licence type, show copyright holders, and use the primaryContainer top bar colour.
+- Version number moved from the filter bar to a footer at the bottom of the chore list.
+
+---
 ## [0.10.0] - 2026-06-18
 
 ### Added

@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Version number moved from the filter bar to a footer at the bottom of the chore list."]
-}

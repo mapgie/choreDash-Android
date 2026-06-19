@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Licences screen redesigned to group libraries by licence type, show copyright holders, and use the primaryContainer top bar colour."]
-}
