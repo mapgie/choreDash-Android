@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "fixed": ["Chore list no longer hides the last item behind the floating action button"]
+}
