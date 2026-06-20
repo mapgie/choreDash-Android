@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Chore screen grid and owner filter buttons are now always visible in the action bar, including in zen mode"]
+}
