@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
@@ -206,19 +208,31 @@ fun ChoreListScreen(
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                    IconButton(
-                        onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Bolt,
-                            contentDescription = if (uiState.showDueCountdown)
-                                "Hide due countdown" else "Show due countdown",
-                            tint = if (uiState.showDueCountdown)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        IconButton(
+                            onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Bolt,
+                                contentDescription = if (uiState.showDueCountdown)
+                                    "Hide due countdown" else "Show due countdown",
+                                tint = if (uiState.showDueCountdown)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     IconButton(
                         onClick = { viewModel.setZenMode(!uiState.zenMode) },
