@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.11.1] - 2026-06-20
+
+### Changed
+- Chore and task lists now default to grouped-by-category view
+- Category labels are hidden on individual cards when the grouped view is active, since the section header already shows the category
+- Chore and task cards now have a subtle outline border to improve separation from the background
+- Chore cards now show at most two date representations instead of three, reducing visual noise
+
+### Fixed
+- Chore list no longer hides the last item behind the floating action button
+
+---
 ## [0.11.0] - 2026-06-19
 
 ### Added
