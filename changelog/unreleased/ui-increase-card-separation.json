@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Chore and task cards now have a subtle outline border to improve separation from the background"]
+}
