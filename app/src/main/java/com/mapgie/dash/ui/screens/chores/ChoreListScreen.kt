@@ -153,27 +153,17 @@ fun ChoreListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!uiState.zenMode) {
-                        ChoreFilter.values().forEach { f ->
-                            FilterChip(
-                                selected = uiState.filter == f,
-                                onClick = { viewModel.setFilter(f) },
-                                label = {
-                                    Text(
-                                        when (f) {
-                                            ChoreFilter.ALL -> "All"
-                                            ChoreFilter.OVERDUE -> "Overdue"
-                                            ChoreFilter.SOON -> "Soon"
-                                        }
-                                    )
-                                },
-                                // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
+                    ChoreFilter.entries.forEach { f ->
+                        FilterChip(
+                            selected = uiState.filter == f,
+                            onClick = { viewModel.setFilter(f) },
+                            label = { Text(f.label) },
+                            // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
-                        }
+                        )
                     }
                     Spacer(Modifier.weight(1f))
                     if (!uiState.zenMode) {

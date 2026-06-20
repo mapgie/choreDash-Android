@@ -26,7 +26,11 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 
-enum class ChoreFilter { ALL, OVERDUE, SOON }
+enum class ChoreFilter(val label: String) {
+    ALL("All"),
+    OVERDUE("Overdue"),
+    SOON("Soon")
+}
 enum class OwnerFilter { ME, ALL }
 
 data class RecentScan(val choreLabel: String, val scanId: String)
