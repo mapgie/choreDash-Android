@@ -44,7 +44,7 @@ data class TaskUiState(
     val owners: List<String> = emptyList(),
     val filter: TaskFilter = TaskFilter.ACTIVE,
     val sort: TaskSort = TaskSort.PRIORITY,
-    val groupByCategory: Boolean = false,
+    val groupByCategory: Boolean = true,
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
     val pinnedTaskId: String? = null

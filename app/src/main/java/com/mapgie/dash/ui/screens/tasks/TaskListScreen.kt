@@ -204,7 +204,8 @@ fun TaskListScreen(
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTask = it; showTaskSheet = true },
                                         onToggleDone = { viewModel.markDone(task.id) },
-                                        onSwipeToggleDone = { viewModel.markDone(task.id) }
+                                        onSwipeToggleDone = { viewModel.markDone(task.id) },
+                                        showCategory = false
                                     )
                                 }
                             }
@@ -215,7 +216,8 @@ fun TaskListScreen(
                                     onTap = { overviewTask = it; showOverviewSheet = true },
                                     onLongPress = { editingTask = it; showTaskSheet = true },
                                     onToggleDone = { viewModel.markDone(task.id) },
-                                    onSwipeToggleDone = { viewModel.markDone(task.id) }
+                                    onSwipeToggleDone = { viewModel.markDone(task.id) },
+                                    showCategory = !uiState.groupByCategory
                                 )
                             }
                         }
@@ -249,7 +251,8 @@ fun TaskListScreen(
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTask = it; showTaskSheet = true },
                                         onToggleDone = { viewModel.markUndone(task.id) },
-                                        onSwipeToggleDone = { viewModel.markUndone(task.id) }
+                                        onSwipeToggleDone = { viewModel.markUndone(task.id) },
+                                        showCategory = !uiState.groupByCategory
                                     )
                                 }
                             }
@@ -300,7 +303,8 @@ private fun SwipeToCompleteCard(
     onTap: (TaskDto) -> Unit,
     onLongPress: (TaskDto) -> Unit,
     onToggleDone: () -> Unit,
-    onSwipeToggleDone: () -> Unit
+    onSwipeToggleDone: () -> Unit,
+    showCategory: Boolean = true
 ) {
     val isDone = task.completedAt != null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -339,6 +343,7 @@ private fun SwipeToCompleteCard(
         TaskCard(
             task = task,
             onToggleDone = onToggleDone,
+            showCategory = showCategory,
             modifier = Modifier
                 .padding(horizontal = 12.dp)
                 .semantics { role = Role.Button }

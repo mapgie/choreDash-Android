@@ -24,6 +24,7 @@ fun ChoreCard(
     showOwner: Boolean,
     zenMode: Boolean = false,
     showDueCountdown: Boolean = false,
+    showCategory: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val statusColor = when (chore.status) {
@@ -80,7 +81,7 @@ fun ChoreCard(
                     verticalAlignment = Alignment.Bottom,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (!zenMode && chore.category != null) {
+                    if (showCategory && !zenMode && chore.category != null) {
                         Text(
                             chore.category.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
