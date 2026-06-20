@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +64,8 @@ fun TaskCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             else
                 MaterialTheme.colorScheme.surfaceVariant
-        )
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Priority bar
