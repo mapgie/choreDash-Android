@@ -1,7 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "Chore cards redesigned: single-row layout with title vertically centred, prominent due date, and subtle last-done timestamp",
-    "Removed outline border from chore and task cards that was added in a previous change"
-  ]
-}

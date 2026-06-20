@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["App typography now uses Nunito (body and UI text) and Lora (screen titles) to match the web app"]
-}
