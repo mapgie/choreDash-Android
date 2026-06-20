@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Chore filter chips are now always visible (including in zen mode) and use the same implementation pattern as task filter chips"]
-}

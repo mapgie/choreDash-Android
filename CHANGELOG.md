@@ -31,6 +31,14 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.11.2] - 2026-06-20
+
+### Changed
+- Chore filter chips are now always visible (including in zen mode) and use the same implementation pattern as task filter chips
+- Zen mode now hides all action bar buttons except the exit control and a due-date sort toggle (most overdue first / recently done first)
+- The due countdown (thunderbolt) button is now hidden in zen mode
+
+---
 ## [0.11.1] - 2026-06-20
 
 ### Changed
