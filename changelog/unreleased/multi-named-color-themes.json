@@ -1,0 +1,8 @@
+{
+  "bump": "minor",
+  "added": [
+    "Palette theme selection (multiple colour palettes with light, dark, and system variants)",
+    "Custom HSL colour theme with primary, secondary, and tertiary hue sliders",
+    "Save, load, rename, and delete multiple named custom colour themes"
+  ]
+}
