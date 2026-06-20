@@ -251,7 +251,7 @@ fun ChoreListScreen(
                         val displayed = uiState.displayed
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
+                            contentPadding = PaddingValues(bottom = 88.dp)
                         ) {
                             if (uiState.groupByCategory && !uiState.zenMode) {
                                 val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
