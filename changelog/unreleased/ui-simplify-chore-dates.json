@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Chore cards now show at most two date representations instead of three, reducing visual noise"]
+}
