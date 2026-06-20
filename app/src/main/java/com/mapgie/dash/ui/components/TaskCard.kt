@@ -125,11 +125,7 @@ fun TaskCard(
                 ) {
                     if (showCategory) {
                         task.category?.takeIf { it.isNotBlank() }?.let { cat ->
-                            Text(
-                                text = cat.uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            CategoryBadge(cat)
                         }
                     }
                     DueBadge(task = task)
@@ -182,4 +178,20 @@ private fun DueBadge(task: TaskDto) {
         style = MaterialTheme.typography.labelSmall,
         color = color
     )
+}
+
+@Composable
+private fun CategoryBadge(category: String) {
+    Box(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = category.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    }
 }

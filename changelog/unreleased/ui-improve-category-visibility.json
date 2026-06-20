@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Category labels on chore and task cards now appear as small tinted badges for faster scanning"]
+}
