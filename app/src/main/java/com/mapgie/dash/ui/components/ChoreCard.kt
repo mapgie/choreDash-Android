@@ -97,27 +97,31 @@ fun ChoreCard(
                                 fontStyle = FontStyle.Italic,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
+                        } else if (zenMode) {
                             Text(
                                 formatAbsoluteDate(chore.lastScanned),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant else dateColor
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            if (showDueCountdown && !zenMode) {
-                                chore.nextDueText()?.let { dueText ->
-                                    Text(
-                                        dueText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Medium,
-                                        color = dateColor
-                                    )
-                                }
-                            }
-                            if (!zenMode) {
+                        } else {
+                            val dueText = chore.nextDueText()
+                            if (dueText != null) {
                                 Text(
-                                    relativeTime(chore.lastScanned),
+                                    dueText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = dateColor
+                                )
+                                Text(
+                                    formatAbsoluteDate(chore.lastScanned),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    relativeTime(chore.lastScanned),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = dateColor
                                 )
                             }
                         }
