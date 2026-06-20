@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Chore and task lists now default to grouped-by-category view",
+    "Category labels are hidden on individual cards when the grouped view is active, since the section header already shows the category"
+  ]
+}

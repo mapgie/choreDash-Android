@@ -47,6 +47,7 @@ import java.time.format.DateTimeFormatter
 fun TaskCard(
     task: TaskDto,
     onToggleDone: () -> Unit,
+    showCategory: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isDone = task.completedAt != null
@@ -122,12 +123,14 @@ fun TaskCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    task.category?.takeIf { it.isNotBlank() }?.let { cat ->
-                        Text(
-                            text = cat.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (showCategory) {
+                        task.category?.takeIf { it.isNotBlank() }?.let { cat ->
+                            Text(
+                                text = cat.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     DueBadge(task = task)
                 }

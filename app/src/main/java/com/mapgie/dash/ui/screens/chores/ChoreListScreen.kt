@@ -273,6 +273,7 @@ fun ChoreListScreen(
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
                                             zenMode = uiState.zenMode,
                                             showDueCountdown = uiState.showDueCountdown,
+                                            showCategory = !uiState.groupByCategory,
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetChore = it; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -286,6 +287,7 @@ fun ChoreListScreen(
                                         showOwner = uiState.ownerFilter == OwnerFilter.ALL,
                                         zenMode = uiState.zenMode,
                                         showDueCountdown = uiState.showDueCountdown,
+                                        showCategory = !uiState.groupByCategory,
                                         onTap = { logTargetChore = it; showLogSheet = true },
                                         onLongPress = { editTargetChore = it; showEditSheet = true },
                                         onSwipeLog = { viewModel.logChore(it.tagId) }
@@ -317,6 +319,7 @@ fun ChoreListScreen(
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
                                             zenMode = uiState.zenMode,
                                             showDueCountdown = uiState.showDueCountdown,
+                                            showCategory = !uiState.groupByCategory,
                                             modifier = Modifier
                                                 .semantics { role = Role.Button }
                                                 .combinedClickable(
@@ -479,6 +482,7 @@ private fun SwipeToLogCard(
     showOwner: Boolean,
     zenMode: Boolean,
     showDueCountdown: Boolean,
+    showCategory: Boolean,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit
@@ -521,6 +525,7 @@ private fun SwipeToLogCard(
             showOwner = showOwner,
             zenMode = zenMode,
             showDueCountdown = showDueCountdown,
+            showCategory = showCategory,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

@@ -38,7 +38,7 @@ data class ChoreUiState(
     val archived: List<Chore> = emptyList(),
     val owners: List<String> = emptyList(),
     val filter: ChoreFilter = ChoreFilter.ALL,
-    val groupByCategory: Boolean = false,
+    val groupByCategory: Boolean = true,
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
     val zenMode: Boolean = false,
