@@ -400,3 +400,27 @@ no edit sheet, unlike chores (`EditChoreSheet.kt`) and tasks
 (`EditTaskSheet.kt`) which have one. Don't build a new detail sheet just to
 host these two icons, scope to the entity types that already have a natural
 home for them.
+
+---
+
+## 20. Card date display: make the status date prominent, the history date subtle
+
+When a card shows two dates, one representing current status (e.g. due date)
+and one representing history (e.g. last done), give them clearly different
+visual weights:
+
+- **Status date** (due date, next action): `bodyLarge` + `FontWeight.SemiBold`
+  in the colour-coded `dateColor` so it reads immediately at a glance.
+- **History date** (last done, last scanned): `labelSmall` in
+  `onSurfaceVariant` directly below, visually subordinate.
+
+If there is no status date, show the history date alone at `bodySmall` in
+`dateColor` — it becomes the only signal, so it earns the colour. If there is
+no history at all (`lastScanned == null`), show "Never" in italic at
+`onSurfaceVariant`.
+
+Layout: a single `Row` with `verticalAlignment = Alignment.CenterVertically`
+keeps the title vertically centred against the dates column even when the
+dates column is taller than a single line. Putting title and dates in the same
+`Row` (rather than stacking them in separate rows inside a `Column`) is what
+produces the centred alignment without extra padding arithmetic.
