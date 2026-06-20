@@ -30,6 +30,7 @@ import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.navigation.DashNavGraph
+import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.DashTheme
 import com.mapgie.dash.widget.WIDGET_DESTINATION_EXTRA
 import com.mapgie.dash.widget.WidgetUpdater
@@ -89,7 +90,13 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 else -> isSystemInDarkTheme()
             }
-            DashTheme(darkTheme = darkTheme) {
+            val appTheme = settings?.let {
+                runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SYSTEM_DEFAULT)
+            } ?: AppTheme.SYSTEM_DEFAULT
+            val customHues = settings?.let {
+                Triple(it.customPrimaryHue, it.customSecondaryHue, it.customTertiaryHue)
+            }
+            DashTheme(appTheme = appTheme, darkTheme = darkTheme, customHues = customHues) {
                 // Hold blank screen until first DataStore emission (<10 ms)
                 // to avoid flashing wrong theme or credentials state.
                 if (settings == null) {
