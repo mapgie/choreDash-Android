@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["High-priority task cards now use amber instead of red on the left strip, reserving red exclusively for overdue items across both chores and tasks"]
+}

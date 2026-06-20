@@ -51,7 +51,7 @@ fun TaskCard(
 ) {
     val isDone = task.completedAt != null
     val priorityColor = when (task.priorityEnum()) {
-        TaskPriority.HIGHER -> StatusStale
+        TaskPriority.HIGHER -> StatusAging
         TaskPriority.NORMAL -> StatusFresh
         TaskPriority.LOWER -> MaterialTheme.colorScheme.outline
     }
