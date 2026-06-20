@@ -67,6 +67,7 @@ private val licenseGroups = listOf(
             Library("KotlinX Serialization JSON", "JetBrains s.r.o.", "https://github.com/Kotlin/kotlinx.serialization/blob/master/LICENSE.txt"),
             Library("KotlinX Coroutines Android", "JetBrains s.r.o.", "https://github.com/Kotlin/kotlinx.coroutines/blob/master/LICENSE.txt"),
             Library("AndroidX Glance", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX Room", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
         )
     ),
     LicenseGroup(

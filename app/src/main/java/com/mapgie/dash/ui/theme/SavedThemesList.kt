@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.theme
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -128,6 +129,7 @@ fun SavedThemesList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SavedThemeRow(
     theme: CustomColorTheme,
