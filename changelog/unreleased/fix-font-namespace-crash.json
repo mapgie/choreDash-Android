@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "App crash on launch since v0.14.2: font XML descriptors switched back to the app: (AppCompat) namespace so ResourcesCompat and the preloaded_fonts mechanism can resolve them correctly"
+  ]
+}

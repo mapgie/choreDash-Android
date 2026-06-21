@@ -424,3 +424,33 @@ keeps the title vertically centred against the dates column even when the
 dates column is taller than a single line. Putting title and dates in the same
 `Row` (rather than stacking them in separate rows inside a `Column`) is what
 produces the centred alignment without extra padding arithmetic.
+
+---
+
+## 21. Downloadable font XMLs must use the `app:` (AppCompat) namespace, not `android:`
+
+Font XML descriptors that reference a Google Fonts provider (downloadable fonts) must
+declare attributes in the `app:` namespace (`xmlns:app="http://schemas.android.com/apk/res-auto"`),
+not the native `android:` namespace:
+
+```xml
+<!-- Correct — ResourcesCompat reads app: attributes -->
+<font-family xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:fontProviderAuthority="com.google.android.gms.fonts"
+    app:fontProviderPackage="com.google.android.gms"
+    app:fontProviderQuery="name=Nunito&amp;weight=400&amp;italic=0"
+    app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+
+<!-- Wrong — crashes at launch -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fontProviderAuthority="com.google.android.gms.fonts"
+    ... />
+```
+
+Both `preloaded_fonts` pre-warming in the manifest and Compose's `Font(R.font.xxx)` resolution
+go through `ResourcesCompat`, which only recognises `app:fontProvider*` attributes. Switching
+to the `android:` namespace routes loading through the native font system instead — on some
+API levels this returns a null Typeface that causes a crash at the first Compose frame.
+
+The `android:` namespace is correct for *static* font files listed via `<font>` child elements
+inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:`.
