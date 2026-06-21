@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.0] - 2026-06-21
+
+### Changed
+- Theme palette picker now shows palette name only (Light/Dark/System is controlled by the mode toggle above)
+- Each palette card now shows primary, secondary, and tertiary colour swatches
+- Custom colour editor now exposes full HSL control (hue, saturation, lightness) per colour role
+- Custom theme name and save controls are now inline in the colour editor. Load a saved theme to get Update and Save as new options.
+
+---
 ## [0.14.2] - 2026-06-21
 
 ### Fixed
