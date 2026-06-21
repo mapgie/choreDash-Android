@@ -31,6 +31,13 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.14.2] - 2026-06-21
+
+### Fixed
+- Nunito and Lora fonts now render correctly: font XML descriptors were using the appcompat namespace (app:) which Android 8+ ignores; switched to the native android: namespace so the system font resolver can find them
+- Chore slug tag displayed in monospace to visually distinguish it from the chore name
+
+---
 ## [0.14.1] - 2026-06-21
 
 ### Changed
