@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Chore cards now share the same visual style as task cards (surface colour, circular owner badge)"]
+}
