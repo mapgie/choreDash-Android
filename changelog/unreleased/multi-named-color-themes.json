@@ -1,9 +1,5 @@
 {
   "bump": "minor",
-  "added": [
-    "Palette theme selection with Sage, Coral, and Teal options",
-    "Save, load, rename, and delete multiple named custom colour themes"
-  ],
   "changed": [
     "Theme palette picker now shows palette name only (Light/Dark/System is controlled by the mode toggle above)",
     "Each palette card now shows primary, secondary, and tertiary colour swatches",

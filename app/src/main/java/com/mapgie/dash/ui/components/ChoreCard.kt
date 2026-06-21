@@ -1,6 +1,5 @@
 package com.mapgie.dash.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -47,76 +46,75 @@ fun ChoreCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Left status bar
+            // Left status accent bar
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
                     .background(barColor)
             )
-            Column(
+            // Single content row, title and dates side-by-side, vertically centred
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // Left: title (and optional category label beneath)
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(
                         chore.label,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
+                        fontWeight = FontWeight.Medium
                     )
-                    if (showOwner && chore.owner != null) {
-                        OwnerBadge(initial = chore.owner.firstOrNull()?.uppercaseChar() ?: '?')
-                    }
-                }
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
                     if (showCategory && !zenMode && chore.category != null) {
                         Text(
                             chore.category.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    } else {
-                        Spacer(Modifier)
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        if (chore.lastScanned == null) {
+                }
+
+                // Owner badge (if shown) — placed between title and dates
+                if (showOwner && chore.owner != null) {
+                    OwnerBadge(initial = chore.owner.firstOrNull()?.uppercaseChar() ?: '?')
+                    Spacer(Modifier.width(8.dp))
+                }
+
+                // Right: dates column
+                Column(horizontalAlignment = Alignment.End) {
+                    when {
+                        chore.lastScanned == null -> {
                             Text(
                                 "Never",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontStyle = FontStyle.Italic,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else if (zenMode) {
+                        }
+                        zenMode -> {
                             Text(
                                 formatAbsoluteDate(chore.lastScanned),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
+                        }
+                        else -> {
                             val dueText = chore.nextDueText()
                             if (dueText != null) {
                                 Text(
                                     dueText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = dateColor
                                 )
                                 Text(
-                                    formatAbsoluteDate(chore.lastScanned),
+                                    relativeTime(chore.lastScanned),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

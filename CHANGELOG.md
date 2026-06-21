@@ -31,6 +31,27 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.12.0] - 2026-06-20
+
+### Added
+- Palette theme selection (multiple colour palettes with light, dark, and system variants)
+- Custom HSL colour theme with primary, secondary, and tertiary hue sliders
+- Save, load, rename, and delete multiple named custom colour themes
+
+### Changed
+- Chore cards redesigned: single-row layout with title vertically centred, prominent due date, and subtle last-done timestamp
+- Removed outline border from chore and task cards that was added in a previous change
+- App typography now uses Nunito (body and UI text) and Lora (screen titles) to match the web app
+
+---
+## [0.11.2] - 2026-06-20
+
+### Changed
+- Chore filter chips are now always visible (including in zen mode) and use the same implementation pattern as task filter chips
+- Zen mode now hides all action bar buttons except the exit control and a due-date sort toggle (most overdue first / recently done first)
+- The due countdown (thunderbolt) button is now hidden in zen mode
+
+---
 ## [0.11.1] - 2026-06-20
 
 ### Changed

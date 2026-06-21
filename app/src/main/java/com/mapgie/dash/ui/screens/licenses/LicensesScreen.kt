@@ -58,6 +58,7 @@ private val licenseGroups = listOf(
             Library("Kotlin", "JetBrains s.r.o.", "https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt"),
             Library("AndroidX Compose BOM", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
             Library("AndroidX Compose Material3", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
+            Library("AndroidX Compose UI Text (Google Fonts)", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
             Library("AndroidX Navigation Compose", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),
             Library("Hilt", "Google LLC", "https://www.apache.org/licenses/LICENSE-2.0"),
             Library("Hilt Navigation Compose", "The Android Open Source Project", "https://www.apache.org/licenses/LICENSE-2.0"),

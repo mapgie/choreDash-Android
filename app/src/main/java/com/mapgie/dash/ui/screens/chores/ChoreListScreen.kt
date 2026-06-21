@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
@@ -151,27 +153,17 @@ fun ChoreListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!uiState.zenMode) {
-                        ChoreFilter.values().forEach { f ->
-                            FilterChip(
-                                selected = uiState.filter == f,
-                                onClick = { viewModel.setFilter(f) },
-                                label = {
-                                    Text(
-                                        when (f) {
-                                            ChoreFilter.ALL -> "All"
-                                            ChoreFilter.OVERDUE -> "Overdue"
-                                            ChoreFilter.SOON -> "Soon"
-                                        }
-                                    )
-                                },
-                                // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
+                    ChoreFilter.entries.forEach { f ->
+                        FilterChip(
+                            selected = uiState.filter == f,
+                            onClick = { viewModel.setFilter(f) },
+                            label = { Text(f.label) },
+                            // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
-                        }
+                        )
                     }
                     Spacer(Modifier.weight(1f))
                     if (!uiState.zenMode) {
@@ -206,19 +198,31 @@ fun ChoreListScreen(
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                    IconButton(
-                        onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Bolt,
-                            contentDescription = if (uiState.showDueCountdown)
-                                "Hide due countdown" else "Show due countdown",
-                            tint = if (uiState.showDueCountdown)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        IconButton(
+                            onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Bolt,
+                                contentDescription = if (uiState.showDueCountdown)
+                                    "Hide due countdown" else "Show due countdown",
+                                tint = if (uiState.showDueCountdown)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     IconButton(
                         onClick = { viewModel.setZenMode(!uiState.zenMode) },

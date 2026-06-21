@@ -26,7 +26,11 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 
-enum class ChoreFilter { ALL, OVERDUE, SOON }
+enum class ChoreFilter(val label: String) {
+    ALL("All"),
+    OVERDUE("Overdue"),
+    SOON("Soon")
+}
 enum class OwnerFilter { ME, ALL }
 
 data class RecentScan(val choreLabel: String, val scanId: String)
@@ -42,6 +46,7 @@ data class ChoreUiState(
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
     val zenMode: Boolean = false,
+    val zenSortAscending: Boolean = true,
     val showDueCountdown: Boolean = false,
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
@@ -61,9 +66,16 @@ data class ChoreUiState(
                 }
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
-            // When showing the due countdown, surface the most urgent chores first
-            // (matches choreDash web's due-button behaviour of sorting overdue to the top)
-            if (showDueCountdown) {
+            if (zenMode) {
+                // Zen sort: ascending = most overdue first (null/oldest lastScanned first)
+                result = if (zenSortAscending) {
+                    result.sortedWith(compareBy(nullsFirst<Instant>()) { it.lastScanned })
+                } else {
+                    result.sortedWith(compareByDescending(nullsLast<Instant>()) { it.lastScanned })
+                }
+            } else if (showDueCountdown) {
+                // When showing the due countdown, surface the most urgent chores first
+                // (matches choreDash web's due-button behaviour of sorting overdue to the top)
                 result = result.sortedWith(
                     compareBy(
                         { it.status != ChoreStatus.NEVER && it.status != ChoreStatus.STALE },
@@ -264,6 +276,10 @@ class ChoreListViewModel @Inject constructor(
 
     fun setZenMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setZenMode(enabled) }
+    }
+
+    fun setZenSort(ascending: Boolean) {
+        _uiState.update { it.copy(zenSortAscending = ascending) }
     }
 
     fun setShowDueCountdown(enabled: Boolean) {

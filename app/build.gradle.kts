@@ -15,8 +15,8 @@ android {
         applicationId = "com.mapgie.dash"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.11.1"
+        versionCode = 18
+        versionName = "0.12.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
