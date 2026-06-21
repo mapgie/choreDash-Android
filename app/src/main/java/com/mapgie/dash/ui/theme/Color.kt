@@ -113,7 +113,10 @@ val md_theme_dark_surfaceTint = Color(0xFF9ED1AC)
 val md_theme_dark_outlineVariant = Color(0xFF404943)
 val md_theme_dark_scrim = Color(0xFF000000)
 
-// Semantic status colours referenced by card left-bars
+// Semantic status colours used on card strips, due badges, and date text.
+// Red   (StatusStale) = overdue / action required
+// Amber (StatusAging) = approaching due / attention needed
+// Green (StatusFresh) = healthy / no action needed
 val StatusStale = Color(0xFFBA1A1A)
 val StatusAging = Color(0xFFF29900)
 val StatusFresh = Color(0xFF4A7C59)
