@@ -64,6 +64,18 @@ data class Chore(
     }
 
     /**
+     * True if this chore won't become due (stale) for another 60+ days.
+     * Matches choreDash web's isDistant(): uses the full interval, not the 50% fresh threshold.
+     * Only interval-based chores can be distant; category-based chores have short intervals.
+     */
+    fun isDistant(): Boolean {
+        val last = lastScanned ?: return false
+        val fullIntervalHours = intervalDays?.let { (it * 24).toLong() } ?: return false
+        val dueInstant = last.plus(fullIntervalHours, ChronoUnit.HOURS)
+        return Duration.between(Instant.now(), dueInstant).toDays() > 60
+    }
+
+    /**
      * Countdown text matching choreDash web's nextDueText(), e.g. "in 2d", "in 5h",
      * "1d overdue", "3h overdue". Returns null if never scanned.
      */

@@ -1,0 +1,4 @@
+{
+  "bump": "minor",
+  "added": ["Chores not due for 60+ days are hidden from the main list. A tap-to-reveal button at the bottom shows how many are hidden, and tapping it expands or collapses them."]
+}
