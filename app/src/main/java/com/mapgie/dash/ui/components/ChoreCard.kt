@@ -105,23 +105,36 @@ fun ChoreCard(
                             )
                         }
                         else -> {
-                            val dueText = chore.nextDueText()
-                            if (dueText != null) {
+                            if (showDueCountdown) {
+                                val dueText = chore.nextDueText()
+                                if (dueText != null) {
+                                    Text(
+                                        dueText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = dateColor
+                                    )
+                                    Text(
+                                        relativeTime(chore.lastScanned),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        relativeTime(chore.lastScanned),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dateColor
+                                    )
+                                }
+                            } else {
                                 Text(
-                                    dueText,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    formatAbsoluteDate(chore.lastScanned),
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = dateColor
                                 )
                                 Text(
                                     relativeTime(chore.lastScanned),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else {
-                                Text(
-                                    relativeTime(chore.lastScanned),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = dateColor
                                 )
                             }
                         }
