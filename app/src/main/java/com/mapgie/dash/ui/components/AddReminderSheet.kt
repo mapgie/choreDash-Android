@@ -28,7 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
@@ -389,6 +389,6 @@ private fun TimePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
-        text = { TimeInput(state = state) }
+        text = { TimePicker(state = state) }
     )
 }

@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.components
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,6 +49,7 @@ fun ChoreOverviewSheet(
 ) {
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val is24Hour = remember { DateFormat.is24HourFormat(context) }
     var useCustomTime by remember { mutableStateOf(false) }
 
     fun calendarInfo() = calendarEventWithoutTime(
@@ -58,6 +60,7 @@ fun ChoreOverviewSheet(
     var selectedHour by remember { mutableIntStateOf(LocalTime.now().hour) }
     var selectedMinute by remember { mutableIntStateOf(LocalTime.now().minute) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
     var showRemoveLastLogConfirm by remember { mutableStateOf(false) }
 
     fun hideAndDismiss() {
@@ -170,30 +173,11 @@ fun ChoreOverviewSheet(
                     Text("Date: $selectedDate")
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                OutlinedButton(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = selectedHour.toString().padStart(2, '0'),
-                        onValueChange = { v ->
-                            v.toIntOrNull()?.takeIf { it in 0..23 }?.let { selectedHour = it }
-                        },
-                        label = { Text("Hour") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Text(":", style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(
-                        value = selectedMinute.toString().padStart(2, '0'),
-                        onValueChange = { v ->
-                            v.toIntOrNull()?.takeIf { it in 0..59 }?.let { selectedMinute = it }
-                        },
-                        label = { Text("Min") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
+                    Text("%02d:%02d".format(selectedHour, selectedMinute))
                 }
             }
 
@@ -372,6 +356,46 @@ fun ChoreOverviewSheet(
             }
         )
     }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            initialHour = selectedHour,
+            initialMinute = selectedMinute,
+            is24Hour = is24Hour,
+            onConfirm = { h, m ->
+                selectedHour = h
+                selectedMinute = m
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    is24Hour: Boolean,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = is24Hour
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        text = { TimePicker(state = state) }
+    )
 }
 
 private val MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
