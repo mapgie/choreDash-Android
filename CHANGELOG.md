@@ -31,6 +31,22 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.14.0] - 2026-06-21
+
+### Added
+- Chores not due for 60+ days are hidden from the main list. A tap-to-reveal button at the bottom shows how many are hidden, and tapping it expands or collapses them.
+
+### Changed
+- App typography now uses Nunito (body and UI text) and Lora (headings and sheet titles) to match the web app
+- Sheet and modal titles enlarged to 32sp serif for clearer visual hierarchy
+- Category labels, status text, and metadata use secondary colour roles for layered emphasis
+- Action buttons in chore and task sheets grouped as labelled chips for better discoverability
+- Destructive actions (Archive, Delete, Remove log) demoted to text buttons so primary actions dominate
+- Advanced fields in edit sheets moved behind progressive disclosure to reduce visual clutter
+- Log history wrapped in a tonal surface card matching the web app aesthetic
+- Spacing throughout sheets follows an 8pt rhythm for consistent visual breathing room
+
+---
 ## [0.13.0] - 2026-06-21
 
 ### Changed
