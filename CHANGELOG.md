@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.1] - 2026-06-21
+
+### Fixed
+- App crash on launch since v0.14.2: font XML descriptors switched back to the app: (AppCompat) namespace so ResourcesCompat and the preloaded_fonts mechanism can resolve them correctly
+
+---
 ## [0.15.0] - 2026-06-21
 
 ### Changed
