@@ -191,10 +191,14 @@ class ChoreListViewModel @Inject constructor(
     }
 
     fun removeLastLog(chore: Chore) {
-        val scanId = chore.lastScanId ?: return
         viewModelScope.launch {
             runCatching {
-                choreRepository.deleteScan(scanId)
+                // Fetch the latest scan fresh from the DB rather than relying on
+                // chore.lastScanId, which can be stale if a log was added after the
+                // last load() completed (e.g. race between swipe-log and sheet open).
+                val latestScanId = choreRepository.scanHistory(chore.tagId, limit = 1)
+                    .firstOrNull()?.id ?: return@runCatching
+                choreRepository.deleteScan(latestScanId)
                 load()
                 loadScanHistory(chore.tagId)
                 WidgetUpdater.updateAll(appContext)

@@ -249,7 +249,7 @@ fun ChoreOverviewSheet(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Remove last log")
+                Text("Remove latest log")
             }
 
             TextButton(
@@ -359,7 +359,7 @@ fun ChoreOverviewSheet(
     if (showRemoveLastLogConfirm) {
         AlertDialog(
             onDismissRequest = { showRemoveLastLogConfirm = false },
-            title = { Text("Remove last log?") },
+            title = { Text("Remove latest log?") },
             text = { Text("This removes the most recent log entry for \"${chore.label}\".") },
             confirmButton = {
                 TextButton(onClick = {

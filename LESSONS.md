@@ -403,6 +403,27 @@ home for them.
 
 ---
 
+## 21. "Remove latest log" must re-fetch the scan ID from the DB, not use cached state
+
+`chore.lastScanId` is populated by `load()`. If a log is added after `load()` returns
+(e.g. via swipe-to-log while the overview sheet is already in memory), the cached
+`lastScanId` still points to the *previous* scan. Calling `deleteScan(chore.lastScanId)`
+then deletes the correct older log and leaves the accidental newer one.
+
+Fix: always call `scanHistory(chore.tagId, limit = 1)` right before the delete to get
+the actual latest scan ID from the server:
+
+```kotlin
+val latestScanId = choreRepository.scanHistory(chore.tagId, limit = 1)
+    .firstOrNull()?.id ?: return@runCatching
+choreRepository.deleteScan(latestScanId)
+```
+
+The same rule applies to any destructive operation that targets "the most recent X" —
+never trust a cached ID when freshness matters.
+
+---
+
 ## 20. Card date display: make the status date prominent, the history date subtle
 
 When a card shows two dates, one representing current status (e.g. due date)
