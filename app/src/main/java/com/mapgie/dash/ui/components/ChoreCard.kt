@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontStyle
@@ -65,18 +66,14 @@ fun ChoreCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: title (and optional category label beneath)
+                // Left: title (and optional category pill beneath)
                 Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(
                         chore.label,
                         style = MaterialTheme.typography.titleMedium
                     )
                     if (showCategory && !zenMode && chore.category != null) {
-                        Text(
-                            chore.category.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        CategoryBadge(chore.category)
                     }
                 }
 
@@ -158,6 +155,22 @@ private fun OwnerBadge(initial: Char) {
     ) {
         Text(
             initial.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    }
+}
+
+@Composable
+private fun CategoryBadge(category: String) {
+    Box(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = category.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
