@@ -253,6 +253,7 @@ fun ChoreListScreen(
 
                     else -> {
                         val displayed = uiState.displayed
+                        val distantChores = uiState.distantChores
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 88.dp)
@@ -299,17 +300,51 @@ fun ChoreListScreen(
                                 }
                             }
 
+                            if (distantChores.isNotEmpty()) {
+                                item {
+                                    TextButton(
+                                        onClick = { viewModel.toggleShowDistant() },
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                                    ) {
+                                        Text(
+                                            if (uiState.showDistant)
+                                                "Hide distant (${distantChores.size})"
+                                            else
+                                                "${distantChores.size} not due for 60+ days",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (uiState.showDistant) {
+                                    items(distantChores, key = { "distant_${it.id}" }) { chore ->
+                                        SwipeToLogCard(
+                                            chore = chore,
+                                            showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            zenMode = uiState.zenMode,
+                                            showDueCountdown = uiState.showDueCountdown,
+                                            showCategory = !uiState.groupByCategory,
+                                            onTap = { logTargetChore = it; showLogSheet = true },
+                                            onLongPress = { editTargetChore = it; showEditSheet = true },
+                                            onSwipeLog = { viewModel.logChore(it.tagId) }
+                                        )
+                                    }
+                                }
+                            }
+
                             if (uiState.archived.isNotEmpty()) {
                                 item {
                                     TextButton(
                                         onClick = { showArchivedSection = !showArchivedSection },
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                     ) {
                                         Text(
                                             if (showArchivedSection)
                                                 "Hide archived (${uiState.archived.size})"
                                             else
-                                                "Show archived (${uiState.archived.size})"
+                                                "Show archived (${uiState.archived.size})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }

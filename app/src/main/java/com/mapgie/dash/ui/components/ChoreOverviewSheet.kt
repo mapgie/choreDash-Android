@@ -1,7 +1,7 @@
 package com.mapgie.dash.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAlert
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -75,9 +75,12 @@ fun ChoreOverviewSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = 24.dp)
         ) {
+            // 24dp after drag handle
+            Spacer(Modifier.height(24.dp))
+
+            // Title row: eyebrow + name + icon actions
             Row(
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -90,13 +93,17 @@ fun ChoreOverviewSheet(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        // 4dp between eyebrow and title
+                        Spacer(Modifier.height(4.dp))
                     }
-                    Text(chore.label, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        chore.tagId,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(chore.label, style = MaterialTheme.typography.headlineLarge)
+                    if (chore.tagId.isNotBlank()) {
+                        Text(
+                            chore.tagId,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isPinned) {
@@ -127,11 +134,17 @@ fun ChoreOverviewSheet(
                 }
             }
 
+            // 8dp between title and metadata
+            Spacer(Modifier.height(8.dp))
+
             Text(
                 lastDoneText(chore.lastScanned),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            // 24dp between metadata and action buttons
+            Spacer(Modifier.height(24.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -146,12 +159,14 @@ fun ChoreOverviewSheet(
             }
 
             if (useCustomTime) {
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Date: $selectedDate")
                 }
+                Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -179,9 +194,12 @@ fun ChoreOverviewSheet(
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+
+            // Primary and secondary CTAs — 8dp between them
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = { hideAndDismiss() },
@@ -210,10 +228,14 @@ fun ChoreOverviewSheet(
                 }
             }
 
-            OutlinedButton(
+            // 32dp before destructive action
+            Spacer(Modifier.height(32.dp))
+
+            // Destructive action: lighter weight TextButton with error colour
+            TextButton(
                 onClick = { showRemoveLastLogConfirm = true },
                 enabled = chore.lastScanId != null,
-                colors = ButtonDefaults.outlinedButtonColors(
+                colors = ButtonDefaults.textButtonColors(
                     contentColor = MaterialTheme.colorScheme.error
                 ),
                 modifier = Modifier.fillMaxWidth()
@@ -249,42 +271,54 @@ fun ChoreOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             ) { Text("More options...") }
 
-            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
 
+            // History section in a visual container
             Text(
                 "RECENT HISTORY",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (scanHistory.isEmpty()) {
-                Text(
-                    "No logs yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    scanHistory.forEach { scan ->
-                        val scannedAt = runCatching { Instant.parse(scan.scannedAt) }.getOrNull()
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    shape = MaterialTheme.shapes.small
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (scanHistory.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No logs yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        scanHistory.forEach { scan ->
+                            val scannedAt = runCatching { Instant.parse(scan.scannedAt) }.getOrNull()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    historyDateText(scannedAt),
+                                    style = MaterialTheme.typography.bodySmall
                                 )
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                historyDateText(scannedAt),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                relativeDays(scannedAt),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                Text(
+                                    relativeDays(scannedAt),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -342,7 +376,7 @@ private val MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern
 private fun lastDoneText(lastScanned: Instant?): String {
     if (lastScanned == null) return "Never logged"
     val date = lastScanned.atZone(ZoneId.systemDefault()).format(MONTH_DAY_FORMATTER)
-    return "Last done $date · ${relativeDays(lastScanned)}"
+    return "Last done $date - ${relativeDays(lastScanned)}"
 }
 
 private fun historyDateText(scannedAt: Instant?): String {

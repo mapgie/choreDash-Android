@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="preloaded_fonts" translatable="false">
+        <item>@font/nunito_regular</item>
+        <item>@font/nunito_medium</item>
+        <item>@font/nunito_semibold</item>
+        <item>@font/nunito_bold</item>
+        <item>@font/lora_medium</item>
+        <item>@font/lora_semibold</item>
+    </array>
+</resources>

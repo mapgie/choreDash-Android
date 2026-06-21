@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -25,13 +27,13 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -189,46 +191,75 @@ fun EditTaskSheet(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = 32.dp)
         ) {
+            // 24dp after drag handle
+            Spacer(Modifier.height(24.dp))
+
             if (task == null) {
+                // New task: no eyebrow, just headline
                 Text(
                     text = "New Task",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.headlineLarge
                 )
             } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // Existing task: category eyebrow + headline + action chips
+                val categoryLabel = task.category?.takeIf { it.isNotBlank() }
+                if (categoryLabel != null) {
                     Text(
-                        text = "Edit Task",
-                        style = MaterialTheme.typography.titleLarge
+                        text = categoryLabel.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row {
-                        IconButton(
-                            onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Add to calendar"
-                                role = Role.Button
-                            }
-                        ) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null)
+                    // 4dp between eyebrow and title
+                    Spacer(Modifier.height(4.dp))
+                }
+                Text(
+                    text = "Edit Task",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                // 8dp between title and action chips
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SuggestionChip(
+                        onClick = {
+                            context.startActivity(
+                                CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())
+                            )
+                        },
+                        label = { Text("Calendar") },
+                        icon = {
+                            Icon(
+                                Icons.Filled.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Add to calendar"
+                            role = Role.Button
                         }
-                        IconButton(
-                            onClick = { showShareChoice = true },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Share"
-                                role = Role.Button
-                            }
-                        ) {
-                            Icon(Icons.Filled.Share, contentDescription = null)
+                    )
+                    SuggestionChip(
+                        onClick = { showShareChoice = true },
+                        label = { Text("Share") },
+                        icon = {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Share"
+                            role = Role.Button
                         }
-                    }
+                    )
                 }
             }
+
+            // 8dp between header and first field
+            Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = title,
@@ -238,6 +269,8 @@ fun EditTaskSheet(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(Modifier.height(16.dp))
 
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
@@ -269,6 +302,8 @@ fun EditTaskSheet(
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+
             Column {
                 Text(
                     "Priority",
@@ -294,6 +329,8 @@ fun EditTaskSheet(
                     }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
 
             Column {
                 Text(
@@ -348,6 +385,8 @@ fun EditTaskSheet(
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+
             ExposedDropdownMenuBox(
                 expanded = ownerExpanded,
                 onExpandedChange = { ownerExpanded = it }
@@ -381,6 +420,8 @@ fun EditTaskSheet(
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
@@ -389,6 +430,8 @@ fun EditTaskSheet(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(Modifier.height(16.dp))
 
             Column {
                 Row(
@@ -434,39 +477,42 @@ fun EditTaskSheet(
                 }
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            // 32dp before destructive action
+            if (task != null && onDelete != null) {
+                Spacer(Modifier.height(32.dp))
+                TextButton(
+                    onClick = {
+                        if (showDeleteConfirm) {
+                            onDelete()
+                            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                        } else {
+                            showDeleteConfirm = true
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (showDeleteConfirm) "Confirm delete" else "Delete")
+                }
+                // 8dp between destructive and primary action
+                Spacer(Modifier.height(8.dp))
+            } else {
+                // 24dp between body and actions when no destructive action
+                Spacer(Modifier.height(24.dp))
+            }
+
+            Button(
+                enabled = title.isNotBlank(),
+                onClick = {
+                    if (task == null) onSave(buildInsert())
+                    else onUpdate(buildUpdate())
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (task != null && onDelete != null) {
-                    OutlinedButton(
-                        onClick = {
-                            if (showDeleteConfirm) {
-                                onDelete()
-                                sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-                            } else {
-                                showDeleteConfirm = true
-                            }
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (showDeleteConfirm) "Confirm delete" else "Delete")
-                    }
-                }
-                Button(
-                    enabled = title.isNotBlank(),
-                    onClick = {
-                        if (task == null) onSave(buildInsert())
-                        else onUpdate(buildUpdate())
-                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (task == null) "Add" else "Save")
-                }
+                Text(if (task == null) "Add" else "Save")
             }
         }
     }
