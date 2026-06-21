@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
@@ -43,7 +44,8 @@ fun ChoreCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (zenMode) MaterialTheme.colorScheme.surface
+                             else lerp(MaterialTheme.colorScheme.surface, statusColor, 0.07f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
