@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
@@ -68,8 +67,7 @@ fun ChoreCard(
                 Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(
                         chore.label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleMedium
                     )
                     if (showCategory && !zenMode && chore.category != null) {
                         Text(
@@ -109,8 +107,7 @@ fun ChoreCard(
                             if (dueText != null) {
                                 Text(
                                     dueText,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = dateColor
                                 )
                                 Text(

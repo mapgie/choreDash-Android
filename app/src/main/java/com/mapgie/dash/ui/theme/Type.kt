@@ -32,6 +32,20 @@ val Lora = FontFamily(
 
 // No hardcoded colours — let theme propagate via LocalContentColor
 val DashTypography = Typography(
+    headlineLarge = TextStyle(
+        fontFamily = Lora,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = Lora,
+        fontWeight = FontWeight.Medium,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        letterSpacing = 0.sp
+    ),
     bodyLarge = TextStyle(
         fontFamily = Nunito,
         fontWeight = FontWeight.Normal,
@@ -67,6 +81,13 @@ val DashTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp
     ),
+    titleSmall = TextStyle(
+        fontFamily = Nunito,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp
+    ),
     labelMedium = TextStyle(
         fontFamily = Nunito,
         fontWeight = FontWeight.Medium,
@@ -79,6 +100,6 @@ val DashTypography = Typography(
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
+        letterSpacing = 0.8.sp
     )
 )

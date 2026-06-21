@@ -84,7 +84,7 @@ fun TaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    .padding(end = 8.dp, top = 12.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
@@ -93,7 +93,7 @@ fun TaskCard(
                 ) {
                     Text(
                         text = task.title,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         textDecoration = if (isDone) TextDecoration.LineThrough else null,
                         color = if (isDone)
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)

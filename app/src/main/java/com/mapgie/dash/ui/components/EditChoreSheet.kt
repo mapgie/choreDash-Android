@@ -40,6 +40,7 @@ fun EditChoreSheet(
     var ownerExpanded by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showShareChoice by remember { mutableStateOf(false) }
+    var showMoreOptions by remember { mutableStateOf(false) }
 
     val isArchived = chore.archivedAt != null
 
@@ -62,18 +63,36 @@ fun EditChoreSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = 24.dp)
         ) {
+            // 24dp after drag handle
+            Spacer(Modifier.height(24.dp))
+
+            // Header: eyebrow label + chore name as visual anchor + icon actions
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    if (isArchived) "Archived chore" else "Edit chore",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    if (chore.category != null) {
+                        Text(
+                            chore.category.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // 4dp between eyebrow and title
+                        Spacer(Modifier.height(4.dp))
+                    } else {
+                        Text(
+                            if (isArchived) "ARCHIVED CHORE" else "EDIT CHORE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    Text(chore.label, style = MaterialTheme.typography.headlineLarge)
+                }
                 Row {
                     IconButton(
                         onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
@@ -96,6 +115,9 @@ fun EditChoreSheet(
                 }
             }
 
+            // 8dp between title and first field
+            Spacer(Modifier.height(8.dp))
+
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
@@ -105,6 +127,7 @@ fun EditChoreSheet(
             )
 
             if (owners.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
                 ExposedDropdownMenuBox(
                     expanded = ownerExpanded,
                     onExpandedChange = { ownerExpanded = it }
@@ -137,39 +160,43 @@ fun EditChoreSheet(
                 }
             }
 
-            OutlinedTextField(
-                value = intervalText,
-                onValueChange = { intervalText = it },
-                label = { Text("Interval (days, optional)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedButton(
-                onClick = {
-                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                        onWriteTag(chore)
-                    }
-                },
+            // Progressive disclosure for advanced fields
+            Spacer(Modifier.height(8.dp))
+            TextButton(
+                onClick = { showMoreOptions = !showMoreOptions },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Write tag")
+                Text(if (showMoreOptions) "Fewer options" else "More options...")
             }
 
-            OutlinedButton(
-                onClick = { showArchiveConfirm = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
+            if (showMoreOptions) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = intervalText,
+                    onValueChange = { intervalText = it },
+                    label = { Text("Interval (days, optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
-            ) {
-                Text(if (isArchived) "Unarchive" else "Archive")
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                            onWriteTag(chore)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Write tag")
+                }
             }
 
+            // Primary actions: Cancel + Save
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = {
@@ -188,6 +215,20 @@ fun EditChoreSheet(
                     enabled = label.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) { Text("Save") }
+            }
+
+            // 32dp before destructive action
+            Spacer(Modifier.height(32.dp))
+
+            // Destructive action: lighter weight TextButton with error colour
+            TextButton(
+                onClick = { showArchiveConfirm = true },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (isArchived) "Unarchive" else "Archive")
             }
         }
     }
