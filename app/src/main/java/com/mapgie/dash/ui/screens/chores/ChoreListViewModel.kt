@@ -48,17 +48,28 @@ data class ChoreUiState(
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
     val showDueCountdown: Boolean = false,
+    val showDistant: Boolean = false,
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList()
 ) {
+    val distantChores: List<Chore>
+        get() {
+            var result = active
+            if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
+                result = result.filter { it.owner == null || it.owner == ownerHandle }
+            }
+            return result.filter { it.isDistant() }
+        }
+
     val displayed: List<Chore>
         get() {
             var result = active
             if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
+            result = result.filter { !it.isDistant() }
             result = when (filter) {
                 ChoreFilter.ALL -> result
                 ChoreFilter.OVERDUE -> result.filter {
@@ -284,5 +295,9 @@ class ChoreListViewModel @Inject constructor(
 
     fun setShowDueCountdown(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowDueCountdown(enabled) }
+    }
+
+    fun toggleShowDistant() {
+        _uiState.update { it.copy(showDistant = !it.showDistant) }
     }
 }
