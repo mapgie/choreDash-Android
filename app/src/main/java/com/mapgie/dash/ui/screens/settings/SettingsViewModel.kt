@@ -147,4 +147,32 @@ class SettingsViewModel @Inject constructor(
             customColorThemeDao.upsert(theme.copy(name = newName))
         }
     }
+
+    /**
+     * Overwrites the active saved profile with the current HSL values and the given name.
+     * No-ops if no profile is currently active.
+     */
+    fun updateCustomColorTheme(name: String) {
+        viewModelScope.launch {
+            val s = settings.value ?: return@launch
+            val id = s.customActiveProfileId
+            if (id == -1L) return@launch
+            customColorThemeDao.upsert(
+                CustomColorTheme(
+                    id                  = id,
+                    name                = name,
+                    primaryHue          = s.customPrimaryHue,
+                    primarySaturation   = s.customPrimarySaturation,
+                    primaryLightness    = s.customPrimaryLightness,
+                    secondaryHue        = s.customSecondaryHue,
+                    secondarySaturation = s.customSecondarySaturation,
+                    secondaryLightness  = s.customSecondaryLightness,
+                    tertiaryHue         = s.customTertiaryHue,
+                    tertiarySaturation  = s.customTertiarySaturation,
+                    tertiaryLightness   = s.customTertiaryLightness,
+                    mode                = "LIGHT",
+                )
+            )
+        }
+    }
 }
