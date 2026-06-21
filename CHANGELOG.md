@@ -31,6 +31,19 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.2] - 2026-06-21
+
+### Changed
+- Renamed "Remove last log" to "Remove latest log" for clarity
+- Replaced manual hour/minute text fields and text-input time picker with native clock time pickers for chore logging and task reminder times
+- Category labels on chore and task cards now appear as small tinted badges for faster scanning
+- Task owner badge is now smaller and hidden when the 'mine' filter is active, reducing visual noise
+- Chore cards now share the same visual style as task cards (surface colour, circular owner badge)
+
+### Fixed
+- "Remove latest log" now always deletes the most recent log entry; previously it could delete an older entry when a log was added after the screen last loaded
+
+---
 ## [0.15.1] - 2026-06-21
 
 ### Fixed

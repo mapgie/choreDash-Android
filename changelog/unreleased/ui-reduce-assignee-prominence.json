@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Task owner badge is now smaller and hidden when the 'mine' filter is active, reducing visual noise"]
-}
