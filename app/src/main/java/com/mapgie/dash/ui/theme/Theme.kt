@@ -8,32 +8,38 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+/**
+ * Carries all nine HSL values for the custom colour theme so [DashTheme] can
+ * forward them to [buildCustomColorScheme] in one parameter.
+ */
+data class CustomHSL(
+    val primaryH: Float,   val primaryS: Float,   val primaryL: Float,
+    val secondaryH: Float, val secondaryS: Float, val secondaryL: Float,
+    val tertiaryH: Float,  val tertiaryS: Float,  val tertiaryL: Float,
+)
+
 @Composable
 fun DashTheme(
-    appTheme:   AppTheme = AppTheme.SYSTEM_DEFAULT,
-    darkTheme:  Boolean  = isSystemInDarkTheme(),
-    customHues: Triple<Float, Float, Float>? = null,
-    content:    @Composable () -> Unit,
+    appTheme:  AppTheme = AppTheme.SAGE,
+    darkTheme: Boolean  = isSystemInDarkTheme(),
+    customHSL: CustomHSL? = null,
+    content:   @Composable () -> Unit,
 ) {
-    val systemDark = isSystemInDarkTheme()
-
-    val colorScheme = if (appTheme == AppTheme.CUSTOM && customHues != null) {
+    val colorScheme = if (appTheme == AppTheme.CUSTOM && customHSL != null) {
         buildCustomColorScheme(
-            primaryHue   = customHues.first,
-            secondaryHue = customHues.second,
-            tertiaryHue  = customHues.third,
-            darkTheme    = darkTheme,
+            primaryH   = customHSL.primaryH,
+            primaryS   = customHSL.primaryS,
+            primaryL   = customHSL.primaryL,
+            secondaryH = customHSL.secondaryH,
+            secondaryS = customHSL.secondaryS,
+            secondaryL = customHSL.secondaryL,
+            tertiaryH  = customHSL.tertiaryH,
+            tertiaryS  = customHSL.tertiaryS,
+            tertiaryL  = customHSL.tertiaryL,
+            darkTheme  = darkTheme,
         )
     } else {
-        colorSchemeFor(appTheme, systemDark)
-    }
-
-    val effectivelyDark = when (appTheme) {
-        AppTheme.SYSTEM_DEFAULT,
-        AppTheme.CORAL_SYSTEM,
-        AppTheme.TEAL_SYSTEM -> systemDark
-        AppTheme.CUSTOM      -> darkTheme
-        else                 -> appTheme.isDark
+        colorSchemeFor(appTheme, darkTheme)
     }
 
     val view = LocalView.current
@@ -41,7 +47,7 @@ fun DashTheme(
         SideEffect {
             val window = (view.context as Activity).window
             WindowCompat.getInsetsController(window, view)
-                .isAppearanceLightStatusBars = !effectivelyDark
+                .isAppearanceLightStatusBars = !darkTheme
         }
     }
 

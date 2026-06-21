@@ -31,6 +31,7 @@ import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.navigation.DashNavGraph
 import com.mapgie.dash.ui.theme.AppTheme
+import com.mapgie.dash.ui.theme.CustomHSL
 import com.mapgie.dash.ui.theme.DashTheme
 import com.mapgie.dash.widget.WIDGET_DESTINATION_EXTRA
 import com.mapgie.dash.widget.WidgetUpdater
@@ -91,12 +92,22 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             val appTheme = settings?.let {
-                runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SYSTEM_DEFAULT)
-            } ?: AppTheme.SYSTEM_DEFAULT
-            val customHues = settings?.let {
-                Triple(it.customPrimaryHue, it.customSecondaryHue, it.customTertiaryHue)
+                runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SAGE)
+            } ?: AppTheme.SAGE
+            val customHSL = settings?.let {
+                CustomHSL(
+                    primaryH   = it.customPrimaryHue,
+                    primaryS   = it.customPrimarySaturation,
+                    primaryL   = it.customPrimaryLightness,
+                    secondaryH = it.customSecondaryHue,
+                    secondaryS = it.customSecondarySaturation,
+                    secondaryL = it.customSecondaryLightness,
+                    tertiaryH  = it.customTertiaryHue,
+                    tertiaryS  = it.customTertiarySaturation,
+                    tertiaryL  = it.customTertiaryLightness,
+                )
             }
-            DashTheme(appTheme = appTheme, darkTheme = darkTheme, customHues = customHues) {
+            DashTheme(appTheme = appTheme, darkTheme = darkTheme, customHSL = customHSL) {
                 // Hold blank screen until first DataStore emission (<10 ms)
                 // to avoid flashing wrong theme or credentials state.
                 if (settings == null) {

@@ -68,26 +68,40 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setAppTheme(theme.name) }
     }
 
-    /** Persists all three custom hues to DataStore. */
-    fun setCustomHues(primary: Float, secondary: Float, tertiary: Float) {
+    /** Persists all nine custom HSL values to DataStore. */
+    fun setCustomHSL(
+        primaryH: Float,   primaryS: Float,   primaryL: Float,
+        secondaryH: Float, secondaryS: Float, secondaryL: Float,
+        tertiaryH: Float,  tertiaryS: Float,  tertiaryL: Float,
+    ) {
         viewModelScope.launch {
-            settingsRepository.setCustomHues(primary, secondary, tertiary)
+            settingsRepository.setCustomHSL(
+                primaryH, primaryS, primaryL,
+                secondaryH, secondaryS, secondaryL,
+                tertiaryH, tertiaryS, tertiaryL,
+            )
         }
     }
 
     /**
-     * Saves the current custom hues as a new named theme profile.
+     * Saves the current custom HSL values as a new named theme profile.
      * Sets [customActiveProfileId] to the upserted row ID.
      */
     fun saveCustomColorTheme(name: String) {
         viewModelScope.launch {
             val s = settings.value ?: return@launch
             val theme = CustomColorTheme(
-                name         = name,
-                primaryHue   = s.customPrimaryHue,
-                secondaryHue = s.customSecondaryHue,
-                tertiaryHue  = s.customTertiaryHue,
-                mode         = "LIGHT",
+                name                 = name,
+                primaryHue           = s.customPrimaryHue,
+                primarySaturation    = s.customPrimarySaturation,
+                primaryLightness     = s.customPrimaryLightness,
+                secondaryHue         = s.customSecondaryHue,
+                secondarySaturation  = s.customSecondarySaturation,
+                secondaryLightness   = s.customSecondaryLightness,
+                tertiaryHue          = s.customTertiaryHue,
+                tertiarySaturation   = s.customTertiarySaturation,
+                tertiaryLightness    = s.customTertiaryLightness,
+                mode                 = "LIGHT",
             )
             val id = customColorThemeDao.upsert(theme)
             settingsRepository.setCustomActiveProfileId(id)
@@ -95,12 +109,16 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Loads a saved profile: writes its hues to DataStore, marks it as active,
+     * Loads a saved profile: writes its HSL values to DataStore, marks it as active,
      * and switches the app theme to [AppTheme.CUSTOM].
      */
     fun loadCustomColorTheme(theme: CustomColorTheme) {
         viewModelScope.launch {
-            settingsRepository.setCustomHues(theme.primaryHue, theme.secondaryHue, theme.tertiaryHue)
+            settingsRepository.setCustomHSL(
+                theme.primaryHue,   theme.primarySaturation,   theme.primaryLightness,
+                theme.secondaryHue, theme.secondarySaturation, theme.secondaryLightness,
+                theme.tertiaryHue,  theme.tertiarySaturation,  theme.tertiaryLightness,
+            )
             settingsRepository.setCustomActiveProfileId(theme.id)
             settingsRepository.setAppTheme(AppTheme.CUSTOM.name)
         }
@@ -108,14 +126,14 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Deletes a saved profile. If the deleted profile was active, resets
-     * [customActiveProfileId] to -1 and reverts the app theme to [AppTheme.SYSTEM_DEFAULT].
+     * [customActiveProfileId] to -1 and reverts the app theme to [AppTheme.SAGE].
      */
     fun deleteCustomColorTheme(theme: CustomColorTheme) {
         viewModelScope.launch {
             customColorThemeDao.delete(theme)
             if (settings.value?.customActiveProfileId == theme.id) {
                 settingsRepository.setCustomActiveProfileId(-1L)
-                settingsRepository.setAppTheme(AppTheme.SYSTEM_DEFAULT.name)
+                settingsRepository.setAppTheme(AppTheme.SAGE.name)
             }
         }
     }

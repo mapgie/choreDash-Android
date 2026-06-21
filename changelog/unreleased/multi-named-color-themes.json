@@ -1,0 +1,8 @@
+{
+  "bump": "minor",
+  "changed": [
+    "Theme palette picker now shows palette name only (Light/Dark/System is controlled by the mode toggle above)",
+    "Each palette card now shows primary, secondary, and tertiary colour swatches",
+    "Custom colour editor now exposes full HSL control (hue, saturation, lightness) per colour role"
+  ]
+}

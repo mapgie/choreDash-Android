@@ -40,7 +40,8 @@ import androidx.compose.ui.unit.dp
  * Compact theme picker showing a grid of palette cards and a custom HSL section.
  *
  * Palette cards use [Role.RadioButton] semantics (mutually exclusive single-select).
- * When [AppTheme.CUSTOM] is selected the three hue sliders are revealed via
+ * Each card shows three 14dp colour circles: primary, secondary, tertiary for that palette.
+ * When [AppTheme.CUSTOM] is selected the full HSL controls are revealed via
  * [AnimatedVisibility].
  */
 @Composable
@@ -48,19 +49,33 @@ fun CompactThemePicker(
     selectedTheme: AppTheme,
     onThemeSelected: (AppTheme) -> Unit,
     customPrimaryHue: Float,
+    customPrimarySaturation: Float,
+    customPrimaryLightness: Float,
     customSecondaryHue: Float,
+    customSecondarySaturation: Float,
+    customSecondaryLightness: Float,
     customTertiaryHue: Float,
-    onCustomHueChange: (primary: Float, secondary: Float, tertiary: Float) -> Unit,
+    customTertiarySaturation: Float,
+    customTertiaryLightness: Float,
+    onCustomHSLChange: (
+        pH: Float, pS: Float, pL: Float,
+        sH: Float, sS: Float, sL: Float,
+        tH: Float, tS: Float, tL: Float,
+    ) -> Unit,
     darkTheme: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    // All entries except CUSTOM are shown as palette cards.
-    val palettes = remember { AppTheme.entries.filter { it != AppTheme.CUSTOM } }
-    // Total items: standard palettes + 1 custom card
-    val totalItems = palettes.size + 1
+    // All entries are shown as palette cards (including CUSTOM).
+    val palettes = remember { AppTheme.entries.toList() }
+    val totalItems = palettes.size
     val rowCount = (totalItems + 2) / 3 // 3 columns
     // Each card is ~80dp tall, 8dp gap between rows
     val gridHeight = (rowCount * 80 + (rowCount - 1) * 8).dp
+
+    // Compute live custom preview colours from current HSL values
+    val customPrimaryColor   = Color.hsl(customPrimaryHue,   customPrimarySaturation,   customPrimaryLightness)
+    val customSecondaryColor = Color.hsl(customSecondaryHue, customSecondarySaturation, customSecondaryLightness)
+    val customTertiaryColor  = Color.hsl(customTertiaryHue,  customTertiarySaturation,  customTertiaryLightness)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -79,32 +94,40 @@ fun CompactThemePicker(
                 .height(gridHeight),
         ) {
             items(palettes, key = { it.name }) { theme ->
-                PaletteCard(
-                    theme = theme,
-                    isSelected = selectedTheme == theme,
-                    onClick = { onThemeSelected(theme) },
-                )
-            }
-
-            // Custom card at the end of the grid
-            item(key = "CUSTOM") {
-                PaletteCard(
-                    theme = AppTheme.CUSTOM,
-                    isSelected = selectedTheme == AppTheme.CUSTOM,
-                    onClick = { onThemeSelected(AppTheme.CUSTOM) },
-                    customPreviewColor = Color.hsl(customPrimaryHue, 0.5f, 0.45f),
-                )
+                if (theme == AppTheme.CUSTOM) {
+                    PaletteCard(
+                        theme = theme,
+                        isSelected = selectedTheme == AppTheme.CUSTOM,
+                        onClick = { onThemeSelected(AppTheme.CUSTOM) },
+                        darkTheme = darkTheme,
+                        customPrimaryColor = customPrimaryColor,
+                        customSecondaryColor = customSecondaryColor,
+                        customTertiaryColor = customTertiaryColor,
+                    )
+                } else {
+                    PaletteCard(
+                        theme = theme,
+                        isSelected = selectedTheme == theme,
+                        onClick = { onThemeSelected(theme) },
+                        darkTheme = darkTheme,
+                    )
+                }
             }
         }
 
-        // Custom hue sliders — only visible when CUSTOM is selected
+        // Custom HSL controls — only visible when CUSTOM is selected
         AnimatedVisibility(visible = selectedTheme == AppTheme.CUSTOM) {
-            CustomHueControls(
+            CustomHSLControls(
                 primaryHue = customPrimaryHue,
+                primarySaturation = customPrimarySaturation,
+                primaryLightness = customPrimaryLightness,
                 secondaryHue = customSecondaryHue,
+                secondarySaturation = customSecondarySaturation,
+                secondaryLightness = customSecondaryLightness,
                 tertiaryHue = customTertiaryHue,
-                darkTheme = darkTheme,
-                onHueChange = onCustomHueChange,
+                tertiarySaturation = customTertiarySaturation,
+                tertiaryLightness = customTertiaryLightness,
+                onHSLChange = onCustomHSLChange,
             )
         }
     }
@@ -115,9 +138,27 @@ private fun PaletteCard(
     theme: AppTheme,
     isSelected: Boolean,
     onClick: () -> Unit,
-    customPreviewColor: Color? = null,
+    darkTheme: Boolean,
+    customPrimaryColor: Color? = null,
+    customSecondaryColor: Color? = null,
+    customTertiaryColor: Color? = null,
 ) {
-    val swatchColor = customPreviewColor ?: Color(theme.previewArgb.toInt())
+    // Resolve the three swatch colours for this card
+    val primaryColor = when {
+        theme == AppTheme.CUSTOM && customPrimaryColor != null -> customPrimaryColor
+        darkTheme -> Color(theme.darkPrimaryArgb.toInt())
+        else      -> Color(theme.lightPrimaryArgb.toInt())
+    }
+    val secondaryColor = when {
+        theme == AppTheme.CUSTOM && customSecondaryColor != null -> customSecondaryColor
+        darkTheme -> Color(theme.darkSecondaryArgb.toInt())
+        else      -> Color(theme.lightSecondaryArgb.toInt())
+    }
+    val tertiaryColor = when {
+        theme == AppTheme.CUSTOM && customTertiaryColor != null -> customTertiaryColor
+        darkTheme -> Color(theme.darkTertiaryArgb.toInt())
+        else      -> Color(theme.lightTertiaryArgb.toInt())
+    }
 
     val borderModifier = if (isSelected) {
         Modifier.border(
@@ -151,12 +192,20 @@ private fun PaletteCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(swatchColor)
-                )
+                // Three small colour circles: primary, secondary, tertiary
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf(primaryColor, secondaryColor, tertiaryColor).forEach { colour ->
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(CircleShape)
+                                .background(colour)
+                        )
+                    }
+                }
                 if (isSelected) {
                     Icon(
                         Icons.Filled.Check,
@@ -180,19 +229,22 @@ private fun PaletteCard(
 }
 
 @Composable
-private fun CustomHueControls(
+private fun CustomHSLControls(
     primaryHue: Float,
+    primarySaturation: Float,
+    primaryLightness: Float,
     secondaryHue: Float,
+    secondarySaturation: Float,
+    secondaryLightness: Float,
     tertiaryHue: Float,
-    darkTheme: Boolean,
-    onHueChange: (primary: Float, secondary: Float, tertiary: Float) -> Unit,
+    tertiarySaturation: Float,
+    tertiaryLightness: Float,
+    onHSLChange: (
+        pH: Float, pS: Float, pL: Float,
+        sH: Float, sS: Float, sL: Float,
+        tH: Float, tS: Float, tL: Float,
+    ) -> Unit,
 ) {
-    // Live preview swatches derived from the current hues
-    val lightness = if (darkTheme) 0.70f else 0.40f
-    val primaryColor   = Color.hsl(primaryHue,   0.5f, lightness)
-    val secondaryColor = Color.hsl(secondaryHue, 0.4f, lightness)
-    val tertiaryColor  = Color.hsl(tertiaryHue,  0.4f, lightness)
-
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -200,81 +252,125 @@ private fun CustomHueControls(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Live preview row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Preview",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                listOf(primaryColor, secondaryColor, tertiaryColor).forEach { colour ->
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(colour)
-                    )
-                }
-            }
-
-            HueSliderRow(
-                label = "Primary hue",
+            // Primary colour group
+            HSLRoleGroup(
+                label = "Primary colour",
                 hue = primaryHue,
-                swatchColor = primaryColor,
-                onHueChange = { onHueChange(it, secondaryHue, tertiaryHue) },
+                saturation = primarySaturation,
+                lightness = primaryLightness,
+                onHueChange        = { onHSLChange(it, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+                onSaturationChange = { onHSLChange(primaryHue, it, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, it, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
             )
-            HueSliderRow(
-                label = "Secondary hue",
+            // Secondary colour group
+            HSLRoleGroup(
+                label = "Secondary colour",
                 hue = secondaryHue,
-                swatchColor = secondaryColor,
-                onHueChange = { onHueChange(primaryHue, it, tertiaryHue) },
+                saturation = secondarySaturation,
+                lightness = secondaryLightness,
+                onHueChange        = { onHSLChange(primaryHue, primarySaturation, primaryLightness, it, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+                onSaturationChange = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, it, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, it, tertiaryHue, tertiarySaturation, tertiaryLightness) },
             )
-            HueSliderRow(
-                label = "Tertiary hue",
+            // Tertiary colour group
+            HSLRoleGroup(
+                label = "Tertiary colour",
                 hue = tertiaryHue,
-                swatchColor = tertiaryColor,
-                onHueChange = { onHueChange(primaryHue, secondaryHue, it) },
+                saturation = tertiarySaturation,
+                lightness = tertiaryLightness,
+                onHueChange        = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, it, tertiarySaturation, tertiaryLightness) },
+                onSaturationChange = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, it, tertiaryLightness) },
+                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, it) },
             )
         }
     }
 }
 
+/**
+ * A grouped set of HSL sliders for one colour role (primary, secondary, or tertiary).
+ * Shows a live-preview swatch circle and three labelled sliders.
+ */
 @Composable
-private fun HueSliderRow(
+private fun HSLRoleGroup(
     label: String,
     hue: Float,
-    swatchColor: Color,
+    saturation: Float,
+    lightness: Float,
     onHueChange: (Float) -> Unit,
+    onSaturationChange: (Float) -> Unit,
+    onLightnessChange: (Float) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val previewColor = Color.hsl(hue, saturation, lightness)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Section label + live preview swatch
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .background(swatchColor)
+                    .background(previewColor)
             )
             Text(
-                "$label  ${hue.toInt()}°",
-                style = MaterialTheme.typography.labelSmall,
+                label,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Slider(
+
+        // Hue slider
+        HSLSliderRow(
+            label = "Hue ${hue.toInt()}°",
             value = hue,
-            onValueChange = onHueChange,
             valueRange = 0f..360f,
+            onValueChange = onHueChange,
+            contentDescription = "$label hue slider, ${hue.toInt()} degrees",
+        )
+        // Saturation slider
+        HSLSliderRow(
+            label = "Saturation ${(saturation * 100).toInt()}%",
+            value = saturation,
+            valueRange = 0f..1f,
+            onValueChange = onSaturationChange,
+            contentDescription = "$label saturation slider, ${(saturation * 100).toInt()} percent",
+        )
+        // Lightness slider
+        HSLSliderRow(
+            label = "Lightness ${(lightness * 100).toInt()}%",
+            value = lightness,
+            valueRange = 0f..1f,
+            onValueChange = onLightnessChange,
+            contentDescription = "$label lightness slider, ${(lightness * 100).toInt()} percent",
+        )
+    }
+}
+
+@Composable
+private fun HSLSliderRow(
+    label: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    contentDescription: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "$label slider, ${hue.toInt()} degrees" },
+                .semantics { this.contentDescription = contentDescription },
         )
     }
 }
