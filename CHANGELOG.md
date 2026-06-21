@@ -31,6 +31,14 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.14.1] - 2026-06-21
+
+### Changed
+- Chore cards show the last-scan date in normal view; the overdue/countdown text is now shown only when the bolt mode is active
+- Chore cards show a very subtle status-colour background tint in normal mode
+- Archived and distant-chore section toggle buttons use a subtler, label-style appearance
+
+---
 ## [0.14.0] - 2026-06-21
 
 ### Added
