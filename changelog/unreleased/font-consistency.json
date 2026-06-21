@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "Nunito and Lora fonts now render on the first frame by switching from the async programmatic Google Fonts API to XML font resources pre-warmed by the system launcher"
-  ]
-}
