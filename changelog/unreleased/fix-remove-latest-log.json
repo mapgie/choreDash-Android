@@ -1,0 +1,9 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "\"Remove latest log\" now always deletes the most recent log entry; previously it could delete an older entry when a log was added after the screen last loaded"
+  ],
+  "changed": [
+    "Renamed \"Remove last log\" to \"Remove latest log\" for clarity"
+  ]
+}
