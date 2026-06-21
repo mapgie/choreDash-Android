@@ -356,12 +356,18 @@ private fun AppearanceSubScreen(
     }
 
     val selectedAppTheme = settings?.let {
-        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SYSTEM_DEFAULT)
-    } ?: AppTheme.SYSTEM_DEFAULT
+        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SAGE)
+    } ?: AppTheme.SAGE
 
-    val customPrimaryHue   = settings?.customPrimaryHue   ?: 150f
-    val customSecondaryHue = settings?.customSecondaryHue ?: 120f
-    val customTertiaryHue  = settings?.customTertiaryHue  ?: 200f
+    val customPrimaryHue          = settings?.customPrimaryHue          ?: 150f
+    val customPrimarySaturation   = settings?.customPrimarySaturation   ?: 0.5f
+    val customPrimaryLightness    = settings?.customPrimaryLightness    ?: 0.4f
+    val customSecondaryHue        = settings?.customSecondaryHue        ?: 120f
+    val customSecondarySaturation = settings?.customSecondarySaturation ?: 0.4f
+    val customSecondaryLightness  = settings?.customSecondaryLightness  ?: 0.4f
+    val customTertiaryHue         = settings?.customTertiaryHue         ?: 200f
+    val customTertiarySaturation  = settings?.customTertiarySaturation  ?: 0.4f
+    val customTertiaryLightness   = settings?.customTertiaryLightness   ?: 0.4f
 
     val customColorThemes by viewModel.customColorThemes.collectAsState()
     val activeProfileId = settings?.customActiveProfileId ?: -1L
@@ -405,9 +411,17 @@ private fun AppearanceSubScreen(
                 selectedTheme = selectedAppTheme,
                 onThemeSelected = { viewModel.setAppTheme(it) },
                 customPrimaryHue = customPrimaryHue,
+                customPrimarySaturation = customPrimarySaturation,
+                customPrimaryLightness = customPrimaryLightness,
                 customSecondaryHue = customSecondaryHue,
+                customSecondarySaturation = customSecondarySaturation,
+                customSecondaryLightness = customSecondaryLightness,
                 customTertiaryHue = customTertiaryHue,
-                onCustomHueChange = { p, s, t -> viewModel.setCustomHues(p, s, t) },
+                customTertiarySaturation = customTertiarySaturation,
+                customTertiaryLightness = customTertiaryLightness,
+                onCustomHSLChange = { pH, pS, pL, sH, sS, sL, tH, tS, tL ->
+                    viewModel.setCustomHSL(pH, pS, pL, sH, sS, sL, tH, tS, tL)
+                },
                 darkTheme = darkTheme,
             )
 

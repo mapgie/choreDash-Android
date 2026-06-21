@@ -138,9 +138,9 @@ private fun SavedThemeRow(
     onDeleteRequest: () -> Unit,
     onLongPress: () -> Unit,
 ) {
-    val primaryColor   = Color.hsl(theme.primaryHue,   0.5f, 0.45f)
-    val secondaryColor = Color.hsl(theme.secondaryHue, 0.4f, 0.45f)
-    val tertiaryColor  = Color.hsl(theme.tertiaryHue,  0.4f, 0.45f)
+    val primaryColor   = Color.hsl(theme.primaryHue,   theme.primarySaturation,   theme.primaryLightness)
+    val secondaryColor = Color.hsl(theme.secondaryHue, theme.secondarySaturation, theme.secondaryLightness)
+    val tertiaryColor  = Color.hsl(theme.tertiaryHue,  theme.tertiarySaturation,  theme.tertiaryLightness)
 
     Surface(
         shape = RoundedCornerShape(12.dp),

@@ -8,36 +8,45 @@ import androidx.compose.ui.graphics.Color
 // ── AppTheme catalogue ────────────────────────────────────────────────────────
 //
 // Adding a new palette:
-//   1. Add enum entries here (LIGHT, DARK, SYSTEM triple).
+//   1. Add an enum entry here with light and dark preview ARGBs.
 //   2. Define private val color schemes below.
 //   3. Add branches to colorSchemeFor().
-//   4. Register in CompactThemePicker's StandardPalette enum.
 //
-// Do NOT rename existing enum entries — the name is persisted to DataStore.
+// The enum name is persisted to DataStore. Old per-mode entries
+// (SYSTEM_DEFAULT, SAGE_LIGHT, SAGE_DARK, CORAL_*, TEAL_*) are normalised
+// to the palette name in SettingsRepository for backward compatibility.
 
 enum class AppTheme(
     val displayName: String,
-    /** ARGB Long for the colour swatch in the picker. */
-    val previewArgb: Long,
-    val isDark: Boolean = false,
+    // Light-mode preview ARGBs (Long) for the 3 colour roles
+    val lightPrimaryArgb: Long,
+    val lightSecondaryArgb: Long,
+    val lightTertiaryArgb: Long,
+    // Dark-mode preview ARGBs
+    val darkPrimaryArgb: Long,
+    val darkSecondaryArgb: Long,
+    val darkTertiaryArgb: Long,
 ) {
-    // Sage (existing palette — default)
-    SYSTEM_DEFAULT("Sage (System)", 0xFF4A7C59L),
-    SAGE_LIGHT    ("Sage Light",    0xFF4A7C59L, isDark = false),
-    SAGE_DARK     ("Sage Dark",     0xFF9ED1ACL, isDark = true),
-
-    // Coral
-    CORAL_LIGHT   ("Coral Light",   0xFFC35040L, isDark = false),
-    CORAL_DARK    ("Coral Dark",    0xFFFFB4ABL, isDark = true),
-    CORAL_SYSTEM  ("Coral (System)",0xFFC35040L),
-
-    // Teal
-    TEAL_LIGHT    ("Teal Light",    0xFF00747CL, isDark = false),
-    TEAL_DARK     ("Teal Dark",     0xFF4DD8E0L, isDark = true),
-    TEAL_SYSTEM   ("Teal (System)", 0xFF00747CL),
-
-    // Custom HSL
-    CUSTOM        ("Custom",        0xFF888888L, isDark = false),
+    SAGE(
+        "Sage",
+        lightPrimaryArgb   = 0xFF4A7C59L, lightSecondaryArgb = 0xFF4E6355L, lightTertiaryArgb = 0xFF3A6472L,
+        darkPrimaryArgb    = 0xFF9ED1ACL, darkSecondaryArgb  = 0xFFB4CCBBL, darkTertiaryArgb  = 0xFFA2CEDAL,
+    ),
+    CORAL(
+        "Coral",
+        lightPrimaryArgb   = 0xFFC35040L, lightSecondaryArgb = 0xFF775652L, lightTertiaryArgb = 0xFF725C2EL,
+        darkPrimaryArgb    = 0xFFFFB4ABL, darkSecondaryArgb  = 0xFFE7BDB8L, darkTertiaryArgb  = 0xFFE3C07EL,
+    ),
+    TEAL(
+        "Teal",
+        lightPrimaryArgb   = 0xFF00747CL, lightSecondaryArgb = 0xFF4A6365L, lightTertiaryArgb = 0xFF4E6078L,
+        darkPrimaryArgb    = 0xFF4DD8E0L, darkSecondaryArgb  = 0xFFB1CBCDL, darkTertiaryArgb  = 0xFFB7C7E2L,
+    ),
+    CUSTOM(
+        "Custom",
+        lightPrimaryArgb   = 0xFF888888L, lightSecondaryArgb = 0xFF888888L, lightTertiaryArgb = 0xFF888888L,
+        darkPrimaryArgb    = 0xFF888888L, darkSecondaryArgb  = 0xFF888888L, darkTertiaryArgb  = 0xFF888888L,
+    ),
 }
 
 // ── Sage palette (seed: #4A7C59) ──────────────────────────────────────────────
@@ -309,98 +318,93 @@ private val TealDarkColors = darkColorScheme(
 
 // ── Colour scheme router ──────────────────────────────────────────────────────
 
-fun colorSchemeFor(appTheme: AppTheme, systemDark: Boolean): ColorScheme = when (appTheme) {
-    AppTheme.SYSTEM_DEFAULT -> if (systemDark) SageDarkColors else SageLightColors
-    AppTheme.SAGE_LIGHT     -> SageLightColors
-    AppTheme.SAGE_DARK      -> SageDarkColors
-    AppTheme.CORAL_LIGHT    -> CoralLightColors
-    AppTheme.CORAL_DARK     -> CoralDarkColors
-    AppTheme.CORAL_SYSTEM   -> if (systemDark) CoralDarkColors else CoralLightColors
-    AppTheme.TEAL_LIGHT     -> TealLightColors
-    AppTheme.TEAL_DARK      -> TealDarkColors
-    AppTheme.TEAL_SYSTEM    -> if (systemDark) TealDarkColors else TealLightColors
-    AppTheme.CUSTOM         -> SageLightColors // placeholder; caller must use buildCustomColorScheme
+fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean): ColorScheme = when (appTheme) {
+    AppTheme.SAGE   -> if (darkTheme) SageDarkColors   else SageLightColors
+    AppTheme.CORAL  -> if (darkTheme) CoralDarkColors  else CoralLightColors
+    AppTheme.TEAL   -> if (darkTheme) TealDarkColors   else TealLightColors
+    AppTheme.CUSTOM -> SageLightColors // placeholder; caller must use buildCustomColorScheme
 }
 
 // ── Custom HSL scheme builder ─────────────────────────────────────────────────
 
 /**
- * Builds a Material 3 [ColorScheme] from three HSL hues (0..360).
+ * Builds a Material 3 [ColorScheme] from three sets of HSL values (hue 0..360,
+ * saturation 0..1, lightness 0..1).
  *
- * Uses the standard Material tonal surface approach:
- * - Saturation and lightness are fixed by role to meet WCAG AA contrast.
- * - Dark scheme shifts lightness values to their dark-mode equivalents.
+ * The primary, secondary, and tertiary roles use the caller-supplied H/S/L directly
+ * for their main colour. Container, on-, surface, and outline tokens use fixed
+ * lightness offsets derived from the primary hue to meet WCAG AA contrast targets.
  */
 fun buildCustomColorScheme(
-    primaryHue: Float,
-    secondaryHue: Float,
-    tertiaryHue: Float,
+    primaryH: Float,   primaryS: Float,   primaryL: Float,
+    secondaryH: Float, secondaryS: Float, secondaryL: Float,
+    tertiaryH: Float,  tertiaryS: Float,  tertiaryL: Float,
     darkTheme: Boolean,
 ): ColorScheme {
     fun hsl(h: Float, s: Float, l: Float) = Color.hsl(h, s, l)
 
     return if (!darkTheme) {
         lightColorScheme(
-            primary                = hsl(primaryHue,   0.50f, 0.30f),
-            onPrimary              = hsl(primaryHue,   0.10f, 0.97f),
-            primaryContainer       = hsl(primaryHue,   0.60f, 0.90f),
-            onPrimaryContainer     = hsl(primaryHue,   0.50f, 0.12f),
-            secondary              = hsl(secondaryHue, 0.35f, 0.35f),
-            onSecondary            = hsl(secondaryHue, 0.10f, 0.97f),
-            secondaryContainer     = hsl(secondaryHue, 0.40f, 0.88f),
-            onSecondaryContainer   = hsl(secondaryHue, 0.35f, 0.12f),
-            tertiary               = hsl(tertiaryHue,  0.35f, 0.35f),
-            onTertiary             = hsl(tertiaryHue,  0.10f, 0.97f),
-            tertiaryContainer      = hsl(tertiaryHue,  0.40f, 0.88f),
-            onTertiaryContainer    = hsl(tertiaryHue,  0.35f, 0.12f),
+            primary                = hsl(primaryH,   primaryS,   primaryL),
+            onPrimary              = hsl(primaryH,   0.10f, 0.97f),
+            primaryContainer       = hsl(primaryH,   primaryS.coerceAtMost(0.60f), 0.90f),
+            onPrimaryContainer     = hsl(primaryH,   primaryS,   0.12f),
+            secondary              = hsl(secondaryH, secondaryS, secondaryL),
+            onSecondary            = hsl(secondaryH, 0.10f, 0.97f),
+            secondaryContainer     = hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
+            onSecondaryContainer   = hsl(secondaryH, secondaryS, 0.12f),
+            tertiary               = hsl(tertiaryH,  tertiaryS,  tertiaryL),
+            onTertiary             = hsl(tertiaryH,  0.10f, 0.97f),
+            tertiaryContainer      = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.40f), 0.88f),
+            onTertiaryContainer    = hsl(tertiaryH,  tertiaryS,  0.12f),
             error                  = Color(0xFFBA1A1A),
             errorContainer         = Color(0xFFFFDAD6),
             onError                = Color(0xFFFFFFFF),
             onErrorContainer       = Color(0xFF410002),
-            background             = hsl(primaryHue,   0.10f, 0.98f),
-            onBackground           = hsl(primaryHue,   0.10f, 0.10f),
-            surface                = hsl(primaryHue,   0.10f, 0.98f),
-            onSurface              = hsl(primaryHue,   0.10f, 0.10f),
-            surfaceVariant         = hsl(primaryHue,   0.20f, 0.88f),
-            onSurfaceVariant       = hsl(primaryHue,   0.15f, 0.25f),
-            outline                = hsl(primaryHue,   0.10f, 0.45f),
-            inverseOnSurface       = hsl(primaryHue,   0.10f, 0.93f),
-            inverseSurface         = hsl(primaryHue,   0.10f, 0.18f),
-            inversePrimary         = hsl(primaryHue,   0.55f, 0.75f),
-            surfaceTint            = hsl(primaryHue,   0.50f, 0.30f),
-            outlineVariant         = hsl(primaryHue,   0.15f, 0.75f),
+            background             = hsl(primaryH,   0.10f, 0.98f),
+            onBackground           = hsl(primaryH,   0.10f, 0.10f),
+            surface                = hsl(primaryH,   0.10f, 0.98f),
+            onSurface              = hsl(primaryH,   0.10f, 0.10f),
+            surfaceVariant         = hsl(primaryH,   0.20f, 0.88f),
+            onSurfaceVariant       = hsl(primaryH,   0.15f, 0.25f),
+            outline                = hsl(primaryH,   0.10f, 0.45f),
+            inverseOnSurface       = hsl(primaryH,   0.10f, 0.93f),
+            inverseSurface         = hsl(primaryH,   0.10f, 0.18f),
+            inversePrimary         = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
+            surfaceTint            = hsl(primaryH,   primaryS,   primaryL),
+            outlineVariant         = hsl(primaryH,   0.15f, 0.75f),
             scrim                  = Color(0xFF000000),
         )
     } else {
         darkColorScheme(
-            primary                = hsl(primaryHue,   0.55f, 0.75f),
-            onPrimary              = hsl(primaryHue,   0.50f, 0.14f),
-            primaryContainer       = hsl(primaryHue,   0.40f, 0.22f),
-            onPrimaryContainer     = hsl(primaryHue,   0.60f, 0.90f),
-            secondary              = hsl(secondaryHue, 0.35f, 0.72f),
-            onSecondary            = hsl(secondaryHue, 0.30f, 0.14f),
-            secondaryContainer     = hsl(secondaryHue, 0.25f, 0.22f),
-            onSecondaryContainer   = hsl(secondaryHue, 0.40f, 0.88f),
-            tertiary               = hsl(tertiaryHue,  0.35f, 0.72f),
-            onTertiary             = hsl(tertiaryHue,  0.30f, 0.14f),
-            tertiaryContainer      = hsl(tertiaryHue,  0.25f, 0.22f),
-            onTertiaryContainer    = hsl(tertiaryHue,  0.40f, 0.88f),
+            primary                = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
+            onPrimary              = hsl(primaryH,   primaryS,   0.14f),
+            primaryContainer       = hsl(primaryH,   primaryS.coerceAtMost(0.40f), 0.22f),
+            onPrimaryContainer     = hsl(primaryH,   primaryS.coerceAtMost(0.60f), 0.90f),
+            secondary              = hsl(secondaryH, secondaryS.coerceAtMost(0.35f), 0.72f),
+            onSecondary            = hsl(secondaryH, secondaryS, 0.14f),
+            secondaryContainer     = hsl(secondaryH, secondaryS.coerceAtMost(0.25f), 0.22f),
+            onSecondaryContainer   = hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
+            tertiary               = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.35f), 0.72f),
+            onTertiary             = hsl(tertiaryH,  tertiaryS,  0.14f),
+            tertiaryContainer      = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.25f), 0.22f),
+            onTertiaryContainer    = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.40f), 0.88f),
             error                  = Color(0xFFFFB4AB),
             errorContainer         = Color(0xFF93000A),
             onError                = Color(0xFF690005),
             onErrorContainer       = Color(0xFFFFDAD6),
-            background             = hsl(primaryHue,   0.10f, 0.10f),
-            onBackground           = hsl(primaryHue,   0.10f, 0.88f),
-            surface                = hsl(primaryHue,   0.10f, 0.10f),
-            onSurface              = hsl(primaryHue,   0.10f, 0.88f),
-            surfaceVariant         = hsl(primaryHue,   0.15f, 0.25f),
-            onSurfaceVariant       = hsl(primaryHue,   0.15f, 0.75f),
-            outline                = hsl(primaryHue,   0.10f, 0.55f),
-            inverseOnSurface       = hsl(primaryHue,   0.10f, 0.10f),
-            inverseSurface         = hsl(primaryHue,   0.10f, 0.88f),
-            inversePrimary         = hsl(primaryHue,   0.50f, 0.30f),
-            surfaceTint            = hsl(primaryHue,   0.55f, 0.75f),
-            outlineVariant         = hsl(primaryHue,   0.15f, 0.25f),
+            background             = hsl(primaryH,   0.10f, 0.10f),
+            onBackground           = hsl(primaryH,   0.10f, 0.88f),
+            surface                = hsl(primaryH,   0.10f, 0.10f),
+            onSurface              = hsl(primaryH,   0.10f, 0.88f),
+            surfaceVariant         = hsl(primaryH,   0.15f, 0.25f),
+            onSurfaceVariant       = hsl(primaryH,   0.15f, 0.75f),
+            outline                = hsl(primaryH,   0.10f, 0.55f),
+            inverseOnSurface       = hsl(primaryH,   0.10f, 0.10f),
+            inverseSurface         = hsl(primaryH,   0.10f, 0.88f),
+            inversePrimary         = hsl(primaryH,   primaryS,   0.30f),
+            surfaceTint            = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
+            outlineVariant         = hsl(primaryH,   0.15f, 0.25f),
             scrim                  = Color(0xFF000000),
         )
     }

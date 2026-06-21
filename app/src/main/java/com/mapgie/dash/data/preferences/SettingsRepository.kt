@@ -24,12 +24,18 @@ data class AppSettings(
     val zenMode: Boolean = false,
     val showDueCountdown: Boolean = false,
     val deliveryMode: String = "NOTIFICATION",
-    // Colour theme selection — name of AppTheme enum entry
-    val appTheme: String = "SYSTEM_DEFAULT",
-    // Custom HSL hues for AppTheme.CUSTOM
+    // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
+    val appTheme: String = "SAGE",
+    // Custom HSL values for AppTheme.CUSTOM
     val customPrimaryHue: Float = 150f,
+    val customPrimarySaturation: Float = 0.5f,
+    val customPrimaryLightness: Float = 0.4f,
     val customSecondaryHue: Float = 120f,
+    val customSecondarySaturation: Float = 0.4f,
+    val customSecondaryLightness: Float = 0.4f,
     val customTertiaryHue: Float = 200f,
+    val customTertiarySaturation: Float = 0.4f,
+    val customTertiaryLightness: Float = 0.4f,
     // ID of the active saved custom colour profile (-1 = none)
     val customActiveProfileId: Long = -1L,
 )
@@ -39,38 +45,56 @@ class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private object Keys {
-        val SUPABASE_URL               = stringPreferencesKey("supabase_url")
-        val SUPABASE_KEY               = stringPreferencesKey("supabase_key")
-        val OWNER_HANDLE               = stringPreferencesKey("owner_handle")
-        val THEME_MODE                 = stringPreferencesKey("theme_mode")
-        val ZEN_MODE                   = booleanPreferencesKey("zen_mode")
-        val SHOW_DUE_COUNTDOWN         = booleanPreferencesKey("show_due_countdown")
-        val DELIVERY_MODE              = stringPreferencesKey("delivery_mode")
-        val APP_THEME                  = stringPreferencesKey("app_theme")
-        val CUSTOM_PRIMARY_HUE         = floatPreferencesKey("custom_primary_hue")
-        val CUSTOM_SECONDARY_HUE       = floatPreferencesKey("custom_secondary_hue")
-        val CUSTOM_TERTIARY_HUE        = floatPreferencesKey("custom_tertiary_hue")
-        val CUSTOM_ACTIVE_PROFILE_ID   = longPreferencesKey("custom_active_profile_id")
+        val SUPABASE_URL                   = stringPreferencesKey("supabase_url")
+        val SUPABASE_KEY                   = stringPreferencesKey("supabase_key")
+        val OWNER_HANDLE                   = stringPreferencesKey("owner_handle")
+        val THEME_MODE                     = stringPreferencesKey("theme_mode")
+        val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
+        val SHOW_DUE_COUNTDOWN             = booleanPreferencesKey("show_due_countdown")
+        val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
+        val APP_THEME                      = stringPreferencesKey("app_theme")
+        val CUSTOM_PRIMARY_HUE             = floatPreferencesKey("custom_primary_hue")
+        val CUSTOM_PRIMARY_SATURATION      = floatPreferencesKey("custom_primary_saturation")
+        val CUSTOM_PRIMARY_LIGHTNESS       = floatPreferencesKey("custom_primary_lightness")
+        val CUSTOM_SECONDARY_HUE           = floatPreferencesKey("custom_secondary_hue")
+        val CUSTOM_SECONDARY_SATURATION    = floatPreferencesKey("custom_secondary_saturation")
+        val CUSTOM_SECONDARY_LIGHTNESS     = floatPreferencesKey("custom_secondary_lightness")
+        val CUSTOM_TERTIARY_HUE            = floatPreferencesKey("custom_tertiary_hue")
+        val CUSTOM_TERTIARY_SATURATION     = floatPreferencesKey("custom_tertiary_saturation")
+        val CUSTOM_TERTIARY_LIGHTNESS      = floatPreferencesKey("custom_tertiary_lightness")
+        val CUSTOM_ACTIVE_PROFILE_ID       = longPreferencesKey("custom_active_profile_id")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
         .map { prefs ->
             AppSettings(
-                supabaseUrl             = prefs[Keys.SUPABASE_URL] ?: "",
-                supabaseKey             = prefs[Keys.SUPABASE_KEY] ?: "",
-                ownerHandle             = prefs[Keys.OWNER_HANDLE] ?: "",
-                themeMode               = prefs[Keys.THEME_MODE]
+                supabaseUrl                 = prefs[Keys.SUPABASE_URL] ?: "",
+                supabaseKey                 = prefs[Keys.SUPABASE_KEY] ?: "",
+                ownerHandle                 = prefs[Keys.OWNER_HANDLE] ?: "",
+                themeMode                   = prefs[Keys.THEME_MODE]
                     ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                     ?: ThemeMode.SYSTEM,
-                zenMode                 = prefs[Keys.ZEN_MODE] ?: false,
-                showDueCountdown        = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
-                deliveryMode            = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
-                appTheme                = prefs[Keys.APP_THEME] ?: "SYSTEM_DEFAULT",
-                customPrimaryHue        = prefs[Keys.CUSTOM_PRIMARY_HUE] ?: 150f,
-                customSecondaryHue      = prefs[Keys.CUSTOM_SECONDARY_HUE] ?: 120f,
-                customTertiaryHue       = prefs[Keys.CUSTOM_TERTIARY_HUE] ?: 200f,
-                customActiveProfileId   = prefs[Keys.CUSTOM_ACTIVE_PROFILE_ID] ?: -1L,
+                zenMode                     = prefs[Keys.ZEN_MODE] ?: false,
+                showDueCountdown            = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
+                deliveryMode                = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
+                // Normalise old per-mode entries to palette names for backward compatibility
+                appTheme                    = when (val raw = prefs[Keys.APP_THEME] ?: "SAGE") {
+                    "SYSTEM_DEFAULT", "SAGE_LIGHT", "SAGE_DARK" -> "SAGE"
+                    "CORAL_LIGHT", "CORAL_DARK", "CORAL_SYSTEM" -> "CORAL"
+                    "TEAL_LIGHT", "TEAL_DARK", "TEAL_SYSTEM"   -> "TEAL"
+                    else -> raw
+                },
+                customPrimaryHue            = prefs[Keys.CUSTOM_PRIMARY_HUE] ?: 150f,
+                customPrimarySaturation     = prefs[Keys.CUSTOM_PRIMARY_SATURATION] ?: 0.5f,
+                customPrimaryLightness      = prefs[Keys.CUSTOM_PRIMARY_LIGHTNESS] ?: 0.4f,
+                customSecondaryHue          = prefs[Keys.CUSTOM_SECONDARY_HUE] ?: 120f,
+                customSecondarySaturation   = prefs[Keys.CUSTOM_SECONDARY_SATURATION] ?: 0.4f,
+                customSecondaryLightness    = prefs[Keys.CUSTOM_SECONDARY_LIGHTNESS] ?: 0.4f,
+                customTertiaryHue           = prefs[Keys.CUSTOM_TERTIARY_HUE] ?: 200f,
+                customTertiarySaturation    = prefs[Keys.CUSTOM_TERTIARY_SATURATION] ?: 0.4f,
+                customTertiaryLightness     = prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS] ?: 0.4f,
+                customActiveProfileId       = prefs[Keys.CUSTOM_ACTIVE_PROFILE_ID] ?: -1L,
             )
         }
 
@@ -102,11 +126,21 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[Keys.APP_THEME] = theme }
     }
 
-    suspend fun setCustomHues(primaryHue: Float, secondaryHue: Float, tertiaryHue: Float) {
+    suspend fun setCustomHSL(
+        primaryH: Float,   primaryS: Float,   primaryL: Float,
+        secondaryH: Float, secondaryS: Float, secondaryL: Float,
+        tertiaryH: Float,  tertiaryS: Float,  tertiaryL: Float,
+    ) {
         context.dataStore.edit { prefs ->
-            prefs[Keys.CUSTOM_PRIMARY_HUE]   = primaryHue
-            prefs[Keys.CUSTOM_SECONDARY_HUE] = secondaryHue
-            prefs[Keys.CUSTOM_TERTIARY_HUE]  = tertiaryHue
+            prefs[Keys.CUSTOM_PRIMARY_HUE]          = primaryH
+            prefs[Keys.CUSTOM_PRIMARY_SATURATION]   = primaryS
+            prefs[Keys.CUSTOM_PRIMARY_LIGHTNESS]    = primaryL
+            prefs[Keys.CUSTOM_SECONDARY_HUE]        = secondaryH
+            prefs[Keys.CUSTOM_SECONDARY_SATURATION] = secondaryS
+            prefs[Keys.CUSTOM_SECONDARY_LIGHTNESS]  = secondaryL
+            prefs[Keys.CUSTOM_TERTIARY_HUE]         = tertiaryH
+            prefs[Keys.CUSTOM_TERTIARY_SATURATION]  = tertiaryS
+            prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS]   = tertiaryL
         }
     }
 
