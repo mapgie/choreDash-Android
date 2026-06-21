@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoNotDisturbOn
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,7 +56,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -372,7 +370,16 @@ private fun AppearanceSubScreen(
     val customColorThemes by viewModel.customColorThemes.collectAsState()
     val activeProfileId = settings?.customActiveProfileId ?: -1L
 
-    var showSaveDialog by rememberSaveable { mutableStateOf(false) }
+    var themeName by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(activeProfileId) {
+        if (activeProfileId != -1L) {
+            val active = customColorThemes.find { it.id == activeProfileId }
+            if (active != null) themeName = active.name
+        } else {
+            themeName = "Theme ${customColorThemes.size + 1}"
+        }
+    }
 
     SettingsSubScreenScaffold(title = "Appearance", onBack = onBack) { innerPadding ->
         Column(
@@ -425,13 +432,41 @@ private fun AppearanceSubScreen(
                 darkTheme = darkTheme,
             )
 
-            // ── Save current custom theme ─────────────────────────────────────
-            OutlinedButton(
-                onClick = { showSaveDialog = true },
-                enabled = selectedAppTheme == AppTheme.CUSTOM,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Save current theme")
+            // ── Save section (visible only when custom palette is active) ─────
+            if (selectedAppTheme == AppTheme.CUSTOM) {
+                HorizontalDivider()
+                Text(
+                    "Save theme",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = themeName,
+                    onValueChange = { themeName = it },
+                    label = { Text("Theme name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (activeProfileId != -1L) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { if (themeName.isNotBlank()) viewModel.saveCustomColorTheme(themeName.trim()) },
+                            enabled = themeName.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Save as new") }
+                        Button(
+                            onClick = { if (themeName.isNotBlank()) viewModel.updateCustomColorTheme(themeName.trim()) },
+                            enabled = themeName.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Update") }
+                    }
+                } else {
+                    Button(
+                        onClick = { if (themeName.isNotBlank()) viewModel.saveCustomColorTheme(themeName.trim()) },
+                        enabled = themeName.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Save") }
+                }
             }
 
             // ── Saved themes list ─────────────────────────────────────────────
@@ -455,54 +490,6 @@ private fun AppearanceSubScreen(
         }
     }
 
-    // ── Save dialog ───────────────────────────────────────────────────────────
-    if (showSaveDialog) {
-        SaveThemeDialog(
-            onConfirm = { name ->
-                viewModel.saveCustomColorTheme(name)
-                showSaveDialog = false
-            },
-            onDismiss = { showSaveDialog = false },
-        )
-    }
-}
-
-@Composable
-private fun SaveThemeDialog(
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf("My Theme") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Save theme") },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Theme name") },
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
-                enabled = name.isNotBlank(),
-                modifier = Modifier.semantics { role = Role.Button },
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.semantics { role = Role.Button },
-            ) {
-                Text("Cancel")
-            }
-        },
-    )
 }
 
 @Composable
