@@ -304,13 +304,15 @@ fun ChoreListScreen(
                                 item {
                                     TextButton(
                                         onClick = { viewModel.toggleShowDistant() },
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                     ) {
                                         Text(
                                             if (uiState.showDistant)
                                                 "Hide distant (${distantChores.size})"
                                             else
-                                                "${distantChores.size} not due for 60+ days"
+                                                "${distantChores.size} not due for 60+ days",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -334,13 +336,15 @@ fun ChoreListScreen(
                                 item {
                                     TextButton(
                                         onClick = { showArchivedSection = !showArchivedSection },
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                     ) {
                                         Text(
                                             if (showArchivedSection)
                                                 "Hide archived (${uiState.archived.size})"
                                             else
-                                                "Show archived (${uiState.archived.size})"
+                                                "Show archived (${uiState.archived.size})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
