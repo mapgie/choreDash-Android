@@ -61,64 +61,88 @@ fun TaskOverviewSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = 24.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    if (task.category != null) {
-                        Text(
-                            task.category.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(task.title, style = MaterialTheme.typography.titleMedium)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isPinned) {
-                        Text(
-                            "Pinned to widget",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    IconButton(
-                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(taskCalendarInfo(task))) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Add to calendar"
-                            role = Role.Button
-                        }
-                    ) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = { onTogglePin(task) }) {
-                        Icon(
-                            imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = if (isPinned) "Unpin from widget" else "Pin to widget",
-                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+            // 24dp after drag handle
+            Spacer(Modifier.height(24.dp))
+
+            // Category eyebrow
+            if (task.category != null) {
+                Text(
+                    task.category.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // 4dp between eyebrow and title
+                Spacer(Modifier.height(4.dp))
             }
 
+            // Main title — visual anchor
+            Text(
+                task.title,
+                style = MaterialTheme.typography.headlineLarge
+            )
+
+            // 8dp between title and metadata
+            Spacer(Modifier.height(8.dp))
+
+            // Status metadata
             statusText(task)?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
+            // Action chips: Calendar + Pin grouped together
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                SuggestionChip(
+                    onClick = {
+                        context.startActivity(
+                            CalendarShareUtils.buildAddToCalendarIntent(taskCalendarInfo(task))
+                        )
+                    },
+                    label = { Text("Calendar") },
+                    icon = {
+                        Icon(
+                            Icons.Filled.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Add to calendar"
+                        role = Role.Button
+                    }
+                )
+                SuggestionChip(
+                    onClick = { onTogglePin(task) },
+                    label = { Text(if (isPinned) "Unpin" else "Pin") },
+                    icon = {
+                        Icon(
+                            imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = null,
+                            tint = if (isPinned) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = if (isPinned) "Unpin from widget" else "Pin to widget"
+                        role = Role.Button
+                    }
+                )
+            }
+
+            // 24dp between body and actions
+            Spacer(Modifier.height(24.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = { hideAndDismiss() },
@@ -141,6 +165,9 @@ fun TaskOverviewSheet(
                     Text(if (isDone) "Restore task" else "Mark done")
                 }
             }
+
+            // 8dp between primary and secondary actions
+            Spacer(Modifier.height(8.dp))
 
             TextButton(
                 onClick = {
