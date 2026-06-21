@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Nunito and Lora fonts now render correctly: font XML descriptors were using the appcompat namespace (app:) which Android 8+ ignores; switched to the native android: namespace so the system font resolver can find them",
+    "Chore slug tag displayed in monospace to visually distinguish it from the chore name"
+  ]
+}
