@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
@@ -43,7 +44,8 @@ fun ChoreCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (zenMode) MaterialTheme.colorScheme.surface
+                             else lerp(MaterialTheme.colorScheme.surface, statusColor, 0.07f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -103,23 +105,36 @@ fun ChoreCard(
                             )
                         }
                         else -> {
-                            val dueText = chore.nextDueText()
-                            if (dueText != null) {
+                            if (showDueCountdown) {
+                                val dueText = chore.nextDueText()
+                                if (dueText != null) {
+                                    Text(
+                                        dueText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = dateColor
+                                    )
+                                    Text(
+                                        relativeTime(chore.lastScanned),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        relativeTime(chore.lastScanned),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dateColor
+                                    )
+                                }
+                            } else {
                                 Text(
-                                    dueText,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    formatAbsoluteDate(chore.lastScanned),
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = dateColor
                                 )
                                 Text(
                                     relativeTime(chore.lastScanned),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else {
-                                Text(
-                                    relativeTime(chore.lastScanned),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = dateColor
                                 )
                             }
                         }

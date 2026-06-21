@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Chore cards show the last-scan date in normal view; the overdue/countdown text is now shown only when the bolt mode is active"]
+}

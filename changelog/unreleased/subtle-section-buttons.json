@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Archived and distant-chore section toggle buttons use a subtler, label-style appearance"]
+}
