@@ -205,7 +205,8 @@ fun TaskListScreen(
                                         onLongPress = { editingTask = it; showTaskSheet = true },
                                         onToggleDone = { viewModel.markDone(task.id) },
                                         onSwipeToggleDone = { viewModel.markDone(task.id) },
-                                        showCategory = false
+                                        showCategory = false,
+                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
                                     )
                                 }
                             }
@@ -217,7 +218,8 @@ fun TaskListScreen(
                                     onLongPress = { editingTask = it; showTaskSheet = true },
                                     onToggleDone = { viewModel.markDone(task.id) },
                                     onSwipeToggleDone = { viewModel.markDone(task.id) },
-                                    showCategory = !uiState.groupByCategory
+                                    showCategory = !uiState.groupByCategory,
+                                    showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
                                 )
                             }
                         }
@@ -252,7 +254,8 @@ fun TaskListScreen(
                                         onLongPress = { editingTask = it; showTaskSheet = true },
                                         onToggleDone = { viewModel.markUndone(task.id) },
                                         onSwipeToggleDone = { viewModel.markUndone(task.id) },
-                                        showCategory = !uiState.groupByCategory
+                                        showCategory = !uiState.groupByCategory,
+                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
                                     )
                                 }
                             }
@@ -304,7 +307,8 @@ private fun SwipeToCompleteCard(
     onLongPress: (TaskDto) -> Unit,
     onToggleDone: () -> Unit,
     onSwipeToggleDone: () -> Unit,
-    showCategory: Boolean = true
+    showCategory: Boolean = true,
+    showOwner: Boolean = true
 ) {
     val isDone = task.completedAt != null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -344,6 +348,7 @@ private fun SwipeToCompleteCard(
             task = task,
             onToggleDone = onToggleDone,
             showCategory = showCategory,
+            showOwner = showOwner,
             modifier = Modifier
                 .padding(horizontal = 12.dp)
                 .semantics { role = Role.Button }

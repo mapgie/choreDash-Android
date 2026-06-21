@@ -48,7 +48,8 @@ fun TaskCard(
     task: TaskDto,
     onToggleDone: () -> Unit,
     showCategory: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showOwner: Boolean = true
 ) {
     val isDone = task.completedAt != null
     val priorityColor = when (task.priorityEnum()) {
@@ -132,13 +133,13 @@ fun TaskCard(
                 }
             }
             // Owner badge
-            task.owner?.takeIf { it.isNotBlank() }?.let { owner ->
+            task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .align(Alignment.CenterVertically)
-                        .size(28.dp)
+                        .size(20.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primaryContainer)
                 ) {
