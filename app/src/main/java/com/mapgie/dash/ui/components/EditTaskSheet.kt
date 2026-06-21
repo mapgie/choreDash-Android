@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.components
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,10 +38,13 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -85,6 +89,7 @@ fun EditTaskSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val is24Hour = remember { DateFormat.is24HourFormat(context) }
     var showShareChoice by remember { mutableStateOf(false) }
 
     var title by remember { mutableStateOf(task?.title ?: "") }
@@ -121,9 +126,10 @@ fun EditTaskSheet(
                 ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
         )
     }
-    var reminderHour by remember { mutableStateOf(reminderBase.hour.toString().padStart(2, '0')) }
-    var reminderMinute by remember { mutableStateOf(reminderBase.minute.toString().padStart(2, '0')) }
+    var reminderHour by remember { mutableIntStateOf(reminderBase.hour) }
+    var reminderMinute by remember { mutableIntStateOf(reminderBase.minute) }
     var showReminderDatePicker by remember { mutableStateOf(false) }
+    var showReminderTimePicker by remember { mutableStateOf(false) }
     val reminderPickerState = rememberDatePickerState(
         initialSelectedDateMillis = reminderBase.toInstant().toEpochMilli()
     )
@@ -134,9 +140,7 @@ fun EditTaskSheet(
 
     fun resolvedReminderInstant(): String? {
         if (!reminderEnabled) return null
-        val h = reminderHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
-        val m = reminderMinute.toIntOrNull()?.coerceIn(0, 59) ?: 0
-        return reminderBase.withHour(h).withMinute(m).withSecond(0).withNano(0).toInstant().toString()
+        return reminderBase.withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0).toInstant().toString()
     }
 
     fun buildInsert() = TaskInsert(
@@ -455,24 +459,11 @@ fun EditTaskSheet(
                         Text(reminderBase.format(DateTimeFormatter.ofPattern("MMM d, yyyy")))
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    OutlinedButton(
+                        onClick = { showReminderTimePicker = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        OutlinedTextField(
-                            value = reminderHour,
-                            onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) reminderHour = it },
-                            label = { Text("HH") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = reminderMinute,
-                            onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) reminderMinute = it },
-                            label = { Text("MM") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Text("%02d:%02d".format(reminderHour, reminderMinute))
                     }
                 }
             }
@@ -540,11 +531,9 @@ fun EditTaskSheet(
             confirmButton = {
                 TextButton(onClick = {
                     reminderPickerState.selectedDateMillis?.let { millis ->
-                        val h = reminderHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
-                        val m = reminderMinute.toIntOrNull()?.coerceIn(0, 59) ?: 0
                         reminderBase = Instant.ofEpochMilli(millis)
                             .atZone(ZoneId.systemDefault())
-                            .withHour(h).withMinute(m).withSecond(0).withNano(0)
+                            .withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0)
                     }
                     showReminderDatePicker = false
                 }) { Text("OK") }
@@ -574,4 +563,44 @@ fun EditTaskSheet(
             }
         )
     }
+
+    if (showReminderTimePicker) {
+        TimePickerDialog(
+            initialHour = reminderHour,
+            initialMinute = reminderMinute,
+            is24Hour = is24Hour,
+            onConfirm = { h, m ->
+                reminderHour = h
+                reminderMinute = m
+                showReminderTimePicker = false
+            },
+            onDismiss = { showReminderTimePicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    is24Hour: Boolean,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = is24Hour
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        text = { TimePicker(state = state) }
+    )
 }
