@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.4] - 2026-06-22
+
+### Fixed
+- App no longer crashes on launch on devices where the Google Fonts provider is slow to respond or unavailable (non-GMS devices, restricted work profiles). Nunito and Lora are now bundled with the app instead of downloaded at runtime, so fonts always load regardless of network or GMS availability.
+
+---
 ## [0.15.3] - 2026-06-22
 
 ### Fixed
