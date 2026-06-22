@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Corrected CHANGELOG.md: removed duplicate v0.14.1 header and deleted entries for intermediate font-fix attempts that were superseded by v0.15.4. No user-visible change."
+  ]
+}
