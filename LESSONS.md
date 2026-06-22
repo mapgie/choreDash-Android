@@ -424,7 +424,7 @@ never trust a cached ID when freshness matters.
 
 ---
 
-## 20. Card date display: make the status date prominent, the history date subtle
+## 22. Card date display: make the status date prominent, the history date subtle
 
 When a card shows two dates, one representing current status (e.g. due date)
 and one representing history (e.g. last done), give them clearly different
@@ -448,7 +448,7 @@ produces the centred alignment without extra padding arithmetic.
 
 ---
 
-## 21. Downloadable font XMLs must use the `app:` (AppCompat) namespace, not `android:`
+## 23. Downloadable font XMLs must use the `app:` (AppCompat) namespace, not `android:`
 
 Font XML descriptors that reference a Google Fonts provider (downloadable fonts) must
 declare attributes in the `app:` namespace (`xmlns:app="http://schemas.android.com/apk/res-auto"`),
@@ -475,3 +475,27 @@ API levels this returns a null Typeface that causes a crash at the first Compose
 
 The `android:` namespace is correct for *static* font files listed via `<font>` child elements
 inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:`.
+
+---
+
+## 24. AppWidget receivers must be `android:exported="true"`
+
+AppWidget broadcast receivers need `android:exported="true"` even though they look like
+internal components. The system (OS) sends `APPWIDGET_UPDATE` from a different process/UID,
+and on Android 12+ (API 31+, targetSdk >= 31) `exported=false` blocks that delivery entirely.
+
+```xml
+<!-- Correct -->
+<receiver android:name=".widget.MyWidgetReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider"
+        android:resource="@xml/my_widget_info" />
+</receiver>
+```
+
+With `exported=false`, the widget can be added to the home screen but never renders or
+updates — the system silently drops the update broadcast. The bug is invisible at install
+time and easy to miss in testing if you don't explicitly verify widget refresh.

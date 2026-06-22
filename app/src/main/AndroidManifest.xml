@@ -40,7 +40,7 @@
         </receiver>
         <receiver android:name=".widget.QuickAddTaskWidgetReceiver"
             android:label="@string/widget_quick_add_label"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -49,7 +49,7 @@
         </receiver>
         <receiver android:name=".widget.NextUpWidgetReceiver"
             android:label="@string/widget_next_up_label"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -58,7 +58,7 @@
         </receiver>
         <receiver android:name=".widget.PinnedItemWidgetReceiver"
             android:label="@string/widget_pinned_item_label"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
