@@ -448,33 +448,46 @@ produces the centred alignment without extra padding arithmetic.
 
 ---
 
-## 23. Downloadable font XMLs must use the `app:` (AppCompat) namespace, not `android:`
+## 23. Prefer bundled font files over downloadable fonts for app typefaces
 
-Font XML descriptors that reference a Google Fonts provider (downloadable fonts) must
-declare attributes in the `app:` namespace (`xmlns:app="http://schemas.android.com/apk/res-auto"`),
-not the native `android:` namespace:
+If a font is part of the app's visual identity (used on every screen), bundle the `.ttf`
+files in `res/font/` rather than using the GMS downloadable font provider. Downloadable fonts
+introduce a fragile dependency on GMS availability and a race between provider response time
+and the first Compose frame. Bundled fonts are always available, load synchronously without
+blocking the main thread (Compose reads them from the APK), and work on non-GMS devices.
 
-```xml
-<!-- Correct — ResourcesCompat reads app: attributes -->
-<font-family xmlns:app="http://schemas.android.com/apk/res-auto"
-    app:fontProviderAuthority="com.google.android.gms.fonts"
-    app:fontProviderPackage="com.google.android.gms"
-    app:fontProviderQuery="name=Nunito&amp;weight=400&amp;italic=0"
-    app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+```kotlin
+// Bundled variable font — one file, all weights via FontVariation
+val Nunito = FontFamily(
+    Font(R.font.nunito, FontWeight.Normal,   variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.nunito, FontWeight.Medium,   variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.nunito, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.nunito, FontWeight.Bold,     variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+)
 
-<!-- Wrong — crashes at launch -->
-<font-family xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fontProviderAuthority="com.google.android.gms.fonts"
-    ... />
+// Bundled static TTFs — one file per weight
+val Lora = FontFamily(
+    Font(R.font.lora_medium,   FontWeight.Medium),
+    Font(R.font.lora_semibold, FontWeight.SemiBold),
+)
 ```
 
-Both `preloaded_fonts` pre-warming in the manifest and Compose's `Font(R.font.xxx)` resolution
-go through `ResourcesCompat`, which only recognises `app:fontProvider*` attributes. Switching
-to the `android:` namespace routes loading through the native font system instead — on some
-API levels this returns a null Typeface that causes a crash at the first Compose frame.
+No `loadingStrategy`, no `preloaded_fonts` manifest entry, no `font_certs.xml`.
 
-The `android:` namespace is correct for *static* font files listed via `<font>` child elements
-inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:`.
+**If you must use downloadable fonts** (e.g., to avoid APK size increase for a large family):
+use the `app:` namespace in the XML descriptor (not `android:` — the native resolver returns
+null on some API levels), and set `loadingStrategy = FontLoadingStrategy.Async` in Compose
+(not `Blocking`, which crashes on a null Typeface; not `OptionalLocal`, which permanently
+degrades to the system font when the GMS cache is cold on first launch).
+
+**Previous failure chain in this project:**
+- Switched from programmatic `GoogleFont.Provider` (safe) to XML descriptors with `android:`
+  namespace: null Typeface on API 26-28, NPE crash on launch.
+- Fixed namespace to `app:`: load path correct but `Blocking` default still crashes when GMS
+  unavailable.
+- Changed to `OptionalLocal`: no crash, but fonts permanently missing on cold start / non-GMS.
+- Changed to `Async`: correct for downloadable fonts, but still GMS-dependent.
+- Bundled the TTF files: no dependency, always loads, all devices.
 
 ---
 

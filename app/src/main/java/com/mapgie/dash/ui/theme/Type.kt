@@ -4,19 +4,20 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.R
 
 val Nunito = FontFamily(
-    Font(R.font.nunito_regular, FontWeight.Normal),
-    Font(R.font.nunito_medium, FontWeight.Medium),
-    Font(R.font.nunito_semibold, FontWeight.SemiBold),
-    Font(R.font.nunito_bold, FontWeight.Bold),
+    Font(R.font.nunito, FontWeight.Normal,   variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.nunito, FontWeight.Medium,   variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.nunito, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.nunito, FontWeight.Bold,     variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
 val Lora = FontFamily(
-    Font(R.font.lora_medium, FontWeight.Medium),
+    Font(R.font.lora_medium,   FontWeight.Medium),
     Font(R.font.lora_semibold, FontWeight.SemiBold),
 )
 

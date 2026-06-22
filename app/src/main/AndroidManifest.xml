@@ -81,10 +81,5 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <!-- Tells the launcher to pre-warm Nunito and Lora via ResourcesCompat before
-             the app opens, so fonts are in the process cache on first Compose frame. -->
-        <meta-data
-            android:name="preloaded_fonts"
-            android:resource="@array/preloaded_fonts" />
     </application>
 </manifest>
