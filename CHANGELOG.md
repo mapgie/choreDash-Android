@@ -31,12 +31,6 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
-## [0.15.5] - 2026-06-22
-
-### Fixed
-- Fixed a build error introduced in v0.15.4 that prevented the app from compiling. The FontVariation API used for the bundled Nunito variable font requires an explicit opt-in annotation.
-
----
 ## [0.15.4] - 2026-06-22
 
 ### Fixed
@@ -62,12 +56,6 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 - "Remove latest log" now always deletes the most recent log entry; previously it could delete an older entry when a log was added after the screen last loaded
 
 ---
-## [0.15.1] - 2026-06-21
-
-### Fixed
-- App crash on launch since v0.14.2: font XML descriptors switched back to the app: (AppCompat) namespace so ResourcesCompat and the preloaded_fonts mechanism can resolve them correctly
-
----
 ## [0.15.0] - 2026-06-21
 
 ### Changed
@@ -80,7 +68,6 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 ## [0.14.2] - 2026-06-21
 
 ### Fixed
-- Nunito and Lora fonts now render correctly: font XML descriptors were using the appcompat namespace (app:) which Android 8+ ignores; switched to the native android: namespace so the system font resolver can find them
 - Chore slug tag displayed in monospace to visually distinguish it from the chore name
 
 ---
@@ -88,14 +75,6 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 
 ### Changed
 - High-priority task cards now use amber instead of red on the left strip, reserving red exclusively for overdue items across both chores and tasks
-
-### Fixed
-- Nunito and Lora fonts now render on the first frame by switching from the async programmatic Google Fonts API to XML font resources pre-warmed by the system launcher
-
----
-## [0.14.1] - 2026-06-21
-
-### Changed
 - Chore cards show the last-scan date in normal view; the overdue/countdown text is now shown only when the bolt mode is active
 - Chore cards show a very subtle status-colour background tint in normal mode
 - Archived and distant-chore section toggle buttons use a subtler, label-style appearance
