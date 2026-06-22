@@ -1,6 +1,6 @@
 {
   "bump": "patch",
   "fixed": [
-    "App no longer crashes on launch on devices where the Google Fonts provider is slow to respond or unavailable (non-GMS devices, restricted work profiles). Downloadable fonts now use OptionalLocal loading, which falls back to the system font instead of crashing."
+    "App no longer crashes on launch on devices where the Google Fonts provider is slow to respond or unavailable (non-GMS devices, restricted work profiles). Downloadable fonts now use async loading, which falls back to the system font on the first frame and recomposes when the font arrives, instead of blocking and crashing."
   ]
 }

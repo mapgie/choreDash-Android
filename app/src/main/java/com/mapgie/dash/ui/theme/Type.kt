@@ -10,15 +10,15 @@ import androidx.compose.ui.unit.sp
 import com.mapgie.dash.R
 
 val Nunito = FontFamily(
-    Font(R.font.nunito_regular,  FontWeight.Normal,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
-    Font(R.font.nunito_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
-    Font(R.font.nunito_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
-    Font(R.font.nunito_bold,     FontWeight.Bold,     loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.nunito_regular,  FontWeight.Normal,   loadingStrategy = FontLoadingStrategy.Async),
+    Font(R.font.nunito_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.Async),
+    Font(R.font.nunito_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.Async),
+    Font(R.font.nunito_bold,     FontWeight.Bold,     loadingStrategy = FontLoadingStrategy.Async),
 )
 
 val Lora = FontFamily(
-    Font(R.font.lora_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
-    Font(R.font.lora_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.lora_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.Async),
+    Font(R.font.lora_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.Async),
 )
 
 // No hardcoded colours — let theme propagate via LocalContentColor

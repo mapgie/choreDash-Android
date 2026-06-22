@@ -448,7 +448,7 @@ produces the centred alignment without extra padding arithmetic.
 
 ---
 
-## 23. Downloadable font XMLs: use `app:` namespace AND `FontLoadingStrategy.OptionalLocal`
+## 23. Downloadable font XMLs: use `app:` namespace AND `FontLoadingStrategy.Async`
 
 Two things must both be correct for downloadable fonts to be safe in Compose.
 
@@ -471,28 +471,35 @@ Two things must both be correct for downloadable fonts to be safe in Compose.
 The `android:` namespace routes loading through the native font system, which returns a null
 Typeface on some API levels. `app:` routes through `ResourcesCompat` / `FontsContractCompat`.
 
-**2. Use `FontLoadingStrategy.OptionalLocal` in Compose, not the default `Blocking`:**
+**2. Use `FontLoadingStrategy.Async` in Compose, not `Blocking` or `OptionalLocal`:**
 
 ```kotlin
-// Correct — pairs with preloaded_fonts in the manifest
+// Correct for downloadable fonts
+Font(R.font.nunito_regular, FontWeight.Normal,
+    loadingStrategy = FontLoadingStrategy.Async)
+
+// Wrong default — if ResourcesCompat.getFont() returns null (GMS unavailable),
+// Blocking hands a null Typeface to Compose, crashing on the first frame
+Font(R.font.nunito_regular, FontWeight.Normal)  // default: Blocking
+
+// Wrong for downloadable-only fonts — OptionalLocal only reads the process-level
+// cache; if preloaded_fonts pre-warming hasn't completed before the first frame
+// (cold start, non-GMS device) the font never loads and the fallback is permanent
 Font(R.font.nunito_regular, FontWeight.Normal,
     loadingStrategy = FontLoadingStrategy.OptionalLocal)
-
-// Risky — if ResourcesCompat.getFont() returns null (e.g., GMS unavailable),
-// Blocking may hand a null Typeface to Compose, crashing on the first frame
-Font(R.font.nunito_regular, FontWeight.Normal)  // default: Blocking
 ```
 
-`FontLoadingStrategy.OptionalLocal` is explicitly designed for use with `preloaded_fonts`:
-it tries the process-level font cache first, and if the font is missing (provider unavailable,
-no network, non-GMS device) it silently skips to the next entry in the fallback chain instead
-of crashing. The default `Blocking` strategy can receive a null Typeface from
-`ResourcesCompat.getFont()` when the font provider is slow or absent, causing an NPE at the
-first Compose render frame.
+`FontLoadingStrategy.Async` loads via the async `ResourcesCompat.getFont()` callback path.
+The first frame renders with the system fallback font, then Compose recomposes when the
+download completes. If the font provider is unavailable, the callback delivers null and the
+system font is used permanently with no crash.
 
-The `android:` namespace is correct for *static* font files listed via `<font>` child elements
-inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:` AND
-`OptionalLocal`.
+`OptionalLocal` is only correct when a bundled `.ttf` file is the primary asset and the
+downloadable font is an optional upgrade. Without a bundled fallback, `OptionalLocal`
+permanently degrades to the system font whenever the pre-warm cache is cold.
+
+The `android:` namespace is correct for static font files listed via `<font>` child elements
+inside `<font-family>`. For downloadable fonts (provider-based), always use `app:` AND `Async`.
 
 ---
 
