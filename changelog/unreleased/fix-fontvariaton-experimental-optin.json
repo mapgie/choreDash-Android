@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Fixed a build error introduced in v0.15.4 that prevented the app from compiling. The FontVariation API used for the bundled Nunito variable font requires an explicit opt-in annotation."
+  ]
+}
