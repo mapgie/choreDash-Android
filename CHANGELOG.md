@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.5] - 2026-06-22
+
+### Fixed
+- Fixed a build error introduced in v0.15.4 that prevented the app from compiling. The FontVariation API used for the bundled Nunito variable font requires an explicit opt-in annotation.
+
+---
 ## [0.15.4] - 2026-06-22
 
 ### Fixed
