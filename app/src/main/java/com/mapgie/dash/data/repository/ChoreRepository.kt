@@ -22,8 +22,7 @@ data class ChoreLoadResult(
 class ChoreRepository @Inject constructor(
     private val clientProvider: SupabaseClientProvider
 ) {
-    private fun requireClient() = clientProvider.currentClient()
-        ?: error("Supabase client not configured — enter credentials in Settings")
+    private suspend fun requireClient() = clientProvider.awaitClient()
 
     suspend fun load(): ChoreLoadResult {
         val client = requireClient()

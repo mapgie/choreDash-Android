@@ -15,8 +15,7 @@ import javax.inject.Singleton
 class TaskRepository @Inject constructor(
     private val clientProvider: SupabaseClientProvider
 ) {
-    private fun requireClient() = clientProvider.currentClient()
-        ?: error("Supabase client not configured — enter credentials in Settings")
+    private suspend fun requireClient() = clientProvider.awaitClient()
 
     suspend fun loadTasks(): List<TaskDto> {
         val client = requireClient()
