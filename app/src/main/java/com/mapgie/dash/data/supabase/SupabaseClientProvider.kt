@@ -5,6 +5,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,11 +25,16 @@ class SupabaseClientProvider @Inject constructor(
     private val _client = MutableStateFlow<SupabaseClient?>(null)
     val client: StateFlow<SupabaseClient?> = _client.asStateFlow()
 
+    // Completes after the first settings emission is processed so callers can
+    // await initialization rather than racing against the IO coroutine below.
+    private val ready = CompletableDeferred<Unit>()
+
     init {
         scope.launch {
             settingsRepository.settings.collect { settings ->
                 _client.value?.close()
                 _client.value = buildClient(settings)
+                ready.complete(Unit)
             }
         }
     }
@@ -44,4 +50,10 @@ class SupabaseClientProvider @Inject constructor(
     }
 
     fun currentClient(): SupabaseClient? = _client.value
+
+    suspend fun awaitClient(): SupabaseClient {
+        ready.await()
+        return _client.value
+            ?: error("Supabase client not configured — enter credentials in Settings")
+    }
 }

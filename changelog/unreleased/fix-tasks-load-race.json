@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "fixed": ["Tasks showing an error on first navigation after a cold start when Chores loaded before Tasks"]
+}

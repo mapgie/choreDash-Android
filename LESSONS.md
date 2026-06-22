@@ -491,6 +491,47 @@ degrades to the system font when the GMS cache is cold on first launch).
 
 ---
 
+## 25. Lazy singleton with async init creates a cold-start race for all consumers
+
+`SupabaseClientProvider` is a Hilt singleton whose `init {}` block launches a
+background IO coroutine to collect the first settings emission and build the
+Supabase client. Because it is instantiated lazily (only when first needed by a
+ViewModel), and because ViewModels call `load()` immediately in their own
+`init {}` blocks, there is a real window where `currentClient()` returns null.
+
+The fix is a `CompletableDeferred<Unit>` that is completed after the first
+settings emission is processed. Repositories call a `suspend fun awaitClient()`
+that awaits this deferred before returning the client (or throwing if credentials
+are blank). `CompletableDeferred.complete()` is a no-op after the first call, so
+subsequent credential changes work normally.
+
+```kotlin
+private val ready = CompletableDeferred<Unit>()
+
+init {
+    scope.launch {
+        settingsRepository.settings.collect { settings ->
+            _client.value?.close()
+            _client.value = buildClient(settings)
+            ready.complete(Unit)   // no-op on subsequent emissions
+        }
+    }
+}
+
+suspend fun awaitClient(): SupabaseClient {
+    ready.await()
+    return _client.value
+        ?: error("Supabase client not configured — enter credentials in Settings")
+}
+```
+
+Repositories replace `private fun requireClient()` (non-suspend, reads
+`currentClient()`) with `private suspend fun requireClient() =
+clientProvider.awaitClient()`. All repository methods are already `suspend`, so
+no call-site changes are needed.
+
+---
+
 ## 24. AppWidget receivers must be `android:exported="true"`
 
 AppWidget broadcast receivers need `android:exported="true"` even though they look like
