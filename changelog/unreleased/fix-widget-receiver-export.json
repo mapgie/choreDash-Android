@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Home screen widgets (Quick Add, Next Up, Pinned Item) no longer silently fail to update on Android 12 and above. All three AppWidget receivers were incorrectly marked exported=false, blocking the system update broadcast."
+  ]
+}
