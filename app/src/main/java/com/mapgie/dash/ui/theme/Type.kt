@@ -4,20 +4,21 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontLoadingStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.R
 
 val Nunito = FontFamily(
-    Font(R.font.nunito_regular, FontWeight.Normal),
-    Font(R.font.nunito_medium, FontWeight.Medium),
-    Font(R.font.nunito_semibold, FontWeight.SemiBold),
-    Font(R.font.nunito_bold, FontWeight.Bold),
+    Font(R.font.nunito_regular,  FontWeight.Normal,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.nunito_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.nunito_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.nunito_bold,     FontWeight.Bold,     loadingStrategy = FontLoadingStrategy.OptionalLocal),
 )
 
 val Lora = FontFamily(
-    Font(R.font.lora_medium, FontWeight.Medium),
-    Font(R.font.lora_semibold, FontWeight.SemiBold),
+    Font(R.font.lora_medium,   FontWeight.Medium,   loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.lora_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
 )
 
 // No hardcoded colours — let theme propagate via LocalContentColor

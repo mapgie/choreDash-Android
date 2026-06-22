@@ -448,11 +448,11 @@ produces the centred alignment without extra padding arithmetic.
 
 ---
 
-## 23. Downloadable font XMLs must use the `app:` (AppCompat) namespace, not `android:`
+## 23. Downloadable font XMLs: use `app:` namespace AND `FontLoadingStrategy.OptionalLocal`
 
-Font XML descriptors that reference a Google Fonts provider (downloadable fonts) must
-declare attributes in the `app:` namespace (`xmlns:app="http://schemas.android.com/apk/res-auto"`),
-not the native `android:` namespace:
+Two things must both be correct for downloadable fonts to be safe in Compose.
+
+**1. Use the `app:` (AppCompat) namespace in the font XML, not `android:`:**
 
 ```xml
 <!-- Correct — ResourcesCompat reads app: attributes -->
@@ -462,19 +462,37 @@ not the native `android:` namespace:
     app:fontProviderQuery="name=Nunito&amp;weight=400&amp;italic=0"
     app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
 
-<!-- Wrong — crashes at launch -->
+<!-- Wrong — crashes at launch on API 26-28 even when GMS is present -->
 <font-family xmlns:android="http://schemas.android.com/apk/res/android"
     android:fontProviderAuthority="com.google.android.gms.fonts"
     ... />
 ```
 
-Both `preloaded_fonts` pre-warming in the manifest and Compose's `Font(R.font.xxx)` resolution
-go through `ResourcesCompat`, which only recognises `app:fontProvider*` attributes. Switching
-to the `android:` namespace routes loading through the native font system instead — on some
-API levels this returns a null Typeface that causes a crash at the first Compose frame.
+The `android:` namespace routes loading through the native font system, which returns a null
+Typeface on some API levels. `app:` routes through `ResourcesCompat` / `FontsContractCompat`.
+
+**2. Use `FontLoadingStrategy.OptionalLocal` in Compose, not the default `Blocking`:**
+
+```kotlin
+// Correct — pairs with preloaded_fonts in the manifest
+Font(R.font.nunito_regular, FontWeight.Normal,
+    loadingStrategy = FontLoadingStrategy.OptionalLocal)
+
+// Risky — if ResourcesCompat.getFont() returns null (e.g., GMS unavailable),
+// Blocking may hand a null Typeface to Compose, crashing on the first frame
+Font(R.font.nunito_regular, FontWeight.Normal)  // default: Blocking
+```
+
+`FontLoadingStrategy.OptionalLocal` is explicitly designed for use with `preloaded_fonts`:
+it tries the process-level font cache first, and if the font is missing (provider unavailable,
+no network, non-GMS device) it silently skips to the next entry in the fallback chain instead
+of crashing. The default `Blocking` strategy can receive a null Typeface from
+`ResourcesCompat.getFont()` when the font provider is slow or absent, causing an NPE at the
+first Compose render frame.
 
 The `android:` namespace is correct for *static* font files listed via `<font>` child elements
-inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:`.
+inside `<font-family>`. For *downloadable* fonts (provider-based), always use `app:` AND
+`OptionalLocal`.
 
 ---
 
