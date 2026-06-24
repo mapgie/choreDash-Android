@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.6] - 2026-06-24
+
+### Fixed
+- Tasks showing an error on first navigation after a cold start when Chores loaded before Tasks
+
+---
 ## [0.15.4] - 2026-06-22
 
 ### Fixed
