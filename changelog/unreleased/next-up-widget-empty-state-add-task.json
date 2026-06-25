@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Tapping the \"coming up next\" widget when all tasks are done now opens the add-task sheet instead of the task list"]
+}
