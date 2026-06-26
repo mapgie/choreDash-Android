@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.15.7] - 2026-06-26
+
+### Changed
+- Tapping the "coming up next" widget when all tasks are done now opens the add-task sheet instead of the task list
+
+---
 ## [0.15.6] - 2026-06-24
 
 ### Fixed
