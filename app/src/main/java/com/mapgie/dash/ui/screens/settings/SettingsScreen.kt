@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoNotDisturbOn
@@ -94,7 +95,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 private enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, REMINDERS, ABOUT
+    NONE, CONNECTION, APPEARANCE, REMINDERS, WIDGET, ABOUT
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -123,6 +124,10 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.REMINDERS -> RemindersSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.WIDGET -> WidgetSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -163,6 +168,16 @@ private fun SettingsMainList(
                 subtitle = "Light, dark, or system theme",
                 icon = Icons.Filled.Palette,
                 onClick = { onNavigate(SettingsSubScreen.APPEARANCE) }
+            )
+
+            HorizontalDivider()
+
+            SettingsSectionHeader("Widgets")
+            SettingsNavItem(
+                title = "Widget customisation",
+                subtitle = "Choose what your home-screen widget shows",
+                icon = Icons.Filled.Widgets,
+                onClick = { onNavigate(SettingsSubScreen.WIDGET) }
             )
 
             HorizontalDivider()
@@ -600,6 +615,92 @@ private fun RemindersSubScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
+        }
+    }
+}
+
+@Composable
+private fun WidgetSubScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel,
+) {
+    val settings by viewModel.settings.collectAsState()
+    val contentType = settings?.widgetContentType ?: "CHORES"
+    val priorityFilter = settings?.widgetPriorityFilter ?: "ALL"
+    val ownerFilter = settings?.widgetOwnerFilter ?: "EVERYBODY"
+
+    val contentTypes = listOf("CHORES", "TASKS", "REMINDERS")
+    val contentTypeLabels = listOf("Chores", "Tasks", "Reminders")
+
+    val priorityFilters = listOf("ALL", "RED", "AMBER")
+    val priorityFilterLabels = listOf("All", "Red", "Amber")
+
+    val ownerFilters = listOf("EVERYBODY", "MINE")
+    val ownerFilterLabels = listOf("Everybody's", "Mine")
+
+    SettingsSubScreenScaffold(title = "Widget customisation", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Show", style = MaterialTheme.typography.titleMedium)
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                contentTypes.forEachIndexed { index, type ->
+                    SegmentedButton(
+                        selected = contentType == type,
+                        onClick = { viewModel.setWidgetContentType(type) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = contentTypes.size
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        label = { Text(contentTypeLabels[index]) }
+                    )
+                }
+            }
+
+            HorizontalDivider()
+
+            Text("Priority", style = MaterialTheme.typography.titleMedium)
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                priorityFilters.forEachIndexed { index, filter ->
+                    SegmentedButton(
+                        selected = priorityFilter == filter,
+                        onClick = { viewModel.setWidgetPriorityFilter(filter) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = priorityFilters.size
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        label = { Text(priorityFilterLabels[index]) }
+                    )
+                }
+            }
+
+            HorizontalDivider()
+
+            Text("Whose", style = MaterialTheme.typography.titleMedium)
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ownerFilters.forEachIndexed { index, filter ->
+                    SegmentedButton(
+                        selected = ownerFilter == filter,
+                        onClick = { viewModel.setWidgetOwnerFilter(filter) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ownerFilters.size
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        label = { Text(ownerFilterLabels[index]) }
+                    )
+                }
+            }
         }
     }
 }

@@ -175,4 +175,18 @@ class SettingsViewModel @Inject constructor(
             )
         }
     }
+
+    // ── Widget customisation ──────────────────────────────────────────────────
+
+    fun setWidgetContentType(type: String) {
+        viewModelScope.launch { settingsRepository.setWidgetContentType(type) }
+    }
+
+    fun setWidgetPriorityFilter(filter: String) {
+        viewModelScope.launch { settingsRepository.setWidgetPriorityFilter(filter) }
+    }
+
+    fun setWidgetOwnerFilter(filter: String) {
+        viewModelScope.launch { settingsRepository.setWidgetOwnerFilter(filter) }
+    }
 }

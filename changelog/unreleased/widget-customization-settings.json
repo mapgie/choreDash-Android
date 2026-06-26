@@ -1,0 +1,4 @@
+{
+  "bump": "minor",
+  "added": ["Widget customisation screen in Settings: choose whether the widget shows Chores, Tasks, or Reminders; filter by priority (All, Red, Amber); and show items for everyone or just yourself"]
+}
