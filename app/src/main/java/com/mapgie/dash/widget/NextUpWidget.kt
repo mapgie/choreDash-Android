@@ -96,7 +96,7 @@ private fun NextUpContent(data: NextUpData) {
         when (data) {
             is NextUpData.Task -> NextUpTaskContent(data.task, compact)
             is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact)
-            NextUpData.Empty -> CenteredMessage("All caught up", WIDGET_DEST_TASKS)
+            NextUpData.Empty -> NextUpEmptyContent(compact)
             NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
         }
     }
@@ -160,6 +160,30 @@ private fun NextUpChoreContent(chore: Chore, compact: Boolean) {
             text = "Log now",
             onClick = actionRunCallback<LogChoreAction>(actionParametersOf(ChoreTagIdKey to chore.tagId))
         )
+    }
+}
+
+@Composable
+private fun NextUpEmptyContent(compact: Boolean) {
+    val context = LocalContext.current
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_QUICK_ADD_TASK))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "All caught up",
+                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            )
+            if (!compact) {
+                Text(
+                    text = "Tap to add a task",
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp)
+                )
+            }
+        }
     }
 }
 
