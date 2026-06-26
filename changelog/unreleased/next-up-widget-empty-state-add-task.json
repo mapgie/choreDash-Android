@@ -1,4 +1,7 @@
 {
   "bump": "patch",
-  "changed": ["Tapping the \"coming up next\" widget when all tasks are done now opens the add-task sheet instead of the task list"]
+  "fixed": [
+    "Tapping \"Open app to connect\" on the Next Up widget now opens Settings instead of the task list",
+    "Tapping the Next Up widget when all tasks are done now opens the add-task sheet"
+  ]
 }

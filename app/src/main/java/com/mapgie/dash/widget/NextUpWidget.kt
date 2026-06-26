@@ -97,7 +97,7 @@ private fun NextUpContent(data: NextUpData) {
             is NextUpData.Task -> NextUpTaskContent(data.task, compact)
             is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact)
             NextUpData.Empty -> NextUpEmptyContent(compact)
-            NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
+            NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_SETTINGS)
         }
     }
 }
