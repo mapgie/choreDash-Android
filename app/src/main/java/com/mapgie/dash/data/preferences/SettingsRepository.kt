@@ -38,6 +38,10 @@ data class AppSettings(
     val customTertiaryLightness: Float = 0.4f,
     // ID of the active saved custom colour profile (-1 = none)
     val customActiveProfileId: Long = -1L,
+    // Widget customisation
+    val widgetContentType: String = "CHORES",    // CHORES | TASKS | REMINDERS
+    val widgetPriorityFilter: String = "ALL",    // ALL | RED | AMBER
+    val widgetOwnerFilter: String = "EVERYBODY", // EVERYBODY | MINE
 )
 
 @Singleton
@@ -63,6 +67,9 @@ class SettingsRepository @Inject constructor(
         val CUSTOM_TERTIARY_SATURATION     = floatPreferencesKey("custom_tertiary_saturation")
         val CUSTOM_TERTIARY_LIGHTNESS      = floatPreferencesKey("custom_tertiary_lightness")
         val CUSTOM_ACTIVE_PROFILE_ID       = longPreferencesKey("custom_active_profile_id")
+        val WIDGET_CONTENT_TYPE            = stringPreferencesKey("widget_content_type")
+        val WIDGET_PRIORITY_FILTER         = stringPreferencesKey("widget_priority_filter")
+        val WIDGET_OWNER_FILTER            = stringPreferencesKey("widget_owner_filter")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -95,6 +102,9 @@ class SettingsRepository @Inject constructor(
                 customTertiarySaturation    = prefs[Keys.CUSTOM_TERTIARY_SATURATION] ?: 0.4f,
                 customTertiaryLightness     = prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS] ?: 0.4f,
                 customActiveProfileId       = prefs[Keys.CUSTOM_ACTIVE_PROFILE_ID] ?: -1L,
+                widgetContentType           = prefs[Keys.WIDGET_CONTENT_TYPE] ?: "CHORES",
+                widgetPriorityFilter        = prefs[Keys.WIDGET_PRIORITY_FILTER] ?: "ALL",
+                widgetOwnerFilter           = prefs[Keys.WIDGET_OWNER_FILTER] ?: "EVERYBODY",
             )
         }
 
@@ -146,5 +156,17 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setCustomActiveProfileId(id: Long) {
         context.dataStore.edit { it[Keys.CUSTOM_ACTIVE_PROFILE_ID] = id }
+    }
+
+    suspend fun setWidgetContentType(type: String) {
+        context.dataStore.edit { it[Keys.WIDGET_CONTENT_TYPE] = type }
+    }
+
+    suspend fun setWidgetPriorityFilter(filter: String) {
+        context.dataStore.edit { it[Keys.WIDGET_PRIORITY_FILTER] = filter }
+    }
+
+    suspend fun setWidgetOwnerFilter(filter: String) {
+        context.dataStore.edit { it[Keys.WIDGET_OWNER_FILTER] = filter }
     }
 }
