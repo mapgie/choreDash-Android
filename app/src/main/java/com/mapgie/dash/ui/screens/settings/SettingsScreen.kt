@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Widgets
@@ -95,7 +96,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 private enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, REMINDERS, WIDGET, ABOUT
+    NONE, CONNECTION, APPEARANCE, DISPLAY, REMINDERS, WIDGET, ABOUT
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -120,6 +121,10 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.APPEARANCE -> AppearanceSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.DISPLAY -> DisplaySubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -168,6 +173,12 @@ private fun SettingsMainList(
                 subtitle = "Light, dark, or system theme",
                 icon = Icons.Filled.Palette,
                 onClick = { onNavigate(SettingsSubScreen.APPEARANCE) }
+            )
+            SettingsNavItem(
+                title = "Display",
+                subtitle = "Grouping and visibility filters for chores and tasks",
+                icon = Icons.Filled.Tune,
+                onClick = { onNavigate(SettingsSubScreen.DISPLAY) }
             )
 
             HorizontalDivider()
@@ -505,6 +516,121 @@ private fun AppearanceSubScreen(
         }
     }
 
+}
+
+@Composable
+private fun DisplaySubScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel,
+) {
+    val settings by viewModel.settings.collectAsState()
+
+    val groupChores = settings?.groupChoresByCategory ?: true
+    val groupTasks = settings?.groupTasksByCategory ?: true
+    val choreThreshold = settings?.choreHideThresholdDays ?: -1
+    val taskThreshold = settings?.taskHideThresholdDays ?: -1
+
+    var choreThresholdText by rememberSaveable(choreThreshold) {
+        mutableStateOf(if (choreThreshold >= 0) choreThreshold.toString() else "14")
+    }
+    var taskThresholdText by rememberSaveable(taskThreshold) {
+        mutableStateOf(if (taskThreshold >= 0) taskThreshold.toString() else "14")
+    }
+
+    SettingsSubScreenScaffold(title = "Display", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Grouping", style = MaterialTheme.typography.titleMedium)
+
+            SwitchRow(
+                label = "Group chores by category",
+                subtitle = "Show sticky category headers in the chores list",
+                checked = groupChores,
+                onCheckedChange = { viewModel.setGroupChoresByCategory(it) }
+            )
+
+            SwitchRow(
+                label = "Group tasks by category",
+                subtitle = "Show sticky category headers in the tasks list",
+                checked = groupTasks,
+                onCheckedChange = { viewModel.setGroupTasksByCategory(it) }
+            )
+
+            HorizontalDivider()
+
+            Text("Visibility", style = MaterialTheme.typography.titleMedium)
+
+            SwitchRow(
+                label = "Hide chores not due soon",
+                subtitle = "Hide chores whose next due date is further away than the threshold",
+                checked = choreThreshold >= 0,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        val days = choreThresholdText.toIntOrNull()?.coerceAtLeast(1) ?: 14
+                        viewModel.setChoreHideThresholdDays(days)
+                    } else {
+                        viewModel.setChoreHideThresholdDays(-1)
+                    }
+                }
+            )
+            if (choreThreshold >= 0) {
+                OutlinedTextField(
+                    value = choreThresholdText,
+                    onValueChange = { v ->
+                        if (v.length <= 4 && v.all { it.isDigit() }) {
+                            choreThresholdText = v
+                            v.toIntOrNull()?.let { days ->
+                                if (days >= 1) viewModel.setChoreHideThresholdDays(days)
+                            }
+                        }
+                    },
+                    label = { Text("Days") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            SwitchRow(
+                label = "Hide tasks not due soon",
+                subtitle = "Hide tasks whose due date is further away than the threshold",
+                checked = taskThreshold >= 0,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        val days = taskThresholdText.toIntOrNull()?.coerceAtLeast(1) ?: 14
+                        viewModel.setTaskHideThresholdDays(days)
+                    } else {
+                        viewModel.setTaskHideThresholdDays(-1)
+                    }
+                }
+            )
+            if (taskThreshold >= 0) {
+                OutlinedTextField(
+                    value = taskThresholdText,
+                    onValueChange = { v ->
+                        if (v.length <= 4 && v.all { it.isDigit() }) {
+                            taskThresholdText = v
+                            v.toIntOrNull()?.let { days ->
+                                if (days >= 1) viewModel.setTaskHideThresholdDays(days)
+                            }
+                        }
+                    },
+                    label = { Text("Days") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 
 @Composable

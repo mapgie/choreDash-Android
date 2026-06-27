@@ -23,7 +23,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 enum class ChoreFilter(val label: String) {
@@ -49,6 +51,7 @@ data class ChoreUiState(
     val zenSortAscending: Boolean = true,
     val showDueCountdown: Boolean = false,
     val showDistant: Boolean = false,
+    val hideThresholdDays: Int = -1,
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     val pinnedChoreId: String? = null,
@@ -70,6 +73,14 @@ data class ChoreUiState(
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
             result = result.filter { !it.isDistant() }
+            if (hideThresholdDays >= 0) {
+                result = result.filter { chore ->
+                    val last = chore.lastScanned ?: return@filter true
+                    val intervalHours = chore.intervalDays?.let { (it * 24).toLong() } ?: return@filter true
+                    val dueInstant = last.plus(intervalHours, ChronoUnit.HOURS)
+                    Duration.between(Instant.now(), dueInstant).toDays() <= hideThresholdDays
+                }
+            }
             result = when (filter) {
                 ChoreFilter.ALL -> result
                 ChoreFilter.OVERDUE -> result.filter {
@@ -122,7 +133,9 @@ class ChoreListViewModel @Inject constructor(
                     it.copy(
                         ownerHandle = settings.ownerHandle,
                         zenMode = settings.zenMode,
-                        showDueCountdown = settings.showDueCountdown
+                        showDueCountdown = settings.showDueCountdown,
+                        groupByCategory = settings.groupChoresByCategory,
+                        hideThresholdDays = settings.choreHideThresholdDays,
                     )
                 }
             }
@@ -282,7 +295,7 @@ class ChoreListViewModel @Inject constructor(
     }
 
     fun setGroupBy(groupByCategory: Boolean) {
-        _uiState.update { it.copy(groupByCategory = groupByCategory) }
+        viewModelScope.launch { settingsRepository.setGroupChoresByCategory(groupByCategory) }
     }
 
     fun setOwnerFilter(ownerFilter: OwnerFilter) {

@@ -42,6 +42,12 @@ data class AppSettings(
     val widgetContentType: String = "CHORES",    // CHORES | TASKS | REMINDERS
     val widgetPriorityFilter: String = "ALL",    // ALL | RED | AMBER
     val widgetOwnerFilter: String = "EVERYBODY", // EVERYBODY | MINE
+    // Display — grouping
+    val groupChoresByCategory: Boolean = true,
+    val groupTasksByCategory: Boolean = true,
+    // Display — hide items not due soon (-1 = disabled, positive = threshold in days)
+    val choreHideThresholdDays: Int = -1,
+    val taskHideThresholdDays: Int = -1,
 )
 
 @Singleton
@@ -70,6 +76,10 @@ class SettingsRepository @Inject constructor(
         val WIDGET_CONTENT_TYPE            = stringPreferencesKey("widget_content_type")
         val WIDGET_PRIORITY_FILTER         = stringPreferencesKey("widget_priority_filter")
         val WIDGET_OWNER_FILTER            = stringPreferencesKey("widget_owner_filter")
+        val GROUP_CHORES_BY_CATEGORY       = booleanPreferencesKey("group_chores_by_category")
+        val GROUP_TASKS_BY_CATEGORY        = booleanPreferencesKey("group_tasks_by_category")
+        val CHORE_HIDE_THRESHOLD_DAYS      = intPreferencesKey("chore_hide_threshold_days")
+        val TASK_HIDE_THRESHOLD_DAYS       = intPreferencesKey("task_hide_threshold_days")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -105,6 +115,10 @@ class SettingsRepository @Inject constructor(
                 widgetContentType           = prefs[Keys.WIDGET_CONTENT_TYPE] ?: "CHORES",
                 widgetPriorityFilter        = prefs[Keys.WIDGET_PRIORITY_FILTER] ?: "ALL",
                 widgetOwnerFilter           = prefs[Keys.WIDGET_OWNER_FILTER] ?: "EVERYBODY",
+                groupChoresByCategory       = prefs[Keys.GROUP_CHORES_BY_CATEGORY] ?: true,
+                groupTasksByCategory        = prefs[Keys.GROUP_TASKS_BY_CATEGORY] ?: true,
+                choreHideThresholdDays      = prefs[Keys.CHORE_HIDE_THRESHOLD_DAYS] ?: -1,
+                taskHideThresholdDays       = prefs[Keys.TASK_HIDE_THRESHOLD_DAYS] ?: -1,
             )
         }
 
@@ -168,5 +182,21 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setWidgetOwnerFilter(filter: String) {
         context.dataStore.edit { it[Keys.WIDGET_OWNER_FILTER] = filter }
+    }
+
+    suspend fun setGroupChoresByCategory(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.GROUP_CHORES_BY_CATEGORY] = enabled }
+    }
+
+    suspend fun setGroupTasksByCategory(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.GROUP_TASKS_BY_CATEGORY] = enabled }
+    }
+
+    suspend fun setChoreHideThresholdDays(days: Int) {
+        context.dataStore.edit { it[Keys.CHORE_HIDE_THRESHOLD_DAYS] = days }
+    }
+
+    suspend fun setTaskHideThresholdDays(days: Int) {
+        context.dataStore.edit { it[Keys.TASK_HIDE_THRESHOLD_DAYS] = days }
     }
 }

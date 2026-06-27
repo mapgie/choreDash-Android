@@ -189,4 +189,22 @@ class SettingsViewModel @Inject constructor(
     fun setWidgetOwnerFilter(filter: String) {
         viewModelScope.launch { settingsRepository.setWidgetOwnerFilter(filter) }
     }
+
+    // ── Display ───────────────────────────────────────────────────────────────
+
+    fun setGroupChoresByCategory(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setGroupChoresByCategory(enabled) }
+    }
+
+    fun setGroupTasksByCategory(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setGroupTasksByCategory(enabled) }
+    }
+
+    fun setChoreHideThresholdDays(days: Int) {
+        viewModelScope.launch { settingsRepository.setChoreHideThresholdDays(days) }
+    }
+
+    fun setTaskHideThresholdDays(days: Int) {
+        viewModelScope.launch { settingsRepository.setTaskHideThresholdDays(days) }
+    }
 }
