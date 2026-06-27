@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.16.0] - 2026-06-27
+
+### Added
+- Widget customisation screen in Settings: choose whether the widget shows Chores, Tasks, or Reminders; filter by priority (All, Red, Amber); and show items for everyone or just yourself
+
+---
 ## [0.15.7] - 2026-06-26
 
 ### Changed
