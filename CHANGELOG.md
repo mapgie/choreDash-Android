@@ -31,6 +31,16 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.17.0] - 2026-06-27
+
+### Added
+- Display settings sub-screen with toggles for grouping chores and tasks by category, and per-list visibility filters to hide items not due within a configurable number of days
+
+### Changed
+- Group-by-category toggle moved from the chores and tasks toolbars into Settings > Display; the setting is now persisted across sessions
+- Zen mode lotus icon enlarged for easier tapping
+
+---
 ## [0.16.0] - 2026-06-27
 
 ### Added
