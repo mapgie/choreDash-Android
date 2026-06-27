@@ -154,9 +154,10 @@ fun TaskListScreen(
                 }
 
                 val active = uiState.activeTasks
+                val distant = uiState.distantTasks
                 val done = uiState.doneTasks
 
-                if (!uiState.loading && active.isEmpty() && done.isEmpty()) {
+                if (!uiState.loading && active.isEmpty() && distant.isEmpty() && done.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             "No tasks",
@@ -207,6 +208,37 @@ fun TaskListScreen(
                                     showCategory = !uiState.groupByCategory,
                                     showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
                                 )
+                            }
+                        }
+
+                        if (distant.isNotEmpty() && uiState.filter != TaskFilter.DONE) {
+                            item(key = "distant_header") {
+                                TextButton(
+                                    onClick = { viewModel.toggleShowDistantTasks() },
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                                ) {
+                                    Text(
+                                        if (uiState.showDistantTasks)
+                                            "Hide distant (${distant.size})"
+                                        else
+                                            "${distant.size} not due for ${uiState.hideThresholdDays}+ days",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (uiState.showDistantTasks) {
+                                items(distant, key = { "distant_${it.id}" }) { task ->
+                                    SwipeToCompleteCard(
+                                        task = task,
+                                        onTap = { overviewTask = it; showOverviewSheet = true },
+                                        onLongPress = { editingTask = it; showTaskSheet = true },
+                                        onToggleDone = { viewModel.markDone(task.id) },
+                                        onSwipeToggleDone = { viewModel.markDone(task.id) },
+                                        showCategory = !uiState.groupByCategory,
+                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
+                                    )
+                                }
                             }
                         }
 

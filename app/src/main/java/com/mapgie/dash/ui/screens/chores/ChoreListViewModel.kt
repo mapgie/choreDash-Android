@@ -57,13 +57,23 @@ data class ChoreUiState(
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList()
 ) {
+    private fun isChoreDistant(chore: Chore): Boolean =
+        if (hideThresholdDays >= 0) {
+            val last = chore.lastScanned ?: return false
+            val intervalHours = chore.intervalDays?.let { (it * 24).toLong() } ?: return false
+            val dueInstant = last.plus(intervalHours, ChronoUnit.HOURS)
+            Duration.between(Instant.now(), dueInstant).toDays() > hideThresholdDays
+        } else {
+            chore.isDistant()
+        }
+
     val distantChores: List<Chore>
         get() {
             var result = active
             if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
-            return result.filter { it.isDistant() }
+            return result.filter { isChoreDistant(it) }
         }
 
     val displayed: List<Chore>
@@ -72,15 +82,7 @@ data class ChoreUiState(
             if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
-            result = result.filter { !it.isDistant() }
-            if (hideThresholdDays >= 0) {
-                result = result.filter { chore ->
-                    val last = chore.lastScanned ?: return@filter true
-                    val intervalHours = chore.intervalDays?.let { (it * 24).toLong() } ?: return@filter true
-                    val dueInstant = last.plus(intervalHours, ChronoUnit.HOURS)
-                    Duration.between(Instant.now(), dueInstant).toDays() <= hideThresholdDays
-                }
-            }
+            result = result.filter { !isChoreDistant(it) }
             result = when (filter) {
                 ChoreFilter.ALL -> result
                 ChoreFilter.OVERDUE -> result.filter {

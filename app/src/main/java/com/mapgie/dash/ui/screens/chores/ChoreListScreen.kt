@@ -293,11 +293,13 @@ fun ChoreListScreen(
                                         onClick = { viewModel.toggleShowDistant() },
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                     ) {
+                                        val distantDays = if (uiState.hideThresholdDays >= 0)
+                                            uiState.hideThresholdDays else 60
                                         Text(
                                             if (uiState.showDistant)
                                                 "Hide distant (${distantChores.size})"
                                             else
-                                                "${distantChores.size} not due for 60+ days",
+                                                "${distantChores.size} not due for ${distantDays}+ days",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

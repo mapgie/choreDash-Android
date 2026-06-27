@@ -51,6 +51,7 @@ data class TaskUiState(
     val ownerHandle: String = "",
     val pinnedTaskId: String? = null,
     val hideThresholdDays: Int = -1,
+    val showDistantTasks: Boolean = false,
 ) {
     val displayed: List<TaskDto>
         get() {
@@ -83,17 +84,21 @@ data class TaskUiState(
             }
         }
 
+    val distantTasks: List<TaskDto>
+        get() {
+            if (hideThresholdDays < 0) return emptyList()
+            val cutoff = LocalDate.now(ZoneId.systemDefault()).plusDays(hideThresholdDays.toLong())
+            return displayed.filter { task ->
+                task.completedAt == null &&
+                    task.dueDate != null &&
+                    runCatching { LocalDate.parse(task.dueDate) }.getOrNull()?.isAfter(cutoff) == true
+            }
+        }
+
     val activeTasks: List<TaskDto>
         get() {
-            val active = displayed.filter { it.completedAt == null }
-            if (hideThresholdDays < 0) return active
-            val today = LocalDate.now(ZoneId.systemDefault())
-            val cutoff = today.plusDays(hideThresholdDays.toLong())
-            return active.filter { task ->
-                if (task.dueDate == null) return@filter true
-                val date = runCatching { LocalDate.parse(task.dueDate) }.getOrNull() ?: return@filter true
-                !date.isAfter(cutoff)
-            }
+            val distantIds = distantTasks.map { it.id }.toSet()
+            return displayed.filter { it.completedAt == null && it.id !in distantIds }
         }
 
     val doneTasks: List<TaskDto>
@@ -283,6 +288,7 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
+    fun toggleShowDistantTasks() = _uiState.update { it.copy(showDistantTasks = !it.showDistantTasks) }
     fun setFilter(f: TaskFilter) = _uiState.update { it.copy(filter = f) }
     fun setSort(s: TaskSort) = _uiState.update { it.copy(sort = s) }
     fun setGroupBy(enabled: Boolean) {
