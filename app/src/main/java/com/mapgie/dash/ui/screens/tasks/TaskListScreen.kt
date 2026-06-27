@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,19 +129,6 @@ fun TaskListScreen(
                             Icons.Filled.Sort,
                             contentDescription = "Sort: ${uiState.sort.label}",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.GridView,
-                            contentDescription = if (uiState.groupByCategory)
-                                "Ungroup categories" else "Group by category",
-                            tint = if (uiState.groupByCategory)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (uiState.ownerHandle.isNotBlank()) {

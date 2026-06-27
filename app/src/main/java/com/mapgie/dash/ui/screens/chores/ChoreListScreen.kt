@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
@@ -168,19 +167,6 @@ fun ChoreListScreen(
                     Spacer(Modifier.weight(1f))
                     if (!uiState.zenMode) {
                         IconButton(
-                            onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.GridView,
-                                contentDescription = if (uiState.groupByCategory)
-                                    "Ungroup categories" else "Group by category",
-                                tint = if (uiState.groupByCategory)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(
                             onClick = {
                                 viewModel.setOwnerFilter(
                                     if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
@@ -234,7 +220,8 @@ fun ChoreListScreen(
                                 "Exit zen mode" else "Enter zen mode",
                             tint = if (uiState.zenMode)
                                 MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }

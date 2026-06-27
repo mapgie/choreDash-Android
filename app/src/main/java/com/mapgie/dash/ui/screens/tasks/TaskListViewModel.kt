@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 enum class TaskFilter { ALL, ACTIVE, DONE }
@@ -47,7 +49,8 @@ data class TaskUiState(
     val groupByCategory: Boolean = true,
     val ownerFilter: OwnerFilter = OwnerFilter.ALL,
     val ownerHandle: String = "",
-    val pinnedTaskId: String? = null
+    val pinnedTaskId: String? = null,
+    val hideThresholdDays: Int = -1,
 ) {
     val displayed: List<TaskDto>
         get() {
@@ -81,7 +84,17 @@ data class TaskUiState(
         }
 
     val activeTasks: List<TaskDto>
-        get() = displayed.filter { it.completedAt == null }
+        get() {
+            val active = displayed.filter { it.completedAt == null }
+            if (hideThresholdDays < 0) return active
+            val today = LocalDate.now(ZoneId.systemDefault())
+            val cutoff = today.plusDays(hideThresholdDays.toLong())
+            return active.filter { task ->
+                if (task.dueDate == null) return@filter true
+                val date = runCatching { LocalDate.parse(task.dueDate) }.getOrNull() ?: return@filter true
+                !date.isAfter(cutoff)
+            }
+        }
 
     val doneTasks: List<TaskDto>
         get() = displayed.filter { it.completedAt != null }
@@ -106,7 +119,13 @@ class TaskListViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             settingsRepository.settings.collect { s ->
-                _uiState.update { it.copy(ownerHandle = s.ownerHandle) }
+                _uiState.update {
+                    it.copy(
+                        ownerHandle = s.ownerHandle,
+                        groupByCategory = s.groupTasksByCategory,
+                        hideThresholdDays = s.taskHideThresholdDays,
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -266,7 +285,9 @@ class TaskListViewModel @Inject constructor(
 
     fun setFilter(f: TaskFilter) = _uiState.update { it.copy(filter = f) }
     fun setSort(s: TaskSort) = _uiState.update { it.copy(sort = s) }
-    fun setGroupBy(enabled: Boolean) = _uiState.update { it.copy(groupByCategory = enabled) }
+    fun setGroupBy(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setGroupTasksByCategory(enabled) }
+    }
     fun setOwnerFilter(f: OwnerFilter) = _uiState.update { it.copy(ownerFilter = f) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 }

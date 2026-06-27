@@ -1,0 +1,10 @@
+{
+  "bump": "minor",
+  "added": [
+    "Display settings sub-screen with toggles for grouping chores and tasks by category, and per-list visibility filters to hide items not due within a configurable number of days"
+  ],
+  "changed": [
+    "Group-by-category toggle moved from the chores and tasks toolbars into Settings > Display; the setting is now persisted across sessions",
+    "Zen mode lotus icon enlarged for easier tapping"
+  ]
+}
