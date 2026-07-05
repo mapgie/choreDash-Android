@@ -64,6 +64,9 @@ class TaskRepository @Inject constructor(
         client.from("todos").delete { filter { eq("id", taskId) } }
     }
 
+    // Includes past-due entries: a reminder whose fire time elapsed while the device
+    // was off is still pending until it has actually been shown (reminded flag).
+    // BootWorker decides whether to schedule an alarm or deliver immediately.
     suspend fun pendingReminders(): List<TaskDto> {
         val client = requireClient()
         return client.from("todos")
@@ -73,10 +76,7 @@ class TaskRepository @Inject constructor(
             .decodeList<TaskDto>()
             .filter { dto ->
                 if (dto.completedAt != null) return@filter false
-                val reminderAt = dto.reminderAt?.let {
-                    runCatching { Instant.parse(it) }.getOrNull()
-                } ?: return@filter false
-                reminderAt.isAfter(Instant.now())
+                dto.reminderAt?.let { runCatching { Instant.parse(it) }.getOrNull() } != null
             }
     }
 }

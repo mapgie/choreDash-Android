@@ -29,13 +29,11 @@ class AlarmActionReceiver : BroadcastReceiver() {
             "com.mapgie.dash.ACTION_SNOOZE_TASK" -> {
                 val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
                 val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
-                val deliveryMode = intent.getStringExtra("EXTRA_DELIVERY_MODE") ?: "NOTIFICATION"
                 nm.cancel(taskId.hashCode())
                 alarmScheduler.scheduleTask(
                     taskId,
                     taskTitle,
-                    Instant.now().plus(15, ChronoUnit.MINUTES),
-                    deliveryMode
+                    Instant.now().plus(15, ChronoUnit.MINUTES)
                 )
             }
 
@@ -57,11 +55,15 @@ class AlarmActionReceiver : BroadcastReceiver() {
             "com.mapgie.dash.ACTION_SNOOZE_REMINDER" -> {
                 val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID) ?: return
                 val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
+                // Preserve the task link across the snooze, otherwise the re-fired
+                // reminder never marks its linked task as reminded.
+                val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
                 nm.cancel(("reminder_$reminderId").hashCode())
                 alarmScheduler.scheduleReminder(
                     reminderId,
                     subject,
-                    Instant.now().plus(15, ChronoUnit.MINUTES)
+                    Instant.now().plus(15, ChronoUnit.MINUTES),
+                    taskId
                 )
             }
 

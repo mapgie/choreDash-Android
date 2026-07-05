@@ -1,0 +1,12 @@
+{
+  "bump": "patch",
+  "changed": [
+    "The reminder delivery mode setting now applies immediately to reminders that were scheduled before the setting was changed"
+  ],
+  "fixed": [
+    "Snoozing a reminder now keeps its alarm or silent delivery mode instead of coming back as a standard notification",
+    "Snoozing a task-linked reminder no longer loses the link to its task",
+    "Reminders that came due while the phone was off are now delivered at the next boot instead of being dropped",
+    "Reminders are no longer silently dropped when the exact-alarm permission is revoked: they fall back to an approximate alarm"
+  ]
+}

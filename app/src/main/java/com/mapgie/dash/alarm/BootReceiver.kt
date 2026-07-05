@@ -3,6 +3,7 @@ package com.mapgie.dash.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mapgie.dash.notification.NotificationHelper
@@ -14,7 +15,14 @@ class BootReceiver : BroadcastReceiver() {
         ) return
 
         NotificationHelper.createChannels(context)
-        WorkManager.getInstance(context)
-            .enqueue(OneTimeWorkRequestBuilder<BootWorker>().build())
+        // Unique work: BOOT_COMPLETED and MY_PACKAGE_REPLACED can both arrive in a
+        // short window; one reschedule pass covers both. No network constraint —
+        // local (DataStore) reminders must be rescheduled even offline; the worker
+        // retries with backoff when Supabase is unreachable.
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "boot_reschedule",
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<BootWorker>().build()
+        )
     }
 }
