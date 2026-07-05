@@ -30,6 +30,7 @@ import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
+import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_CHORE
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_TASK
 import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
@@ -75,6 +76,10 @@ fun DashNavGraph(
             WIDGET_DEST_QUICK_ADD_TASK -> {
                 pendingAddIntent = AddMenuOption.TASK
                 Screen.Tasks.route
+            }
+            WIDGET_DEST_QUICK_ADD_CHORE -> {
+                pendingAddIntent = AddMenuOption.CHORE
+                Screen.Chores.route
             }
             WIDGET_DEST_TASKS -> Screen.Tasks.route
             WIDGET_DEST_CHORES -> Screen.Chores.route
