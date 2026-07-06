@@ -553,3 +553,27 @@ and on Android 12+ (API 31+, targetSdk >= 31) `exported=false` blocks that deliv
 With `exported=false`, the widget can be added to the home screen but never renders or
 updates — the system silently drops the update broadcast. The bug is invisible at install
 time and easy to miss in testing if you don't explicitly verify widget refresh.
+
+---
+
+## 26. Resolve notification delivery mode at fire time, not schedule time
+
+The delivery-mode setting (ALARM/NOTIFICATION/SILENT) was baked into every alarm
+intent at schedule time and then round-tripped through notification action intents.
+That produced two bugs and one inconsistency:
+
+1. `NotificationHelper` stuffed the notification *channel id* into the snooze
+   intent's `EXTRA_DELIVERY_MODE`. The receiver compared it against `"ALARM"`/
+   `"SILENT"`, never matched, and every snoozed alarm-mode or silent-mode reminder
+   came back on the default notification channel.
+2. The reminder snooze path dropped the task id, so a snoozed task-linked reminder
+   stopped marking its task as reminded in Supabase.
+3. UI ViewModels scheduled with the default mode while BootWorker used the settings
+   value, so the same reminder fired differently before vs after a reboot.
+
+The fix that removes the whole bug class: treat delivery mode as presentation and
+resolve it from `SettingsRepository` in `AlarmReceiver` at fire time (mode -> channel
+mapping lives in exactly one place, `NotificationHelper.channelForDeliveryMode`).
+Intents carry only identity (reminder id, task id, title). Anything an action intent
+does still need must be the scheduler's own vocabulary (entity ids), never derived
+presentation values like channel ids.

@@ -11,22 +11,20 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// Delivery mode (ALARM/NOTIFICATION/SILENT) is deliberately NOT part of the alarm
+// intent: AlarmReceiver resolves it from the current setting at fire time, so a
+// settings change applies to alarms that are already scheduled.
 @Singleton
 class AlarmScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    fun scheduleTask(taskId: String, taskTitle: String, reminderAt: Instant, deliveryMode: String = "NOTIFICATION") {
+    fun scheduleTask(taskId: String, taskTitle: String, reminderAt: Instant) {
         if (reminderAt.isBefore(Instant.now())) return
-        if (!canScheduleExactAlarms()) return
 
-        val pending = buildPendingIntent(taskId, taskTitle, deliveryMode)
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            reminderAt.toEpochMilli(),
-            pending
-        )
+        val pending = buildPendingIntent(taskId, taskTitle)
+        setAlarm(reminderAt, pending)
     }
 
     fun cancelTask(taskId: String) {
@@ -39,16 +37,11 @@ class AlarmScheduler @Inject constructor(
         alarmManager.cancel(pending)
     }
 
-    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant, taskId: String? = null, deliveryMode: String = "NOTIFICATION") {
+    fun scheduleReminder(reminderId: String, subject: String, remindAt: Instant, taskId: String? = null) {
         if (remindAt.isBefore(Instant.now())) return
-        if (!canScheduleExactAlarms()) return
 
-        val pending = buildReminderPendingIntent(reminderId, subject, taskId, deliveryMode)
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            remindAt.toEpochMilli(),
-            pending
-        )
+        val pending = buildReminderPendingIntent(reminderId, subject, taskId)
+        setAlarm(remindAt, pending)
     }
 
     fun cancelReminder(reminderId: String) {
@@ -65,12 +58,22 @@ class AlarmScheduler @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) alarmManager.canScheduleExactAlarms()
         else true
 
-    private fun buildPendingIntent(taskId: String, taskTitle: String, deliveryMode: String): PendingIntent {
+    // Exact when permitted; otherwise an inexact alarm. A reminder delayed by batching
+    // still beats one that is silently dropped because the exact-alarm permission was
+    // revoked between scheduling opportunities.
+    private fun setAlarm(fireAt: Instant, pending: PendingIntent) {
+        if (canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireAt.toEpochMilli(), pending)
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireAt.toEpochMilli(), pending)
+        }
+    }
+
+    private fun buildPendingIntent(taskId: String, taskTitle: String): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_TASK_ID, taskId)
             putExtra(NotificationHelper.EXTRA_TASK_TITLE, taskTitle)
-            putExtra("EXTRA_DELIVERY_MODE", deliveryMode)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -80,12 +83,11 @@ class AlarmScheduler @Inject constructor(
         )
     }
 
-    private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null, deliveryMode: String = "NOTIFICATION"): PendingIntent {
+    private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
             putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
             putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
-            putExtra("EXTRA_DELIVERY_MODE", deliveryMode)
             taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }
         }
         return PendingIntent.getBroadcast(

@@ -35,6 +35,15 @@ object NotificationHelper {
     const val EXTRA_REMINDER_ID = "reminder_id"
     const val EXTRA_REMINDER_SUBJECT = "reminder_subject"
 
+    // Single place that maps the delivery-mode setting ("ALARM"/"NOTIFICATION"/"SILENT")
+    // to a channel. Resolved at delivery time (AlarmReceiver, BootWorker) so the current
+    // setting always wins; the mode is never baked into alarm or action intents.
+    fun channelForDeliveryMode(deliveryMode: String): String = when (deliveryMode) {
+        "ALARM" -> CHANNEL_TASK_REMINDERS_ALARM
+        "SILENT" -> CHANNEL_TASK_REMINDERS_SILENT
+        else -> CHANNEL_TASK_REMINDERS_NOTIF
+    }
+
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -126,7 +135,6 @@ object NotificationHelper {
             action = "com.mapgie.dash.ACTION_SNOOZE_TASK"
             putExtra(EXTRA_TASK_ID, taskId)
             putExtra(EXTRA_TASK_TITLE, taskTitle)
-            putExtra("EXTRA_DELIVERY_MODE", channelId)
         }
         val snoozePI = PendingIntent.getBroadcast(
             context, "snooze_$taskId".hashCode(),
@@ -158,7 +166,7 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF) {
+    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF, taskId: String? = null) {
         val notifyId = ("reminder_$reminderId").hashCode()
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
@@ -174,7 +182,7 @@ object NotificationHelper {
             action = "com.mapgie.dash.ACTION_SNOOZE_REMINDER"
             putExtra(EXTRA_REMINDER_ID, reminderId)
             putExtra(EXTRA_REMINDER_SUBJECT, subject)
-            putExtra("EXTRA_DELIVERY_MODE", channelId)
+            taskId?.let { putExtra(EXTRA_TASK_ID, it) }
         }
         val snoozePI = PendingIntent.getBroadcast(
             context, "snooze_reminder_$reminderId".hashCode(),
