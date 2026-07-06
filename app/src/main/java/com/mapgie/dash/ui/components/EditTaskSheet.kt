@@ -94,7 +94,7 @@ fun EditTaskSheet(
 
     var title by remember { mutableStateOf(task?.title ?: "") }
     var notes by remember { mutableStateOf(task?.notes ?: "") }
-    var category by remember { mutableStateOf(task?.category ?: "") }
+    var category by remember { mutableStateOf(if (task != null) task.category ?: "" else DEFAULT_CATEGORY) }
     var priority by remember { mutableStateOf(task?.priorityEnum() ?: TaskPriority.NORMAL) }
     var owner by remember { mutableStateOf(task?.owner ?: "") }
 

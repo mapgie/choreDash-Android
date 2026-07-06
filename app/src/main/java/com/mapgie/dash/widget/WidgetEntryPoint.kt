@@ -1,6 +1,8 @@
 package com.mapgie.dash.widget
 
+import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -16,5 +18,7 @@ import dagger.hilt.components.SingletonComponent
 interface WidgetEntryPoint {
     fun taskRepository(): TaskRepository
     fun choreRepository(): ChoreRepository
+    fun reminderRepository(): ReminderRepository
     fun pinnedItemStore(): PinnedItemStore
+    fun settingsRepository(): SettingsRepository
 }

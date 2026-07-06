@@ -35,21 +35,33 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskUrgency
+import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.urgency
+import com.mapgie.dash.data.preferences.AppSettings
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.flow.first
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private sealed interface NextUpData {
     data class Task(val task: TaskDto) : NextUpData
     data class ChoreItem(val chore: Chore) : NextUpData
-    data object Empty : NextUpData
+    data class ReminderItem(val reminder: ReminderDto) : NextUpData
+    data class Empty(val contentType: String) : NextUpData
     data object Unavailable : NextUpData
 }
 
-/** Shows the single most urgent task (or, failing that, the stalest chore), with a quick way to complete it. */
+/**
+ * Shows the single most urgent item from whichever source the user picked in
+ * Settings > Widget customisation (Show / Priority / Whose), falling back to
+ * chores by default. Tap opens the app; a checkbox/button lets the shown item
+ * be completed inline.
+ */
 class NextUpWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(WIDGET_RESPONSIVE_SIZES)
 
@@ -64,18 +76,58 @@ class NextUpWidget : GlanceAppWidget() {
     }
 
     private suspend fun loadNextUpData(entryPoint: WidgetEntryPoint): NextUpData = runCatching {
-        val tasks = entryPoint.taskRepository().loadTasks()
+        val settings = entryPoint.settingsRepository().settings.first()
+        when (settings.widgetContentType) {
+            "TASKS" -> nextTask(entryPoint, settings) ?: NextUpData.Empty("TASKS")
+            "REMINDERS" -> nextReminder(entryPoint) ?: NextUpData.Empty("REMINDERS")
+            else -> nextChore(entryPoint, settings) ?: NextUpData.Empty("CHORES")
+        }
+    }.getOrElse { NextUpData.Unavailable }
+
+    private suspend fun nextTask(entryPoint: WidgetEntryPoint, settings: AppSettings): NextUpData.Task? {
+        val candidates = entryPoint.taskRepository().loadTasks()
             .filter { it.completedAt == null && it.archivedAt == null }
-        val next = tasks.minWithOrNull(
+            .filter { matchesOwner(it.owner, settings) }
+            .filter { matchesTaskPriority(it.urgency(), settings.widgetPriorityFilter) }
+        val next = candidates.minWithOrNull(
             compareBy({ it.urgency().ordinal }, { it.dueDate ?: "9999-12-31" })
         )
-        if (next != null) return@runCatching NextUpData.Task(next)
+        return next?.let { NextUpData.Task(it) }
+    }
 
+    private suspend fun nextChore(entryPoint: WidgetEntryPoint, settings: AppSettings): NextUpData.ChoreItem? {
         val active = entryPoint.choreRepository().load().active
-        val due = active.firstOrNull { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
-            ?: active.firstOrNull { it.status == ChoreStatus.AGING }
-        if (due != null) NextUpData.ChoreItem(due) else NextUpData.Empty
-    }.getOrElse { NextUpData.Unavailable }
+            .filter { matchesOwner(it.owner, settings) }
+        val due = nextChoreCandidate(active, settings.widgetPriorityFilter)
+        return due?.let { NextUpData.ChoreItem(it) }
+    }
+
+    private suspend fun nextReminder(entryPoint: WidgetEntryPoint): NextUpData.ReminderItem? {
+        // Reminders carry no owner/urgency of their own, so the Priority and Whose
+        // filters don't apply to this content type; just surface the soonest one due.
+        val next = entryPoint.reminderRepository().pendingReminders()
+            .minByOrNull { it.remindAtInstant() ?: Instant.MAX }
+        return next?.let { NextUpData.ReminderItem(it) }
+    }
+}
+
+private fun matchesOwner(owner: String?, settings: AppSettings): Boolean =
+    settings.widgetOwnerFilter != "MINE" ||
+        settings.ownerHandle.isBlank() ||
+        owner == null ||
+        owner == settings.ownerHandle
+
+private fun matchesTaskPriority(urgency: TaskUrgency, filter: String): Boolean = when (filter) {
+    "RED" -> urgency == TaskUrgency.OVERDUE
+    "AMBER" -> urgency == TaskUrgency.TODAY
+    else -> true
+}
+
+private fun nextChoreCandidate(active: List<Chore>, filter: String): Chore? = when (filter) {
+    "RED" -> active.firstOrNull { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
+    "AMBER" -> active.firstOrNull { it.status == ChoreStatus.AGING }
+    else -> active.firstOrNull { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
+        ?: active.firstOrNull { it.status == ChoreStatus.AGING }
 }
 
 class NextUpWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -96,7 +148,8 @@ private fun NextUpContent(data: NextUpData) {
         when (data) {
             is NextUpData.Task -> NextUpTaskContent(data.task, compact)
             is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact)
-            NextUpData.Empty -> NextUpEmptyContent(compact)
+            is NextUpData.ReminderItem -> NextUpReminderContent(data.reminder, compact)
+            is NextUpData.Empty -> NextUpEmptyContent(data.contentType, compact)
             NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
         }
     }
@@ -164,12 +217,50 @@ private fun NextUpChoreContent(chore: Chore, compact: Boolean) {
 }
 
 @Composable
-private fun NextUpEmptyContent(compact: Boolean) {
+private fun NextUpReminderContent(reminder: ReminderDto, compact: Boolean) {
     val context = LocalContext.current
+    Column(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_REMINDERS))),
+        horizontalAlignment = Alignment.Start,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Reminder",
+            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp)
+        )
+        Text(
+            text = reminder.subject,
+            maxLines = if (compact) 1 else 2,
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        )
+        if (!compact) {
+            Text(
+                text = reminderTimeLabel(reminder),
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NextUpEmptyContent(contentType: String, compact: Boolean) {
+    val context = LocalContext.current
+    val destination = when (contentType) {
+        "TASKS" -> WIDGET_DEST_QUICK_ADD_TASK
+        "REMINDERS" -> WIDGET_DEST_QUICK_ADD_REMINDER
+        else -> WIDGET_DEST_QUICK_ADD_CHORE
+    }
+    val subtitle = when (contentType) {
+        "TASKS" -> "Tap to add a task"
+        "REMINDERS" -> "Tap to add a reminder"
+        else -> "Tap to add a chore"
+    }
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_QUICK_ADD_TASK))),
+            .clickable(actionStartActivity(widgetActivityIntent(context, destination))),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -179,7 +270,7 @@ private fun NextUpEmptyContent(compact: Boolean) {
             )
             if (!compact) {
                 Text(
-                    text = "Tap to add a task",
+                    text = subtitle,
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp)
                 )
             }
@@ -213,4 +304,14 @@ private fun dueLabel(task: TaskDto): String = when (task.urgency()) {
         ?.let { runCatching { "Due " + LocalDate.parse(it).format(DateTimeFormatter.ofPattern("MMM d")) }.getOrNull() }
         ?: "Due later"
     TaskUrgency.NONE -> ""
+}
+
+private fun reminderTimeLabel(reminder: ReminderDto): String {
+    val zoned = reminder.remindAtInstant()?.atZone(ZoneId.systemDefault()) ?: return ""
+    val today = LocalDate.now(ZoneId.systemDefault())
+    return when (zoned.toLocalDate()) {
+        today -> "Today " + zoned.format(DateTimeFormatter.ofPattern("HH:mm"))
+        today.plusDays(1) -> "Tomorrow " + zoned.format(DateTimeFormatter.ofPattern("HH:mm"))
+        else -> zoned.format(DateTimeFormatter.ofPattern("MMM d, HH:mm"))
+    }
 }
