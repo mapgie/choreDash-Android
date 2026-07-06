@@ -47,6 +47,15 @@
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/quick_add_task_widget_info" />
         </receiver>
+        <receiver android:name=".widget.QuickAddChoreWidgetReceiver"
+            android:label="@string/widget_quick_add_chore_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/quick_add_chore_widget_info" />
+        </receiver>
         <receiver android:name=".widget.NextUpWidgetReceiver"
             android:label="@string/widget_next_up_label"
             android:exported="true">

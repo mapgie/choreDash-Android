@@ -26,36 +26,37 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 
-/** 1x1 widget: tapping it opens choreDash straight to the "Add task" sheet. */
-class QuickAddTaskWidget : GlanceAppWidget() {
+/** 1x1 widget: tapping it opens choreDash straight to the "Add chore" sheet. */
+class QuickAddChoreWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(WIDGET_QUICK_ADD_SIZES)
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             GlanceTheme(colors = DashGlanceTheme.colors) {
-                QuickAddTaskContent()
+                QuickAddChoreContent()
             }
         }
     }
 }
 
-class QuickAddTaskWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = QuickAddTaskWidget()
+class QuickAddChoreWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = QuickAddChoreWidget()
 }
 
 @Composable
-private fun QuickAddTaskContent() {
+private fun QuickAddChoreContent() {
     val context = LocalContext.current
     val showLabel = LocalSize.current.width >= WIDGET_SIZE_MEDIUM.width
 
-    // A rounded square (as opposed to the Add Chore widget's pill/circle) so the two
-    // quick-add widgets stay distinguishable by shape alone, not just colour.
+    // A pill/circle (as opposed to the Add Task widget's rounded square) plus the
+    // tertiary accent, so the two quick-add widgets stay distinguishable by shape
+    // alone, not just colour.
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.primary)
-            .cornerRadius(14.dp)
-            .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_QUICK_ADD_TASK)))
+            .background(GlanceTheme.colors.tertiary)
+            .cornerRadius(999.dp)
+            .clickable(actionStartActivity(widgetActivityIntent(context, WIDGET_DEST_QUICK_ADD_CHORE)))
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -63,17 +64,17 @@ private fun QuickAddTaskContent() {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "+",
-                    style = TextStyle(color = GlanceTheme.colors.onPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    style = TextStyle(color = GlanceTheme.colors.onTertiary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 )
                 Text(
-                    text = "Add task",
-                    style = TextStyle(color = GlanceTheme.colors.onPrimary, fontSize = 14.sp)
+                    text = "Add chore",
+                    style = TextStyle(color = GlanceTheme.colors.onTertiary, fontSize = 14.sp)
                 )
             }
         } else {
             Text(
                 text = "+",
-                style = TextStyle(color = GlanceTheme.colors.onPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                style = TextStyle(color = GlanceTheme.colors.onTertiary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             )
         }
     }

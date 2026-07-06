@@ -7,6 +7,7 @@ import androidx.glance.appwidget.updateAll
 object WidgetUpdater {
     suspend fun updateAll(context: Context) {
         QuickAddTaskWidget().updateAll(context)
+        QuickAddChoreWidget().updateAll(context)
         NextUpWidget().updateAll(context)
         PinnedItemWidget().updateAll(context)
     }
