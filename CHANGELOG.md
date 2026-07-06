@@ -31,6 +31,23 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.18.0] - 2026-07-06
+
+### Added
+- 1x1 home screen widgets to quick-add a task or a chore, visually distinguishable by shape and colour
+- New tasks and chores now start with a default category so you aren't forced to pick one before saving
+
+### Changed
+- The reminder delivery mode setting now applies immediately to reminders that were scheduled before the setting was changed
+
+### Fixed
+- Snoozing a reminder now keeps its alarm or silent delivery mode instead of coming back as a standard notification
+- Snoozing a task-linked reminder no longer loses the link to its task
+- Reminders that came due while the phone was off are now delivered at the next boot instead of being dropped
+- Reminders are no longer silently dropped when the exact-alarm permission is revoked: they fall back to an approximate alarm
+- The Next Up widget now actually respects the Widget customisation settings (Show / Priority / Whose), which previously had no effect on any widget
+
+---
 ## [0.17.0] - 2026-06-27
 
 ### Added
