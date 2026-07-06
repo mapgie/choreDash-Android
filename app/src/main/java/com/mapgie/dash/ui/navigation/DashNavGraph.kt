@@ -31,7 +31,9 @@ import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_CHORE
+import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_REMINDER
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_TASK
+import com.mapgie.dash.widget.WIDGET_DEST_REMINDERS
 import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -81,8 +83,13 @@ fun DashNavGraph(
                 pendingAddIntent = AddMenuOption.CHORE
                 Screen.Chores.route
             }
+            WIDGET_DEST_QUICK_ADD_REMINDER -> {
+                pendingAddIntent = AddMenuOption.REMINDER
+                Screen.Reminders.route
+            }
             WIDGET_DEST_TASKS -> Screen.Tasks.route
             WIDGET_DEST_CHORES -> Screen.Chores.route
+            WIDGET_DEST_REMINDERS -> Screen.Reminders.route
             else -> null
         }
         if (targetRoute != null) {

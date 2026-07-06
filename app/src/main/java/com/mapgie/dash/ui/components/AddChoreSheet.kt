@@ -22,7 +22,7 @@ fun AddChoreSheet(
     val sheetScope = rememberCoroutineScope()
     var tagId by remember { mutableStateOf(initialTagId) }
     var label by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(DEFAULT_CATEGORY) }
     var selectedOwner by remember { mutableStateOf("") }
     var intervalText by remember { mutableStateOf("") }
     var ownerExpanded by remember { mutableStateOf(false) }

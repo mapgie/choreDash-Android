@@ -9,8 +9,10 @@ const val WIDGET_DESTINATION_EXTRA = "widget_destination"
 
 const val WIDGET_DEST_QUICK_ADD_TASK = "quick_add_task"
 const val WIDGET_DEST_QUICK_ADD_CHORE = "quick_add_chore"
+const val WIDGET_DEST_QUICK_ADD_REMINDER = "quick_add_reminder"
 const val WIDGET_DEST_TASKS = "tasks"
 const val WIDGET_DEST_CHORES = "chores"
+const val WIDGET_DEST_REMINDERS = "reminders"
 
 fun widgetActivityIntent(context: Context, destination: String): Intent =
     Intent(context, MainActivity::class.java).apply {

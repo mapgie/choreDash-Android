@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "fixed": [
+    "The Next Up widget now actually respects the Widget customisation settings (Show / Priority / Whose), which previously had no effect on any widget"
+  ],
+  "added": [
+    "New tasks and chores now start with a default category so you aren't forced to pick one before saving"
+  ]
+}
