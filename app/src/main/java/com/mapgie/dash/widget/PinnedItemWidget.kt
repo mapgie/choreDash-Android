@@ -89,6 +89,9 @@ class PinnedItemWidgetReceiver : GlanceAppWidgetReceiver() {
 @Composable
 private fun PinnedContent(data: PinnedData) {
     val compact = LocalSize.current.height < WIDGET_SIZE_LARGE.height
+    // True 1x1 launcher cells have no room for a checkbox/button plus text, so below
+    // WIDGET_SIZE_SMALL we drop the inline action and fall back to a single tap-to-open line.
+    val tiny = LocalSize.current.width < WIDGET_SIZE_SMALL.width
 
     Box(
         modifier = GlanceModifier
@@ -98,8 +101,8 @@ private fun PinnedContent(data: PinnedData) {
             .padding(12.dp)
     ) {
         when (data) {
-            is PinnedData.Task -> PinnedTaskContent(data.task, compact)
-            is PinnedData.ChoreItem -> PinnedChoreContent(data.chore, compact)
+            is PinnedData.Task -> PinnedTaskContent(data.task, compact, tiny)
+            is PinnedData.ChoreItem -> PinnedChoreContent(data.chore, compact, tiny)
             PinnedData.NotSet -> CenteredMessage("Pin a task or chore from the app", WIDGET_DEST_TASKS)
             PinnedData.NotFound -> CenteredMessage("Pinned item no longer exists", WIDGET_DEST_TASKS)
             PinnedData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
@@ -108,9 +111,13 @@ private fun PinnedContent(data: PinnedData) {
 }
 
 @Composable
-private fun PinnedTaskContent(task: TaskDto, compact: Boolean) {
+private fun PinnedTaskContent(task: TaskDto, compact: Boolean, tiny: Boolean) {
     val context = LocalContext.current
     val isDone = task.completedAt != null
+    if (tiny) {
+        TinyTapToOpen(task.title, WIDGET_DEST_TASKS)
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier.fillMaxSize()
@@ -153,7 +160,11 @@ private fun PinnedTaskContent(task: TaskDto, compact: Boolean) {
 }
 
 @Composable
-private fun PinnedChoreContent(chore: Chore, compact: Boolean) {
+private fun PinnedChoreContent(chore: Chore, compact: Boolean, tiny: Boolean) {
+    if (tiny) {
+        TinyTapToOpen(chore.label, WIDGET_DEST_CHORES)
+        return
+    }
     Column(
         modifier = GlanceModifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
@@ -178,22 +189,6 @@ private fun PinnedChoreContent(chore: Chore, compact: Boolean) {
         Button(
             text = "Log now",
             onClick = actionRunCallback<LogChoreAction>(actionParametersOf(ChoreTagIdKey to chore.tagId))
-        )
-    }
-}
-
-@Composable
-private fun CenteredMessage(message: String, destination: String) {
-    val context = LocalContext.current
-    Box(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .clickable(actionStartActivity(widgetActivityIntent(context, destination))),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 14.sp)
         )
     }
 }

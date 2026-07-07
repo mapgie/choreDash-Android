@@ -137,6 +137,9 @@ class NextUpWidgetReceiver : GlanceAppWidgetReceiver() {
 @Composable
 private fun NextUpContent(data: NextUpData) {
     val compact = LocalSize.current.height < WIDGET_SIZE_LARGE.height
+    // True 1x1 launcher cells have no room for a checkbox/button plus text, so below
+    // WIDGET_SIZE_SMALL we drop the inline action and fall back to a single tap-to-open line.
+    val tiny = LocalSize.current.width < WIDGET_SIZE_SMALL.width
 
     Box(
         modifier = GlanceModifier
@@ -146,8 +149,8 @@ private fun NextUpContent(data: NextUpData) {
             .padding(12.dp)
     ) {
         when (data) {
-            is NextUpData.Task -> NextUpTaskContent(data.task, compact)
-            is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact)
+            is NextUpData.Task -> NextUpTaskContent(data.task, compact, tiny)
+            is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact, tiny)
             is NextUpData.ReminderItem -> NextUpReminderContent(data.reminder, compact)
             is NextUpData.Empty -> NextUpEmptyContent(data.contentType, compact)
             NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
@@ -156,8 +159,12 @@ private fun NextUpContent(data: NextUpData) {
 }
 
 @Composable
-private fun NextUpTaskContent(task: TaskDto, compact: Boolean) {
+private fun NextUpTaskContent(task: TaskDto, compact: Boolean, tiny: Boolean) {
     val context = LocalContext.current
+    if (tiny) {
+        TinyTapToOpen(task.title, WIDGET_DEST_TASKS)
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier.fillMaxSize()
@@ -193,7 +200,11 @@ private fun NextUpTaskContent(task: TaskDto, compact: Boolean) {
 }
 
 @Composable
-private fun NextUpChoreContent(chore: Chore, compact: Boolean) {
+private fun NextUpChoreContent(chore: Chore, compact: Boolean, tiny: Boolean) {
+    if (tiny) {
+        TinyTapToOpen(chore.label, WIDGET_DEST_CHORES)
+        return
+    }
     Column(
         modifier = GlanceModifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
@@ -275,22 +286,6 @@ private fun NextUpEmptyContent(contentType: String, compact: Boolean) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun CenteredMessage(message: String, destination: String) {
-    val context = LocalContext.current
-    Box(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .clickable(actionStartActivity(widgetActivityIntent(context, destination))),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 14.sp)
-        )
     }
 }
 
