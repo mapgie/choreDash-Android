@@ -46,7 +46,8 @@ private sealed interface PinnedData {
     data class ChoreItem(val chore: Chore) : PinnedData
     data object NotSet : PinnedData
     data object NotFound : PinnedData
-    data object Unavailable : PinnedData
+    data object NotConfigured : PinnedData
+    data class Unavailable(val lastSyncedAt: Instant?) : PinnedData
 }
 
 /** Shows the task or chore the user pinned from its card in the app, with a quick way to complete it. */
@@ -66,8 +67,13 @@ class PinnedItemWidget : GlanceAppWidget() {
     private suspend fun loadPinnedData(entryPoint: WidgetEntryPoint): PinnedData {
         val pinned = entryPoint.pinnedItemStore().pinnedItem.first() ?: return PinnedData.NotSet
 
+        val settings = entryPoint.settingsRepository().settings.first()
+        if (settings.supabaseUrl.isBlank() || settings.supabaseKey.isBlank()) {
+            return PinnedData.NotConfigured
+        }
+
         return runCatching {
-            when (pinned.type) {
+            val data = when (pinned.type) {
                 PinnedItemType.TASK -> {
                     val task = entryPoint.taskRepository().loadTasks().find { it.id == pinned.id }
                     task?.let { PinnedData.Task(it) } ?: PinnedData.NotFound
@@ -78,7 +84,11 @@ class PinnedItemWidget : GlanceAppWidget() {
                     chore?.let { PinnedData.ChoreItem(it) } ?: PinnedData.NotFound
                 }
             }
-        }.getOrElse { PinnedData.Unavailable }
+            entryPoint.widgetSyncStore().markSynced(WidgetSyncKey.PINNED_ITEM)
+            data
+        }.getOrElse {
+            PinnedData.Unavailable(entryPoint.widgetSyncStore().lastSyncedAt(WidgetSyncKey.PINNED_ITEM))
+        }
     }
 }
 
@@ -105,7 +115,8 @@ private fun PinnedContent(data: PinnedData) {
             is PinnedData.ChoreItem -> PinnedChoreContent(data.chore, compact, tiny)
             PinnedData.NotSet -> CenteredMessage("Pin a task or chore from the app", WIDGET_DEST_TASKS)
             PinnedData.NotFound -> CenteredMessage("Pinned item no longer exists", WIDGET_DEST_TASKS)
-            PinnedData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
+            PinnedData.NotConfigured -> CenteredMessage("Connect Supabase in Settings to use this widget", WIDGET_DEST_SETTINGS)
+            is PinnedData.Unavailable -> CenteredMessage(unavailableMessage(data.lastSyncedAt), WIDGET_DEST_TASKS)
         }
     }
 }

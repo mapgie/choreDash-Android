@@ -13,6 +13,7 @@ const val WIDGET_DEST_QUICK_ADD_REMINDER = "quick_add_reminder"
 const val WIDGET_DEST_TASKS = "tasks"
 const val WIDGET_DEST_CHORES = "chores"
 const val WIDGET_DEST_REMINDERS = "reminders"
+const val WIDGET_DEST_SETTINGS = "settings"
 
 fun widgetActivityIntent(context: Context, destination: String): Intent =
     Intent(context, MainActivity::class.java).apply {
