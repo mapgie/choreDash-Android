@@ -10,8 +10,7 @@ val WIDGET_SIZE_SMALL = DpSize(110.dp, 110.dp)
 val WIDGET_SIZE_MEDIUM = DpSize(250.dp, 110.dp)
 val WIDGET_SIZE_LARGE = DpSize(250.dp, 250.dp)
 
-val WIDGET_RESPONSIVE_SIZES = setOf(WIDGET_SIZE_SMALL, WIDGET_SIZE_MEDIUM, WIDGET_SIZE_LARGE)
+val WIDGET_RESPONSIVE_SIZES = setOf(WIDGET_SIZE_TINY, WIDGET_SIZE_SMALL, WIDGET_SIZE_MEDIUM, WIDGET_SIZE_LARGE)
 
-// The two quick-add widgets are designed to live as a true 1x1 launcher icon,
-// so they get a tiny breakpoint the multi-line widgets above don't need.
+// The quick-add widgets never grow past a 2x1 cell, so they don't need the LARGE breakpoint.
 val WIDGET_QUICK_ADD_SIZES = setOf(WIDGET_SIZE_TINY, WIDGET_SIZE_SMALL, WIDGET_SIZE_MEDIUM)
