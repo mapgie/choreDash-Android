@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "The background widget refresh job no longer retries pointlessly when the device has no network connection"
-  ]
-}

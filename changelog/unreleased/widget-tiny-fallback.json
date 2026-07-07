@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "changed": [
-    "The Next Up and Pinned Item widgets now support true 1x1 launcher cells, dropping the inline checkbox/button in favour of a single tap-to-open line when there isn't room for them"
-  ]
-}

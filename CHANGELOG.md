@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.19.0] - 2026-07-07
+
+### Changed
+- The Next Up and Pinned Item widgets now support true 1x1 launcher cells, dropping the inline checkbox/button in favour of a single tap-to-open line when there isn't room for them
+
+### Fixed
+- The background widget refresh job no longer retries pointlessly when the device has no network connection
+
+---
 ## [0.18.0] - 2026-07-06
 
 ### Added
