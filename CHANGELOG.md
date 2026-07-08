@@ -31,6 +31,21 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.20.0] - 2026-07-08
+
+### Added
+- New default "Mist" colour palette: a light periwinkle primary over blue-violet-grey neutrals, replacing green as the default look (the green "Sage" palette is still available in Settings)
+- Chores, Tasks, and Reminders now each get their own colour tone on the bottom nav and the add-menu button
+
+### Changed
+- Tasks is now the first tab instead of Chores
+- The add-menu button now lists Task, Chore, then Reminder
+- The Next Up and Pinned Item widgets now distinguish 'Supabase isn't connected yet' from 'can't refresh right now' and, when they can't refresh, say how old the last-shown data is instead of a generic unavailable message
+
+### Fixed
+- Editing a chore, task, or reminder now warns before discarding unsaved changes when you press back, tap outside the sheet, or swipe it down, instead of silently losing your edits
+
+---
 ## [0.19.0] - 2026-07-07
 
 ### Changed

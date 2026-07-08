@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "changed": [
-    "The Next Up and Pinned Item widgets now distinguish 'Supabase isn't connected yet' from 'can't refresh right now' and, when they can't refresh, say how old the last-shown data is instead of a generic unavailable message"
-  ]
-}
