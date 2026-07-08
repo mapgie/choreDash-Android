@@ -126,14 +126,14 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Deletes a saved profile. If the deleted profile was active, resets
-     * [customActiveProfileId] to -1 and reverts the app theme to [AppTheme.SAGE].
+     * [customActiveProfileId] to -1 and reverts the app theme to [AppTheme.MIST].
      */
     fun deleteCustomColorTheme(theme: CustomColorTheme) {
         viewModelScope.launch {
             customColorThemeDao.delete(theme)
             if (settings.value?.customActiveProfileId == theme.id) {
                 settingsRepository.setCustomActiveProfileId(-1L)
-                settingsRepository.setAppTheme(AppTheme.SAGE.name)
+                settingsRepository.setAppTheme(AppTheme.MIST.name)
             }
         }
     }

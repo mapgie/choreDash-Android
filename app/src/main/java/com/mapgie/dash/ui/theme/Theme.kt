@@ -20,7 +20,7 @@ data class CustomHSL(
 
 @Composable
 fun DashTheme(
-    appTheme:  AppTheme = AppTheme.SAGE,
+    appTheme:  AppTheme = AppTheme.MIST,
     darkTheme: Boolean  = isSystemInDarkTheme(),
     customHSL: CustomHSL? = null,
     content:   @Composable () -> Unit,

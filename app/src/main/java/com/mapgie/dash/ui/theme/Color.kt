@@ -27,6 +27,11 @@ enum class AppTheme(
     val darkSecondaryArgb: Long,
     val darkTertiaryArgb: Long,
 ) {
+    MIST(
+        "Mist",
+        lightPrimaryArgb   = 0xFF5B5FA6L, lightSecondaryArgb = 0xFF5D5C72L, lightTertiaryArgb = 0xFF79556CL,
+        darkPrimaryArgb    = 0xFFC4C1FFL, darkSecondaryArgb  = 0xFFC6C4DDL, darkTertiaryArgb  = 0xFFE9B9D6L,
+    ),
     SAGE(
         "Sage",
         lightPrimaryArgb   = 0xFF4A7C59L, lightSecondaryArgb = 0xFF4E6355L, lightTertiaryArgb = 0xFF3A6472L,
@@ -120,6 +125,18 @@ val md_theme_dark_scrim = Color(0xFF000000)
 val StatusStale = Color(0xFFBA1A1A)
 val StatusAging = Color(0xFFF29900)
 val StatusFresh = Color(0xFF4A7C59)
+
+// Content-type accent tones. Fixed across all AppTheme palettes (light or dark)
+// so Chores, Tasks, and Reminders keep a stable colour identity no matter which
+// palette the user has picked — used on the bottom nav indicator and the add-menu
+// FAB. Colour is a secondary cue only: icon shape and text label already
+// distinguish the three types, satisfying the "not colour alone" rule.
+val TypeTaskContainer = Color(0xFFDCE0FA)
+val TypeTaskOnContainer = Color(0xFF262B6B)
+val TypeChoreContainer = Color(0xFFD6E8E1)
+val TypeChoreOnContainer = Color(0xFF1B4438)
+val TypeReminderContainer = Color(0xFFF6E1C6)
+val TypeReminderOnContainer = Color(0xFF6B4718)
 
 // ── Sage colour schemes ───────────────────────────────────────────────────────
 
@@ -319,13 +336,82 @@ private val TealDarkColors = darkColorScheme(
     scrim = Color(0xFF000000),
 )
 
+// ── Mist palette (seed: #5B5FA6) ──────────────────────────────────────────────
+// Default palette. A light periwinkle primary over blue-violet-grey neutrals,
+// replacing green as the app's default look (green remains available as "Sage").
+
+val MistLightColors = lightColorScheme(
+    primary = Color(0xFF5B5FA6),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFE2DFFF),
+    onPrimaryContainer = Color(0xFF14134B),
+    secondary = Color(0xFF5D5C72),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE3DFF9),
+    onSecondaryContainer = Color(0xFF1A1836),
+    tertiary = Color(0xFF79556C),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFD8EC),
+    onTertiaryContainer = Color(0xFF2E1225),
+    error = Color(0xFFBA1A1A),
+    errorContainer = Color(0xFFFFDAD6),
+    onError = Color(0xFFFFFFFF),
+    onErrorContainer = Color(0xFF410002),
+    background = Color(0xFFF7F7FC),
+    onBackground = Color(0xFF1B1B23),
+    surface = Color(0xFFF7F7FC),
+    onSurface = Color(0xFF1B1B23),
+    surfaceVariant = Color(0xFFE3E1EC),
+    onSurfaceVariant = Color(0xFF46464F),
+    outline = Color(0xFF767680),
+    inverseOnSurface = Color(0xFFF1EFF9),
+    inverseSurface = Color(0xFF302F38),
+    inversePrimary = Color(0xFFC4C1FF),
+    surfaceTint = Color(0xFF5B5FA6),
+    outlineVariant = Color(0xFFC7C5D0),
+    scrim = Color(0xFF000000),
+)
+
+val MistDarkColors = darkColorScheme(
+    primary = Color(0xFFC4C1FF),
+    onPrimary = Color(0xFF29295C),
+    primaryContainer = Color(0xFF403F8D),
+    onPrimaryContainer = Color(0xFFE2DFFF),
+    secondary = Color(0xFFC6C4DD),
+    onSecondary = Color(0xFF2F2E42),
+    secondaryContainer = Color(0xFF464559),
+    onSecondaryContainer = Color(0xFFE3DFF9),
+    tertiary = Color(0xFFE9B9D6),
+    onTertiary = Color(0xFF46293C),
+    tertiaryContainer = Color(0xFF5F3F53),
+    onTertiaryContainer = Color(0xFFFFD8EC),
+    error = Color(0xFFFFB4AB),
+    errorContainer = Color(0xFF93000A),
+    onError = Color(0xFF690005),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF131318),
+    onBackground = Color(0xFFE5E1E9),
+    surface = Color(0xFF131318),
+    onSurface = Color(0xFFE5E1E9),
+    surfaceVariant = Color(0xFF46464F),
+    onSurfaceVariant = Color(0xFFC7C5D0),
+    outline = Color(0xFF90909A),
+    inverseOnSurface = Color(0xFF131318),
+    inverseSurface = Color(0xFFE5E1E9),
+    inversePrimary = Color(0xFF5B5FA6),
+    surfaceTint = Color(0xFFC4C1FF),
+    outlineVariant = Color(0xFF46464F),
+    scrim = Color(0xFF000000),
+)
+
 // ── Colour scheme router ──────────────────────────────────────────────────────
 
 fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean): ColorScheme = when (appTheme) {
+    AppTheme.MIST   -> if (darkTheme) MistDarkColors   else MistLightColors
     AppTheme.SAGE   -> if (darkTheme) SageDarkColors   else SageLightColors
     AppTheme.CORAL  -> if (darkTheme) CoralDarkColors  else CoralLightColors
     AppTheme.TEAL   -> if (darkTheme) TealDarkColors   else TealLightColors
-    AppTheme.CUSTOM -> SageLightColors // placeholder; caller must use buildCustomColorScheme
+    AppTheme.CUSTOM -> MistLightColors // placeholder; caller must use buildCustomColorScheme
 }
 
 // ── Custom HSL scheme builder ─────────────────────────────────────────────────

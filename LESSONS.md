@@ -577,3 +577,48 @@ mapping lives in exactly one place, `NotificationHelper.channelForDeliveryMode`)
 Intents carry only identity (reminder id, task id, title). Anything an action intent
 does still need must be the scheduler's own vocabulary (entity ids), never derived
 presentation values like channel ids.
+
+---
+
+## 27. Warn before discarding unsaved changes in a ModalBottomSheet, without re-triggering the stuck-overlay bug (#2)
+
+Back press, scrim tap, and swipe-down all funnel through the same
+`onDismissRequest` (see #1/#2). To warn on unsaved changes instead of silently
+discarding them, intercept `onDismissRequest` (and any explicit Cancel button)
+with a `requestDismiss()` that checks a locally-computed `isDirty` flag:
+
+```kotlin
+fun requestDismiss() {
+    if (isDirty) {
+        sheetScope.launch { sheetState.show() }  // bounce back — see below
+        showDiscardConfirm = true
+    } else {
+        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+    }
+}
+```
+
+The `sheetState.show()` call matters: by the time `onDismissRequest` fires for a
+scrim tap or swipe-down, Material3 has already animated the sheet to `Hidden`.
+If you only set `showDiscardConfirm = true` without re-showing the sheet, you
+recreate the exact stuck-invisible-overlay bug from #2 — the sheet is
+transparent but its composable (and the `AlertDialog` on top of it) is still in
+the tree.
+
+Compute `isDirty` by snapshotting each field's initial value with its own
+`remember { ... }` right next to the `mutableStateOf` that seeds from it, then
+comparing current to initial — not by re-deriving the "original" from the
+nullable input model at comparison time. A create-mode field seeded with a
+non-blank default (e.g. `category = DEFAULT_CATEGORY` when there's no existing
+entity) will never equal `null`/`""`, so diffing directly against the input
+model produces a false-positive dirty flag the instant the sheet opens:
+
+```kotlin
+// Wrong: category is DEFAULT_CATEGORY but task is null, so this is "dirty" immediately
+val isDirty = category != task?.category
+
+// Right: snapshot what the field actually started as
+val initialCategory = remember { if (task != null) task.category ?: "" else DEFAULT_CATEGORY }
+var category by remember { mutableStateOf(initialCategory) }
+val isDirty = category != initialCategory
+```

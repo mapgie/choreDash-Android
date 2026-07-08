@@ -23,6 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.ui.theme.TypeChoreContainer
+import com.mapgie.dash.ui.theme.TypeChoreOnContainer
+import com.mapgie.dash.ui.theme.TypeReminderContainer
+import com.mapgie.dash.ui.theme.TypeReminderOnContainer
+import com.mapgie.dash.ui.theme.TypeTaskContainer
+import com.mapgie.dash.ui.theme.TypeTaskOnContainer
 
 enum class AddMenuOption { CHORE, TASK, REMINDER }
 
@@ -51,15 +57,9 @@ fun AddMenuFab(
                         onSelect(AddMenuOption.REMINDER)
                     },
                     icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
-                    text = { Text("One-off reminder") }
-                )
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onExpandedChange(false)
-                        onSelect(AddMenuOption.TASK)
-                    },
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
-                    text = { Text("One-time task") }
+                    text = { Text("One-off reminder") },
+                    containerColor = TypeReminderContainer,
+                    contentColor = TypeReminderOnContainer
                 )
                 ExtendedFloatingActionButton(
                     onClick = {
@@ -67,7 +67,19 @@ fun AddMenuFab(
                         onSelect(AddMenuOption.CHORE)
                     },
                     icon = { Icon(Icons.Filled.CleaningServices, contentDescription = null) },
-                    text = { Text("Recurring chore") }
+                    text = { Text("Recurring chore") },
+                    containerColor = TypeChoreContainer,
+                    contentColor = TypeChoreOnContainer
+                )
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        onExpandedChange(false)
+                        onSelect(AddMenuOption.TASK)
+                    },
+                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
+                    text = { Text("One-time task") },
+                    containerColor = TypeTaskContainer,
+                    contentColor = TypeTaskOnContainer
                 )
             }
         }
