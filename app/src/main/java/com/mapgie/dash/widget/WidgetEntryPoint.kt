@@ -21,4 +21,5 @@ interface WidgetEntryPoint {
     fun reminderRepository(): ReminderRepository
     fun pinnedItemStore(): PinnedItemStore
     fun settingsRepository(): SettingsRepository
+    fun widgetSyncStore(): WidgetSyncStore
 }

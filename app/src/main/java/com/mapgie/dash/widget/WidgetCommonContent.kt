@@ -13,6 +13,22 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
+/**
+ * Message for a widget that failed to load from Supabase, naming how stale the
+ * last successfully-loaded data is (if any) rather than a bare "unavailable".
+ */
+fun unavailableMessage(lastSyncedAt: Instant?): String {
+    if (lastSyncedAt == null) return "Can't connect. Open app to check your connection."
+    val minutes = ChronoUnit.MINUTES.between(lastSyncedAt, Instant.now())
+    return when {
+        minutes < 1 -> "Can't refresh right now"
+        minutes < 60 -> "Can't refresh. Showing data from ${minutes}m ago"
+        else -> "Can't refresh. Showing data from ${minutes / 60}h ago"
+    }
+}
 
 /** Centred, tappable status text shared by the Next Up and Pinned Item widgets. */
 @Composable

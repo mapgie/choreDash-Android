@@ -53,7 +53,8 @@ private sealed interface NextUpData {
     data class ChoreItem(val chore: Chore) : NextUpData
     data class ReminderItem(val reminder: ReminderDto) : NextUpData
     data class Empty(val contentType: String) : NextUpData
-    data object Unavailable : NextUpData
+    data object NotConfigured : NextUpData
+    data class Unavailable(val lastSyncedAt: Instant?) : NextUpData
 }
 
 /**
@@ -75,14 +76,26 @@ class NextUpWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun loadNextUpData(entryPoint: WidgetEntryPoint): NextUpData = runCatching {
+    private suspend fun loadNextUpData(entryPoint: WidgetEntryPoint): NextUpData {
         val settings = entryPoint.settingsRepository().settings.first()
-        when (settings.widgetContentType) {
-            "TASKS" -> nextTask(entryPoint, settings) ?: NextUpData.Empty("TASKS")
-            "REMINDERS" -> nextReminder(entryPoint) ?: NextUpData.Empty("REMINDERS")
-            else -> nextChore(entryPoint, settings) ?: NextUpData.Empty("CHORES")
+        // Reminders are on-device only (ReminderRepository never touches Supabase), so
+        // that content type works with no credentials configured; Chores/Tasks do need them.
+        val needsSupabase = settings.widgetContentType != "REMINDERS"
+        if (needsSupabase && (settings.supabaseUrl.isBlank() || settings.supabaseKey.isBlank())) {
+            return NextUpData.NotConfigured
         }
-    }.getOrElse { NextUpData.Unavailable }
+        return runCatching {
+            val data = when (settings.widgetContentType) {
+                "TASKS" -> nextTask(entryPoint, settings) ?: NextUpData.Empty("TASKS")
+                "REMINDERS" -> nextReminder(entryPoint) ?: NextUpData.Empty("REMINDERS")
+                else -> nextChore(entryPoint, settings) ?: NextUpData.Empty("CHORES")
+            }
+            entryPoint.widgetSyncStore().markSynced(WidgetSyncKey.NEXT_UP)
+            data
+        }.getOrElse {
+            NextUpData.Unavailable(entryPoint.widgetSyncStore().lastSyncedAt(WidgetSyncKey.NEXT_UP))
+        }
+    }
 
     private suspend fun nextTask(entryPoint: WidgetEntryPoint, settings: AppSettings): NextUpData.Task? {
         val candidates = entryPoint.taskRepository().loadTasks()
@@ -153,7 +166,8 @@ private fun NextUpContent(data: NextUpData) {
             is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact, tiny)
             is NextUpData.ReminderItem -> NextUpReminderContent(data.reminder, compact)
             is NextUpData.Empty -> NextUpEmptyContent(data.contentType, compact)
-            NextUpData.Unavailable -> CenteredMessage("Open app to connect", WIDGET_DEST_TASKS)
+            NextUpData.NotConfigured -> CenteredMessage("Connect Supabase in Settings to use this widget", WIDGET_DEST_SETTINGS)
+            is NextUpData.Unavailable -> CenteredMessage(unavailableMessage(data.lastSyncedAt), WIDGET_DEST_TASKS)
         }
     }
 }
