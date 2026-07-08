@@ -56,18 +56,18 @@ fun AddMenuFab(
                 ExtendedFloatingActionButton(
                     onClick = {
                         onExpandedChange(false)
-                        onSelect(AddMenuOption.TASK)
-                    },
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
-                    text = { Text("One-time task") }
-                )
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onExpandedChange(false)
                         onSelect(AddMenuOption.CHORE)
                     },
                     icon = { Icon(Icons.Filled.CleaningServices, contentDescription = null) },
                     text = { Text("Recurring chore") }
+                )
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        onExpandedChange(false)
+                        onSelect(AddMenuOption.TASK)
+                    },
+                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
+                    text = { Text("One-time task") }
                 )
             }
         }

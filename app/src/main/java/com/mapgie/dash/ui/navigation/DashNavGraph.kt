@@ -43,7 +43,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Settings : Screen("settings", "Settings", Icons.Filled.Settings)
 }
 
-private val navItems = listOf(Screen.Chores, Screen.Tasks, Screen.Reminders, Screen.Settings)
+private val navItems = listOf(Screen.Tasks, Screen.Chores, Screen.Reminders, Screen.Settings)
 
 private val Screen.addMenuOption: AddMenuOption?
     get() = when (this) {
@@ -173,7 +173,7 @@ fun DashNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (startOnSettings) Screen.Settings.route else Screen.Chores.route,
+            startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Chores.route) {
