@@ -92,33 +92,47 @@ fun EditTaskSheet(
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
     var showShareChoice by remember { mutableStateOf(false) }
 
-    var title by remember { mutableStateOf(task?.title ?: "") }
-    var notes by remember { mutableStateOf(task?.notes ?: "") }
-    var category by remember { mutableStateOf(if (task != null) task.category ?: "" else DEFAULT_CATEGORY) }
-    var priority by remember { mutableStateOf(task?.priorityEnum() ?: TaskPriority.NORMAL) }
-    var owner by remember { mutableStateOf(task?.owner ?: "") }
+    val initialTitle = remember { task?.title ?: "" }
+    var title by remember { mutableStateOf(initialTitle) }
+    val initialNotes = remember { task?.notes ?: "" }
+    var notes by remember { mutableStateOf(initialNotes) }
+    val initialCategory = remember { if (task != null) task.category ?: "" else DEFAULT_CATEGORY }
+    var category by remember { mutableStateOf(initialCategory) }
+    val initialPriority = remember { task?.priorityEnum() ?: TaskPriority.NORMAL }
+    var priority by remember { mutableStateOf(initialPriority) }
+    val initialOwner = remember { task?.owner ?: "" }
+    var owner by remember { mutableStateOf(initialOwner) }
 
-    var dueType by remember {
-        mutableStateOf(
-            when {
-                task?.dueDate != null -> "date"
-                task?.duePeriod != null -> "period"
-                else -> "none"
-            }
-        )
+    val initialDueType = remember {
+        when {
+            task?.dueDate != null -> "date"
+            task?.duePeriod != null -> "period"
+            else -> "none"
+        }
     }
-    var dueDate by remember {
-        mutableStateOf(
-            task?.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-        )
+    var dueType by remember { mutableStateOf(initialDueType) }
+    val initialDueDate = remember {
+        task?.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     }
-    var duePeriod by remember { mutableStateOf(task?.duePeriod ?: "today") }
+    var dueDate by remember { mutableStateOf(initialDueDate) }
+    val initialDuePeriod = remember { task?.duePeriod ?: "today" }
+    var duePeriod by remember { mutableStateOf(initialDuePeriod) }
     var showDueDatePicker by remember { mutableStateOf(false) }
     val dueDatePickerState = rememberDatePickerState(
         initialSelectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
     )
 
-    var reminderEnabled by remember { mutableStateOf(task?.reminderAt != null) }
+    val initialReminderEnabled = remember { task?.reminderAt != null }
+    var reminderEnabled by remember { mutableStateOf(initialReminderEnabled) }
+    // Normalized to whole minutes (matching resolvedReminderInstant()'s own truncation
+    // below) so a stored reminderAt with non-zero seconds doesn't look "changed" on open.
+    val initialReminderAt = remember {
+        task?.reminderAt?.let {
+            runCatching {
+                Instant.parse(it).atZone(ZoneId.systemDefault()).withSecond(0).withNano(0).toInstant().toString()
+            }.getOrNull()
+        }
+    }
     var reminderBase by remember {
         mutableStateOf(
             task?.reminderAt
@@ -137,10 +151,35 @@ fun EditTaskSheet(
     var ownerExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
 
     fun resolvedReminderInstant(): String? {
         if (!reminderEnabled) return null
         return reminderBase.withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0).toInstant().toString()
+    }
+
+    val isDirty = title != initialTitle ||
+        notes != initialNotes ||
+        category != initialCategory ||
+        priority != initialPriority ||
+        owner != initialOwner ||
+        dueType != initialDueType ||
+        dueDate != initialDueDate ||
+        duePeriod != initialDuePeriod ||
+        reminderEnabled != initialReminderEnabled ||
+        (reminderEnabled && resolvedReminderInstant() != initialReminderAt)
+
+    // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
+    // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
+    // visible (sheetState.show()) instead of letting it finish hiding, so we never
+    // hit the stuck-invisible-overlay bug while still warning before data loss.
+    fun requestDismiss() {
+        if (isDirty) {
+            sheetScope.launch { sheetState.show() }
+            showDiscardConfirm = true
+        } else {
+            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
     }
 
     fun buildInsert() = TaskInsert(
@@ -182,9 +221,7 @@ fun EditTaskSheet(
     )
 
     ModalBottomSheet(
-        onDismissRequest = {
-            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-        },
+        onDismissRequest = { requestDismiss() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
             shouldDismissOnBackPress = true
@@ -575,6 +612,16 @@ fun EditTaskSheet(
                 showReminderTimePicker = false
             },
             onDismiss = { showReminderTimePicker = false }
+        )
+    }
+
+    if (showDiscardConfirm) {
+        DiscardChangesDialog(
+            onKeepEditing = { showDiscardConfirm = false },
+            onDiscard = {
+                showDiscardConfirm = false
+                sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+            }
         )
     }
 }

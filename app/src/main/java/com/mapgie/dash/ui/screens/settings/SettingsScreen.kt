@@ -380,8 +380,8 @@ private fun AppearanceSubScreen(
     }
 
     val selectedAppTheme = settings?.let {
-        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SAGE)
-    } ?: AppTheme.SAGE
+        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.MIST)
+    } ?: AppTheme.MIST
 
     val customPrimaryHue          = settings?.customPrimaryHue          ?: 150f
     val customPrimarySaturation   = settings?.customPrimarySaturation   ?: 0.5f

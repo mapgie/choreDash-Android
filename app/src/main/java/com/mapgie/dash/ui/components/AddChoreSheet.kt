@@ -27,11 +27,26 @@ fun AddChoreSheet(
     var intervalText by remember { mutableStateOf("") }
     var ownerExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
+
+    val isDirty = tagId != initialTagId || label.isNotBlank() ||
+        category != DEFAULT_CATEGORY || selectedOwner.isNotBlank() || intervalText.isNotBlank()
+
+    // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
+    // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
+    // visible (sheetState.show()) instead of letting it finish hiding, so we never
+    // hit the stuck-invisible-overlay bug while still warning before data loss.
+    fun requestDismiss() {
+        if (isDirty) {
+            sheetScope.launch { sheetState.show() }
+            showDiscardConfirm = true
+        } else {
+            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
+    }
 
     ModalBottomSheet(
-        onDismissRequest = {
-            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-        },
+        onDismissRequest = { requestDismiss() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
             shouldDismissOnBackPress = true
@@ -140,9 +155,7 @@ fun AddChoreSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick = {
-                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-                    },
+                    onClick = { requestDismiss() },
                     modifier = Modifier.weight(1f)
                 ) { Text("Cancel") }
                 Button(
@@ -159,5 +172,15 @@ fun AddChoreSheet(
                 ) { Text("Add") }
             }
         }
+    }
+
+    if (showDiscardConfirm) {
+        DiscardChangesDialog(
+            onKeepEditing = { showDiscardConfirm = false },
+            onDiscard = {
+                showDiscardConfirm = false
+                sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+            }
+        )
     }
 }

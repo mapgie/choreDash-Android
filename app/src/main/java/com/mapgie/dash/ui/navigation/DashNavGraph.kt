@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -29,6 +30,12 @@ import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
+import com.mapgie.dash.ui.theme.TypeChoreContainer
+import com.mapgie.dash.ui.theme.TypeChoreOnContainer
+import com.mapgie.dash.ui.theme.TypeReminderContainer
+import com.mapgie.dash.ui.theme.TypeReminderOnContainer
+import com.mapgie.dash.ui.theme.TypeTaskContainer
+import com.mapgie.dash.ui.theme.TypeTaskOnContainer
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_CHORE
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_REMINDER
@@ -50,6 +57,17 @@ private val Screen.addMenuOption: AddMenuOption?
         Screen.Chores -> AddMenuOption.CHORE
         Screen.Tasks -> AddMenuOption.TASK
         Screen.Reminders -> AddMenuOption.REMINDER
+        else -> null
+    }
+
+// Gives each content-type tab its own colour tone (indicator pill + selected
+// icon/text), on top of the icon and label that already distinguish them.
+// Settings has no type accent and falls back to the theme's primary colour.
+private val Screen.accentColors: Pair<Color, Color>?
+    get() = when (this) {
+        Screen.Tasks -> TypeTaskContainer to TypeTaskOnContainer
+        Screen.Chores -> TypeChoreContainer to TypeChoreOnContainer
+        Screen.Reminders -> TypeReminderContainer to TypeReminderOnContainer
         else -> null
     }
 
@@ -140,6 +158,7 @@ fun DashNavGraph(
                 navItems.forEach { screen ->
                     val selected = currentDestination?.hierarchy
                         ?.any { it.route == screen.route } == true
+                    val accent = screen.accentColors
                     NavigationBarItem(
                         icon = {
                             Icon(screen.icon, contentDescription = screen.label)
@@ -159,13 +178,23 @@ fun DashNavGraph(
                                 restoreState = true
                             }
                         },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.primary
-                        )
+                        colors = if (accent != null) {
+                            NavigationBarItemDefaults.colors(
+                                selectedIconColor = accent.second,
+                                selectedTextColor = accent.second,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = accent.first
+                            )
+                        } else {
+                            NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     )
                 }
             }

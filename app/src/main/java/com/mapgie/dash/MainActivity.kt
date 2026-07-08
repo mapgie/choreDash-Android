@@ -92,8 +92,8 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             val appTheme = settings?.let {
-                runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.SAGE)
-            } ?: AppTheme.SAGE
+                runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.MIST)
+            } ?: AppTheme.MIST
             val customHSL = settings?.let {
                 CustomHSL(
                     primaryH   = it.customPrimaryHue,

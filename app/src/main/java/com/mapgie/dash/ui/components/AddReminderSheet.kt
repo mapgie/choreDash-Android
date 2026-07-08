@@ -85,11 +85,15 @@ fun AddReminderSheet(
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
 
-    var subject by remember { mutableStateOf(existing?.subject ?: initialSubject ?: "") }
+    val initialSubjectValue = remember { existing?.subject ?: initialSubject ?: "" }
+    var subject by remember { mutableStateOf(initialSubjectValue) }
 
+    // Normalized to whole minutes so it matches remindBase's own truncation once the
+    // date/time picker touches it (see showDatePicker confirm below), otherwise a
+    // stored remindAt with non-zero seconds would look "changed" after a no-op picker use.
     val initialRemind = remember {
-        existing?.remindAtInstant()?.atZone(ZoneId.systemDefault())
-            ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
+        (existing?.remindAtInstant()?.atZone(ZoneId.systemDefault()) ?: ZonedDateTime.now().plusDays(1))
+            .withSecond(0).withNano(0)
     }
     var remindBase by remember { mutableStateOf(initialRemind) }
     var remindHour by remember { mutableIntStateOf(initialRemind.hour) }
@@ -123,6 +127,7 @@ fun AddReminderSheet(
     var linkedItem by remember { mutableStateOf(initialLinkedItem) }
     var linkExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
 
     val displayDateTime = remindBase.withHour(remindHour).withMinute(remindMinute)
     val displayDate = displayDateTime.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
@@ -139,10 +144,25 @@ fun AddReminderSheet(
         taskId = (linkedItem as? LinkedItem.TaskLink)?.id
     )
 
-    ModalBottomSheet(
-        onDismissRequest = {
+    val isDirty = subject != initialSubjectValue ||
+        displayDateTime != initialRemind ||
+        linkedItem != initialLinkedItem
+
+    // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
+    // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
+    // visible (sheetState.show()) instead of letting it finish hiding, so we never
+    // hit the stuck-invisible-overlay bug while still warning before data loss.
+    fun requestDismiss() {
+        if (isDirty) {
+            sheetScope.launch { sheetState.show() }
+            showDiscardConfirm = true
+        } else {
             sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-        },
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { requestDismiss() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = true)
     ) {
@@ -319,6 +339,16 @@ fun AddReminderSheet(
                 showTimePicker = false
             },
             onDismiss = { showTimePicker = false }
+        )
+    }
+
+    if (showDiscardConfirm) {
+        DiscardChangesDialog(
+            onKeepEditing = { showDiscardConfirm = false },
+            onDiscard = {
+                showDiscardConfirm = false
+                sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+            }
         )
     }
 }

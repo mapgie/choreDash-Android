@@ -41,8 +41,26 @@ fun EditChoreSheet(
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showShareChoice by remember { mutableStateOf(false) }
     var showMoreOptions by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
 
     val isArchived = chore.archivedAt != null
+
+    val isDirty = label != chore.label ||
+        selectedOwner != (chore.owner ?: "") ||
+        intervalText != (chore.intervalDays?.toInt()?.toString() ?: "")
+
+    // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
+    // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
+    // visible (sheetState.show()) instead of letting it finish hiding, so we never
+    // hit the stuck-invisible-overlay bug while still warning before data loss.
+    fun requestDismiss() {
+        if (isDirty) {
+            sheetScope.launch { sheetState.show() }
+            showDiscardConfirm = true
+        } else {
+            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
+    }
 
     fun calendarInfo() = calendarEventWithoutTime(
         title = chore.label,
@@ -50,9 +68,7 @@ fun EditChoreSheet(
     )
 
     ModalBottomSheet(
-        onDismissRequest = {
-            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-        },
+        onDismissRequest = { requestDismiss() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
             shouldDismissOnBackPress = true
@@ -199,9 +215,7 @@ fun EditChoreSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
-                    onClick = {
-                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-                    },
+                    onClick = { requestDismiss() },
                     modifier = Modifier.weight(1f)
                 ) { Text("Cancel") }
                 Button(
@@ -275,6 +289,16 @@ fun EditChoreSheet(
             },
             dismissButton = {
                 TextButton(onClick = { showArchiveConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDiscardConfirm) {
+        DiscardChangesDialog(
+            onKeepEditing = { showDiscardConfirm = false },
+            onDiscard = {
+                showDiscardConfirm = false
+                sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
             }
         )
     }
