@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.mapgie.dash.data.model.CadenceBucket
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -45,8 +46,12 @@ data class AppSettings(
     // Display — grouping
     val groupChoresByCategory: Boolean = true,
     val groupTasksByCategory: Boolean = true,
-    // Display — hide items not due soon (-1 = disabled, positive = threshold in days)
-    val choreHideThresholdDays: Int = -1,
+    // Display — smart chore visibility: hide chores until they are within the per-cadence
+    // lead time (days before due) of their next due date
+    val smartChoreVisibility: Boolean = true,
+    val choreLeadDays: Map<CadenceBucket, Int> =
+        CadenceBucket.entries.associateWith { it.defaultLeadDays },
+    // Display — hide tasks not due soon (-1 = disabled, positive = threshold in days)
     val taskHideThresholdDays: Int = -1,
 )
 
@@ -78,13 +83,22 @@ class SettingsRepository @Inject constructor(
         val WIDGET_OWNER_FILTER            = stringPreferencesKey("widget_owner_filter")
         val GROUP_CHORES_BY_CATEGORY       = booleanPreferencesKey("group_chores_by_category")
         val GROUP_TASKS_BY_CATEGORY        = booleanPreferencesKey("group_tasks_by_category")
+        // Legacy single-day chore threshold; read only to migrate into smart visibility
         val CHORE_HIDE_THRESHOLD_DAYS      = intPreferencesKey("chore_hide_threshold_days")
         val TASK_HIDE_THRESHOLD_DAYS       = intPreferencesKey("task_hide_threshold_days")
+        val SMART_CHORE_VISIBILITY         = booleanPreferencesKey("smart_chore_visibility")
+
+        fun choreLeadDays(bucket: CadenceBucket) =
+            intPreferencesKey("chore_lead_days_${bucket.name.lowercase()}")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
         .map { prefs ->
+            // Migration from the legacy single-day chore threshold: an explicitly disabled
+            // legacy setting (-1) keeps smart visibility off; a configured legacy value
+            // seeds every bucket's lead time until the user tunes them individually.
+            val legacyChoreThreshold = prefs[Keys.CHORE_HIDE_THRESHOLD_DAYS]
             AppSettings(
                 supabaseUrl                 = prefs[Keys.SUPABASE_URL] ?: "",
                 supabaseKey                 = prefs[Keys.SUPABASE_KEY] ?: "",
@@ -117,7 +131,13 @@ class SettingsRepository @Inject constructor(
                 widgetOwnerFilter           = prefs[Keys.WIDGET_OWNER_FILTER] ?: "EVERYBODY",
                 groupChoresByCategory       = prefs[Keys.GROUP_CHORES_BY_CATEGORY] ?: true,
                 groupTasksByCategory        = prefs[Keys.GROUP_TASKS_BY_CATEGORY] ?: true,
-                choreHideThresholdDays      = prefs[Keys.CHORE_HIDE_THRESHOLD_DAYS] ?: -1,
+                smartChoreVisibility        = prefs[Keys.SMART_CHORE_VISIBILITY]
+                    ?: (legacyChoreThreshold == null || legacyChoreThreshold >= 0),
+                choreLeadDays               = CadenceBucket.entries.associateWith { bucket ->
+                    prefs[Keys.choreLeadDays(bucket)]
+                        ?: legacyChoreThreshold?.takeIf { it >= 0 }
+                        ?: bucket.defaultLeadDays
+                },
                 taskHideThresholdDays       = prefs[Keys.TASK_HIDE_THRESHOLD_DAYS] ?: -1,
             )
         }
@@ -192,8 +212,22 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[Keys.GROUP_TASKS_BY_CATEGORY] = enabled }
     }
 
-    suspend fun setChoreHideThresholdDays(days: Int) {
-        context.dataStore.edit { it[Keys.CHORE_HIDE_THRESHOLD_DAYS] = days }
+    suspend fun setSmartChoreVisibility(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SMART_CHORE_VISIBILITY] = enabled }
+    }
+
+    suspend fun setChoreLeadDays(bucket: CadenceBucket, days: Int) {
+        context.dataStore.edit { it[Keys.choreLeadDays(bucket)] = days }
+    }
+
+    suspend fun resetChoreLeadDays() {
+        // Write defaults explicitly rather than removing the keys, so the reset also
+        // clears any lead times seeded from the legacy threshold migration.
+        context.dataStore.edit { prefs ->
+            CadenceBucket.entries.forEach { bucket ->
+                prefs[Keys.choreLeadDays(bucket)] = bucket.defaultLeadDays
+            }
+        }
     }
 
     suspend fun setTaskHideThresholdDays(days: Int) {

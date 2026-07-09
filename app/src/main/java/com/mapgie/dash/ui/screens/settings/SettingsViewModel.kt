@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.data.database.dao.CustomColorThemeDao
 import com.mapgie.dash.data.database.entities.CustomColorTheme
+import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.preferences.AppSettings
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
@@ -200,8 +201,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setGroupTasksByCategory(enabled) }
     }
 
-    fun setChoreHideThresholdDays(days: Int) {
-        viewModelScope.launch { settingsRepository.setChoreHideThresholdDays(days) }
+    fun setSmartChoreVisibility(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSmartChoreVisibility(enabled) }
+    }
+
+    fun setChoreLeadDays(bucket: CadenceBucket, days: Int) {
+        viewModelScope.launch { settingsRepository.setChoreLeadDays(bucket, days) }
+    }
+
+    fun resetChoreLeadDays() {
+        viewModelScope.launch { settingsRepository.resetChoreLeadDays() }
     }
 
     fun setTaskHideThresholdDays(days: Int) {

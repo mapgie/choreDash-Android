@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
+import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ReminderInsert
@@ -51,7 +52,9 @@ data class ChoreUiState(
     val zenSortAscending: Boolean = true,
     val showDueCountdown: Boolean = false,
     val showDistant: Boolean = false,
-    val hideThresholdDays: Int = -1,
+    // Off until settings load so chores aren't hidden with unconfigured lead times
+    val smartVisibility: Boolean = false,
+    val choreLeadDays: Map<CadenceBucket, Int> = emptyMap(),
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     val pinnedChoreId: String? = null,
@@ -73,12 +76,14 @@ data class ChoreUiState(
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
             result = result.filter { !it.isDistant() }
-            if (hideThresholdDays >= 0) {
+            if (smartVisibility) {
                 result = result.filter { chore ->
                     val last = chore.lastScanned ?: return@filter true
-                    val intervalHours = chore.intervalDays?.let { (it * 24).toLong() } ?: return@filter true
-                    val dueInstant = last.plus(intervalHours, ChronoUnit.HOURS)
-                    Duration.between(Instant.now(), dueInstant).toDays() <= hideThresholdDays
+                    val intervalDays = chore.intervalDays ?: return@filter true
+                    val bucket = CadenceBucket.forInterval(intervalDays)
+                    val leadDays = choreLeadDays[bucket] ?: bucket.defaultLeadDays
+                    val dueInstant = last.plus((intervalDays * 24).toLong(), ChronoUnit.HOURS)
+                    Duration.between(Instant.now(), dueInstant).toDays() <= leadDays
                 }
             }
             result = when (filter) {
@@ -135,7 +140,8 @@ class ChoreListViewModel @Inject constructor(
                         zenMode = settings.zenMode,
                         showDueCountdown = settings.showDueCountdown,
                         groupByCategory = settings.groupChoresByCategory,
-                        hideThresholdDays = settings.choreHideThresholdDays,
+                        smartVisibility = settings.smartChoreVisibility,
+                        choreLeadDays = settings.choreLeadDays,
                     )
                 }
             }
