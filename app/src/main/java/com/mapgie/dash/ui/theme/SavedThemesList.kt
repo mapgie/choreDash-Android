@@ -47,7 +47,8 @@ import com.mapgie.dash.data.database.entities.CustomColorTheme
 /**
  * Displays a list of saved custom colour themes with load, delete, and rename actions.
  *
- * - Three colour swatches are derived from each theme's HSL hues.
+ * - Three colour swatches show each theme's saved HSL colours.
+ * - Tapping a row (or its load button) applies the theme.
  * - Long-pressing a row opens a rename dialog.
  * - The active profile is indicated by a tinted surface and a label.
  * - Empty state shows a brief message.
@@ -152,7 +153,8 @@ private fun SavedThemeRow(
             .fillMaxWidth()
             .semantics { role = Role.Button }
             .combinedClickable(
-                onClick = {},
+                onClick = onLoad,
+                onClickLabel = "Load ${theme.name}",
                 onLongClick = onLongPress,
                 onLongClickLabel = "Rename ${theme.name}",
             ),

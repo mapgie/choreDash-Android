@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.DoNotDisturbOn
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -437,6 +438,35 @@ private fun AppearanceSubScreen(
                 }
             }
 
+            // WCAG toggle applies to the built-in palettes; custom colours are
+            // applied exactly as picked, so it is hidden while Custom is active.
+            if (selectedAppTheme != AppTheme.CUSTOM) {
+                val wcagChecked = settings?.wcagMode ?: false
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { role = Role.Checkbox }
+                        .clickable { viewModel.setWcagMode(!wcagChecked) }
+                ) {
+                    Checkbox(
+                        checked = wcagChecked,
+                        onCheckedChange = null,
+                    )
+                    Column(modifier = Modifier.padding(start = 4.dp)) {
+                        Text(
+                            "WCAG accessible colours",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            "Increases contrast for text and interactive elements",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             HorizontalDivider()
 
             // ── Palette / custom colour picker ────────────────────────────────
@@ -456,6 +486,11 @@ private fun AppearanceSubScreen(
                     viewModel.setCustomHSL(pH, pS, pL, sH, sS, sL, tH, tS, tL)
                 },
                 darkTheme = darkTheme,
+                customLightBackgroundArgb = settings?.customLightBackgroundArgb ?: 0,
+                customDarkBackgroundArgb = settings?.customDarkBackgroundArgb ?: 0,
+                onCustomBackgroundArgbsChange = { light, dark ->
+                    viewModel.setCustomBackgroundArgbs(light, dark)
+                },
             )
 
             // ── Save section (visible only when custom palette is active) ─────

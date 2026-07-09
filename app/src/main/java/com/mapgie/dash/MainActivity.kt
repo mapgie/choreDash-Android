@@ -105,9 +105,16 @@ class MainActivity : ComponentActivity() {
                     tertiaryH  = it.customTertiaryHue,
                     tertiaryS  = it.customTertiarySaturation,
                     tertiaryL  = it.customTertiaryLightness,
+                    lightBackgroundArgb = it.customLightBackgroundArgb,
+                    darkBackgroundArgb  = it.customDarkBackgroundArgb,
                 )
             }
-            DashTheme(appTheme = appTheme, darkTheme = darkTheme, customHSL = customHSL) {
+            DashTheme(
+                appTheme  = appTheme,
+                darkTheme = darkTheme,
+                wcag      = settings?.wcagMode ?: false,
+                customHSL = customHSL,
+            ) {
                 // Hold blank screen until first DataStore emission (<10 ms)
                 // to avoid flashing wrong theme or credentials state.
                 if (settings == null) {

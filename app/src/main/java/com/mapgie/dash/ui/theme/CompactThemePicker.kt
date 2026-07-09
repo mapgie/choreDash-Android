@@ -19,30 +19,37 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.ColorUtils
 
 /**
- * Compact theme picker showing a grid of palette cards and a custom HSL section.
+ * Compact theme picker showing a grid of palette cards and a custom colour section.
  *
  * Palette cards use [Role.RadioButton] semantics (mutually exclusive single-select).
  * Each card shows three 14dp colour circles: primary, secondary, tertiary for that palette.
- * When [AppTheme.CUSTOM] is selected the full HSL controls are revealed via
- * [AnimatedVisibility].
+ * When [AppTheme.CUSTOM] is selected, one row per colour role (primary, secondary,
+ * tertiary, plus light/dark background overrides) is revealed via [AnimatedVisibility];
+ * each row opens the shared [ColorPickerDialog] and the exact picked colour is what the
+ * applied theme uses.
  */
 @Composable
 fun CompactThemePicker(
@@ -63,6 +70,9 @@ fun CompactThemePicker(
         tH: Float, tS: Float, tL: Float,
     ) -> Unit,
     darkTheme: Boolean,
+    customLightBackgroundArgb: Int = 0,
+    customDarkBackgroundArgb: Int = 0,
+    onCustomBackgroundArgbsChange: (Int, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     // All entries are shown as palette cards (including CUSTOM).
@@ -115,19 +125,20 @@ fun CompactThemePicker(
             }
         }
 
-        // Custom HSL controls — only visible when CUSTOM is selected
+        // Custom colour controls — only visible when CUSTOM is selected
         AnimatedVisibility(visible = selectedTheme == AppTheme.CUSTOM) {
-            CustomHSLControls(
-                primaryHue = customPrimaryHue,
-                primarySaturation = customPrimarySaturation,
-                primaryLightness = customPrimaryLightness,
-                secondaryHue = customSecondaryHue,
-                secondarySaturation = customSecondarySaturation,
-                secondaryLightness = customSecondaryLightness,
-                tertiaryHue = customTertiaryHue,
-                tertiarySaturation = customTertiarySaturation,
-                tertiaryLightness = customTertiaryLightness,
-                onHSLChange = onCustomHSLChange,
+            CustomColorControls(
+                primaryColor   = customPrimaryColor,
+                secondaryColor = customSecondaryColor,
+                tertiaryColor  = customTertiaryColor,
+                lightBackgroundArgb = customLightBackgroundArgb,
+                darkBackgroundArgb  = customDarkBackgroundArgb,
+                autoLightBackground = Color.hsl(customPrimaryHue, 0.10f, 0.98f),
+                autoDarkBackground  = Color.hsl(customPrimaryHue, 0.10f, 0.10f),
+                onPrimaryChange   = { h, s, l -> onCustomHSLChange(h, s, l, customSecondaryHue, customSecondarySaturation, customSecondaryLightness, customTertiaryHue, customTertiarySaturation, customTertiaryLightness) },
+                onSecondaryChange = { h, s, l -> onCustomHSLChange(customPrimaryHue, customPrimarySaturation, customPrimaryLightness, h, s, l, customTertiaryHue, customTertiarySaturation, customTertiaryLightness) },
+                onTertiaryChange  = { h, s, l -> onCustomHSLChange(customPrimaryHue, customPrimarySaturation, customPrimaryLightness, customSecondaryHue, customSecondarySaturation, customSecondaryLightness, h, s, l) },
+                onBackgroundArgbsChange = onCustomBackgroundArgbsChange,
             )
         }
     }
@@ -229,148 +240,140 @@ private fun PaletteCard(
 }
 
 @Composable
-private fun CustomHSLControls(
-    primaryHue: Float,
-    primarySaturation: Float,
-    primaryLightness: Float,
-    secondaryHue: Float,
-    secondarySaturation: Float,
-    secondaryLightness: Float,
-    tertiaryHue: Float,
-    tertiarySaturation: Float,
-    tertiaryLightness: Float,
-    onHSLChange: (
-        pH: Float, pS: Float, pL: Float,
-        sH: Float, sS: Float, sL: Float,
-        tH: Float, tS: Float, tL: Float,
-    ) -> Unit,
+private fun CustomColorControls(
+    primaryColor: Color,
+    secondaryColor: Color,
+    tertiaryColor: Color,
+    lightBackgroundArgb: Int,
+    darkBackgroundArgb: Int,
+    autoLightBackground: Color,
+    autoDarkBackground: Color,
+    onPrimaryChange: (Float, Float, Float) -> Unit,
+    onSecondaryChange: (Float, Float, Float) -> Unit,
+    onTertiaryChange: (Float, Float, Float) -> Unit,
+    onBackgroundArgbsChange: (Int, Int) -> Unit,
 ) {
+    // The role colours are stored as HSL, so picked ARGBs are converted back
+    // before persisting; the round trip preserves the exact colour.
+    fun asHsl(argb: Int, onChange: (Float, Float, Float) -> Unit) {
+        val hsl = FloatArray(3)
+        ColorUtils.colorToHSL(argb, hsl)
+        onChange(hsl[0], hsl[1], hsl[2])
+    }
+
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            // Primary colour group
-            HSLRoleGroup(
-                label = "Primary colour",
-                hue = primaryHue,
-                saturation = primarySaturation,
-                lightness = primaryLightness,
-                onHueChange        = { onHSLChange(it, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
-                onSaturationChange = { onHSLChange(primaryHue, it, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
-                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, it, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+            CustomColorRow(
+                label        = "Primary colour",
+                color        = primaryColor,
+                onArgbChange = { argb -> asHsl(argb) { h, s, l -> onPrimaryChange(h, s, l) } },
             )
-            // Secondary colour group
-            HSLRoleGroup(
-                label = "Secondary colour",
-                hue = secondaryHue,
-                saturation = secondarySaturation,
-                lightness = secondaryLightness,
-                onHueChange        = { onHSLChange(primaryHue, primarySaturation, primaryLightness, it, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
-                onSaturationChange = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, it, secondaryLightness, tertiaryHue, tertiarySaturation, tertiaryLightness) },
-                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, it, tertiaryHue, tertiarySaturation, tertiaryLightness) },
+            CustomColorRow(
+                label        = "Secondary colour",
+                color        = secondaryColor,
+                onArgbChange = { argb -> asHsl(argb) { h, s, l -> onSecondaryChange(h, s, l) } },
             )
-            // Tertiary colour group
-            HSLRoleGroup(
-                label = "Tertiary colour",
-                hue = tertiaryHue,
-                saturation = tertiarySaturation,
-                lightness = tertiaryLightness,
-                onHueChange        = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, it, tertiarySaturation, tertiaryLightness) },
-                onSaturationChange = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, it, tertiaryLightness) },
-                onLightnessChange  = { onHSLChange(primaryHue, primarySaturation, primaryLightness, secondaryHue, secondarySaturation, secondaryLightness, tertiaryHue, tertiarySaturation, it) },
+            CustomColorRow(
+                label        = "Tertiary colour",
+                color        = tertiaryColor,
+                onArgbChange = { argb -> asHsl(argb) { h, s, l -> onTertiaryChange(h, s, l) } },
+            )
+            CustomColorRow(
+                label        = "Background (light)",
+                color        = if (lightBackgroundArgb != 0) Color(lightBackgroundArgb) else null,
+                autoFallback = autoLightBackground,
+                onArgbChange = { argb -> onBackgroundArgbsChange(argb, darkBackgroundArgb) },
+                onReset      = { onBackgroundArgbsChange(0, darkBackgroundArgb) },
+            )
+            CustomColorRow(
+                label        = "Background (dark)",
+                color        = if (darkBackgroundArgb != 0) Color(darkBackgroundArgb) else null,
+                autoFallback = autoDarkBackground,
+                onArgbChange = { argb -> onBackgroundArgbsChange(lightBackgroundArgb, argb) },
+                onReset      = { onBackgroundArgbsChange(lightBackgroundArgb, 0) },
             )
         }
     }
 }
 
 /**
- * A grouped set of HSL sliders for one colour role (primary, secondary, or tertiary).
- * Shows a live-preview swatch circle and three labelled sliders.
+ * One row per customisable colour. Shows the current swatch and hex, and opens
+ * [ColorPickerDialog] on tap. For background rows [color] may be null, meaning
+ * "Auto" (derived from the primary colour); [autoFallback] seeds the picker and
+ * [onReset] restores Auto.
  */
 @Composable
-private fun HSLRoleGroup(
-    label: String,
-    hue: Float,
-    saturation: Float,
-    lightness: Float,
-    onHueChange: (Float) -> Unit,
-    onSaturationChange: (Float) -> Unit,
-    onLightnessChange: (Float) -> Unit,
+private fun CustomColorRow(
+    label:        String,
+    color:        Color?,
+    onArgbChange: (Int) -> Unit,
+    autoFallback: Color? = null,
+    onReset:      (() -> Unit)? = null,
 ) {
-    val previewColor = Color.hsl(hue, saturation, lightness)
+    var showPicker by remember { mutableStateOf(false) }
+    val displayColor = color ?: autoFallback ?: Color.Gray
+    val isAuto       = color == null
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Section label + live preview swatch
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(previewColor)
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        // Hue slider
-        HSLSliderRow(
-            label = "Hue ${hue.toInt()}°",
-            value = hue,
-            valueRange = 0f..360f,
-            onValueChange = onHueChange,
-            contentDescription = "$label hue slider, ${hue.toInt()} degrees",
-        )
-        // Saturation slider
-        HSLSliderRow(
-            label = "Saturation ${(saturation * 100).toInt()}%",
-            value = saturation,
-            valueRange = 0f..1f,
-            onValueChange = onSaturationChange,
-            contentDescription = "$label saturation slider, ${(saturation * 100).toInt()} percent",
-        )
-        // Lightness slider
-        HSLSliderRow(
-            label = "Lightness ${(lightness * 100).toInt()}%",
-            value = lightness,
-            valueRange = 0f..1f,
-            onValueChange = onLightnessChange,
-            contentDescription = "$label lightness slider, ${(lightness * 100).toInt()} percent",
+    if (showPicker) {
+        ColorPickerDialog(
+            label       = label,
+            currentArgb = displayColor.toArgb(),
+            onDismiss   = { showPicker = false },
+            onConfirm   = { newArgb ->
+                onArgbChange(newArgb)
+                showPicker = false
+            },
         )
     }
-}
 
-@Composable
-private fun HSLSliderRow(
-    label: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit,
-    contentDescription: String,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { role = Role.Button }
+            .clickable { showPicker = true }
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .semantics { this.contentDescription = contentDescription },
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(displayColor)
+                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+        )
+        Text(
+            text     = label,
+            modifier = Modifier.weight(1f),
+            style    = MaterialTheme.typography.bodyMedium,
+            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (isAuto) {
+            Text(
+                "Auto",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                "#%06X".format(displayColor.toArgb() and 0xFFFFFF),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (onReset != null) {
+                TextButton(onClick = onReset) { Text("Auto") }
+            }
+        }
+        Icon(
+            Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

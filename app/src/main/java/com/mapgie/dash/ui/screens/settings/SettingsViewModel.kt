@@ -49,6 +49,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
+    fun setWcagMode(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setWcagMode(enabled) }
+    }
+
     fun setDeliveryMode(mode: String) {
         viewModelScope.launch { settingsRepository.setDeliveryMode(mode) }
     }
@@ -83,8 +87,16 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Persists the custom background overrides (ARGB; 0 = Auto) to DataStore. */
+    fun setCustomBackgroundArgbs(lightArgb: Int, darkArgb: Int) {
+        viewModelScope.launch {
+            settingsRepository.setCustomBackgroundArgbs(lightArgb, darkArgb)
+        }
+    }
+
     /**
-     * Saves the current custom HSL values as a new named theme profile.
+     * Saves the current custom colours as a new named theme profile, recording
+     * the active brightness mode so loading restores the same look.
      * Sets [customActiveProfileId] to the upserted row ID.
      */
     fun saveCustomColorTheme(name: String) {
@@ -101,7 +113,9 @@ class SettingsViewModel @Inject constructor(
                 tertiaryHue          = s.customTertiaryHue,
                 tertiarySaturation   = s.customTertiarySaturation,
                 tertiaryLightness    = s.customTertiaryLightness,
-                mode                 = "LIGHT",
+                mode                 = s.themeMode.name,
+                lightBackgroundArgb  = s.customLightBackgroundArgb,
+                darkBackgroundArgb   = s.customDarkBackgroundArgb,
             )
             val id = customColorThemeDao.upsert(theme)
             settingsRepository.setCustomActiveProfileId(id)
@@ -109,8 +123,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Loads a saved profile: writes its HSL values to DataStore, marks it as active,
-     * and switches the app theme to [AppTheme.CUSTOM].
+     * Loads a saved profile: writes its colours to DataStore, restores the
+     * brightness mode it was saved under, marks it as active, and switches the
+     * app theme to [AppTheme.CUSTOM].
      */
     fun loadCustomColorTheme(theme: CustomColorTheme) {
         viewModelScope.launch {
@@ -119,21 +134,26 @@ class SettingsViewModel @Inject constructor(
                 theme.secondaryHue, theme.secondarySaturation, theme.secondaryLightness,
                 theme.tertiaryHue,  theme.tertiarySaturation,  theme.tertiaryLightness,
             )
+            settingsRepository.setCustomBackgroundArgbs(
+                theme.lightBackgroundArgb, theme.darkBackgroundArgb,
+            )
+            runCatching { ThemeMode.valueOf(theme.mode) }.getOrNull()
+                ?.let { settingsRepository.setThemeMode(it) }
             settingsRepository.setCustomActiveProfileId(theme.id)
             settingsRepository.setAppTheme(AppTheme.CUSTOM.name)
         }
     }
 
     /**
-     * Deletes a saved profile. If the deleted profile was active, resets
-     * [customActiveProfileId] to -1 and reverts the app theme to [AppTheme.MIST].
+     * Deletes a saved profile. If the deleted profile was active, only the
+     * active-profile pointer is cleared; the current custom colours stay
+     * applied (they live in DataStore, not the deleted row).
      */
     fun deleteCustomColorTheme(theme: CustomColorTheme) {
         viewModelScope.launch {
             customColorThemeDao.delete(theme)
             if (settings.value?.customActiveProfileId == theme.id) {
                 settingsRepository.setCustomActiveProfileId(-1L)
-                settingsRepository.setAppTheme(AppTheme.MIST.name)
             }
         }
     }
@@ -170,7 +190,9 @@ class SettingsViewModel @Inject constructor(
                     tertiaryHue         = s.customTertiaryHue,
                     tertiarySaturation  = s.customTertiarySaturation,
                     tertiaryLightness   = s.customTertiaryLightness,
-                    mode                = "LIGHT",
+                    mode                = s.themeMode.name,
+                    lightBackgroundArgb = s.customLightBackgroundArgb,
+                    darkBackgroundArgb  = s.customDarkBackgroundArgb,
                 )
             )
         }
