@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
@@ -88,6 +91,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.mapgie.dash.BuildConfig
+import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.theme.AppTheme
@@ -562,12 +566,10 @@ private fun DisplaySubScreen(
 
     val groupChores = settings?.groupChoresByCategory ?: true
     val groupTasks = settings?.groupTasksByCategory ?: true
-    val choreThreshold = settings?.choreHideThresholdDays ?: -1
+    val smartVisibility = settings?.smartChoreVisibility ?: true
+    val choreLeadDays = settings?.choreLeadDays ?: emptyMap()
     val taskThreshold = settings?.taskHideThresholdDays ?: -1
 
-    var choreThresholdText by rememberSaveable(choreThreshold) {
-        mutableStateOf(if (choreThreshold >= 0) choreThreshold.toString() else "14")
-    }
     var taskThresholdText by rememberSaveable(taskThreshold) {
         mutableStateOf(if (taskThreshold >= 0) taskThreshold.toString() else "14")
     }
@@ -602,34 +604,27 @@ private fun DisplaySubScreen(
             Text("Visibility", style = MaterialTheme.typography.titleMedium)
 
             SwitchRow(
-                label = "Hide chores not due soon",
-                subtitle = "Hide chores whose next due date is further away than the threshold",
-                checked = choreThreshold >= 0,
-                onCheckedChange = { enabled ->
-                    if (enabled) {
-                        val days = choreThresholdText.toIntOrNull()?.coerceAtLeast(1) ?: 14
-                        viewModel.setChoreHideThresholdDays(days)
-                    } else {
-                        viewModel.setChoreHideThresholdDays(-1)
-                    }
-                }
+                label = "Smart chore visibility",
+                subtitle = "Hide chores until they're close to due, based on how often each repeats",
+                checked = smartVisibility,
+                onCheckedChange = { viewModel.setSmartChoreVisibility(it) }
             )
-            if (choreThreshold >= 0) {
-                OutlinedTextField(
-                    value = choreThresholdText,
-                    onValueChange = { v ->
-                        if (v.length <= 4 && v.all { it.isDigit() }) {
-                            choreThresholdText = v
-                            v.toIntOrNull()?.let { days ->
-                                if (days >= 1) viewModel.setChoreHideThresholdDays(days)
-                            }
-                        }
-                    },
-                    label = { Text("Days") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+            if (smartVisibility) {
+                Text(
+                    "How many days before a chore is due it reappears in the list:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                CadenceBucket.entries.forEach { bucket ->
+                    LeadTimeStepperRow(
+                        bucket = bucket,
+                        days = choreLeadDays[bucket] ?: bucket.defaultLeadDays,
+                        onDaysChange = { viewModel.setChoreLeadDays(bucket, it) }
+                    )
+                }
+                OutlinedButton(onClick = { viewModel.resetChoreLeadDays() }) {
+                    Text("Reset to defaults")
+                }
             }
 
             SwitchRow(
@@ -664,6 +659,58 @@ private fun DisplaySubScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * One cadence bucket's lead time control: bucket name and example on the left,
+ * a minus/value/plus stepper on the right.
+ */
+@Composable
+private fun LeadTimeStepperRow(
+    bucket: CadenceBucket,
+    days: Int,
+    onDaysChange: (Int) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(bucket.label, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                bucket.example,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = { onDaysChange((days - 1).coerceAtLeast(0)) },
+                enabled = days > 0,
+            ) {
+                Icon(
+                    Icons.Filled.Remove,
+                    contentDescription = "Show ${bucket.label} chores fewer days before due"
+                )
+            }
+            Text(
+                text = if (days == 1) "1 day" else "$days days",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(min = 56.dp)
+            )
+            IconButton(
+                onClick = { onDaysChange((days + 1).coerceAtMost(99)) },
+                enabled = days < 99,
+            ) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Show ${bucket.label} chores more days before due"
+                )
+            }
         }
     }
 }

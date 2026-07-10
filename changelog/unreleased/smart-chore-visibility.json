@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Smart chore visibility: chores now hide until they are close to due, based on how often each one repeats, with per-cadence lead times (daily, every few days, weekly, fortnightly, monthly) configurable under Settings > Display > Visibility"
+  ],
+  "changed": [
+    "The single \"Hide chores not due soon\" day threshold has been replaced by smart chore visibility; an existing threshold is carried over as the starting lead time for every cadence"
+  ]
+}
