@@ -21,6 +21,8 @@ data class AppSettings(
     val supabaseKey: String = "",
     val ownerHandle: String = "",
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    // High-contrast (WCAG) variants of the built-in palettes
+    val wcagMode: Boolean = false,
     val zenMode: Boolean = false,
     val showDueCountdown: Boolean = false,
     val deliveryMode: String = "NOTIFICATION",
@@ -36,6 +38,9 @@ data class AppSettings(
     val customTertiaryHue: Float = 200f,
     val customTertiarySaturation: Float = 0.4f,
     val customTertiaryLightness: Float = 0.4f,
+    // Custom background overrides per mode (ARGB; 0 = derived from primary hue)
+    val customLightBackgroundArgb: Int = 0,
+    val customDarkBackgroundArgb: Int = 0,
     // ID of the active saved custom colour profile (-1 = none)
     val customActiveProfileId: Long = -1L,
     // Widget customisation
@@ -59,6 +64,7 @@ class SettingsRepository @Inject constructor(
         val SUPABASE_KEY                   = stringPreferencesKey("supabase_key")
         val OWNER_HANDLE                   = stringPreferencesKey("owner_handle")
         val THEME_MODE                     = stringPreferencesKey("theme_mode")
+        val WCAG_MODE                      = booleanPreferencesKey("wcag_mode")
         val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
         val SHOW_DUE_COUNTDOWN             = booleanPreferencesKey("show_due_countdown")
         val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
@@ -72,6 +78,8 @@ class SettingsRepository @Inject constructor(
         val CUSTOM_TERTIARY_HUE            = floatPreferencesKey("custom_tertiary_hue")
         val CUSTOM_TERTIARY_SATURATION     = floatPreferencesKey("custom_tertiary_saturation")
         val CUSTOM_TERTIARY_LIGHTNESS      = floatPreferencesKey("custom_tertiary_lightness")
+        val CUSTOM_LIGHT_BG_ARGB           = intPreferencesKey("custom_light_bg_argb")
+        val CUSTOM_DARK_BG_ARGB            = intPreferencesKey("custom_dark_bg_argb")
         val CUSTOM_ACTIVE_PROFILE_ID       = longPreferencesKey("custom_active_profile_id")
         val WIDGET_CONTENT_TYPE            = stringPreferencesKey("widget_content_type")
         val WIDGET_PRIORITY_FILTER         = stringPreferencesKey("widget_priority_filter")
@@ -92,6 +100,7 @@ class SettingsRepository @Inject constructor(
                 themeMode                   = prefs[Keys.THEME_MODE]
                     ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                     ?: ThemeMode.SYSTEM,
+                wcagMode                    = prefs[Keys.WCAG_MODE] ?: false,
                 zenMode                     = prefs[Keys.ZEN_MODE] ?: false,
                 showDueCountdown            = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
                 deliveryMode                = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
@@ -111,6 +120,8 @@ class SettingsRepository @Inject constructor(
                 customTertiaryHue           = prefs[Keys.CUSTOM_TERTIARY_HUE] ?: 200f,
                 customTertiarySaturation    = prefs[Keys.CUSTOM_TERTIARY_SATURATION] ?: 0.4f,
                 customTertiaryLightness     = prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS] ?: 0.4f,
+                customLightBackgroundArgb   = prefs[Keys.CUSTOM_LIGHT_BG_ARGB] ?: 0,
+                customDarkBackgroundArgb    = prefs[Keys.CUSTOM_DARK_BG_ARGB] ?: 0,
                 customActiveProfileId       = prefs[Keys.CUSTOM_ACTIVE_PROFILE_ID] ?: -1L,
                 widgetContentType           = prefs[Keys.WIDGET_CONTENT_TYPE] ?: "CHORES",
                 widgetPriorityFilter        = prefs[Keys.WIDGET_PRIORITY_FILTER] ?: "ALL",
@@ -132,6 +143,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
+    }
+
+    suspend fun setWcagMode(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.WCAG_MODE] = enabled }
     }
 
     suspend fun setZenMode(enabled: Boolean) {
@@ -165,6 +180,13 @@ class SettingsRepository @Inject constructor(
             prefs[Keys.CUSTOM_TERTIARY_HUE]         = tertiaryH
             prefs[Keys.CUSTOM_TERTIARY_SATURATION]  = tertiaryS
             prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS]   = tertiaryL
+        }
+    }
+
+    suspend fun setCustomBackgroundArgbs(lightArgb: Int, darkArgb: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.CUSTOM_LIGHT_BG_ARGB] = lightArgb
+            prefs[Keys.CUSTOM_DARK_BG_ARGB]  = darkArgb
         }
     }
 

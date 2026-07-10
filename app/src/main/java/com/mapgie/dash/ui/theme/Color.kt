@@ -4,6 +4,9 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 
 // ── AppTheme catalogue ────────────────────────────────────────────────────────
 //
@@ -406,94 +409,177 @@ val MistDarkColors = darkColorScheme(
 
 // ── Colour scheme router ──────────────────────────────────────────────────────
 
-fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean): ColorScheme = when (appTheme) {
-    AppTheme.MIST   -> if (darkTheme) MistDarkColors   else MistLightColors
-    AppTheme.SAGE   -> if (darkTheme) SageDarkColors   else SageLightColors
-    AppTheme.CORAL  -> if (darkTheme) CoralDarkColors  else CoralLightColors
-    AppTheme.TEAL   -> if (darkTheme) TealDarkColors   else TealLightColors
-    AppTheme.CUSTOM -> MistLightColors // placeholder; caller must use buildCustomColorScheme
+fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean, wcag: Boolean = false): ColorScheme {
+    val base = when (appTheme) {
+        AppTheme.MIST   -> if (darkTheme) MistDarkColors   else MistLightColors
+        AppTheme.SAGE   -> if (darkTheme) SageDarkColors   else SageLightColors
+        AppTheme.CORAL  -> if (darkTheme) CoralDarkColors  else CoralLightColors
+        AppTheme.TEAL   -> if (darkTheme) TealDarkColors   else TealLightColors
+        AppTheme.CUSTOM -> MistLightColors // placeholder; caller must use buildCustomColorScheme
+    }
+    return if (wcag) base.withWcagContrast(darkTheme) else base
+}
+
+// ── WCAG high-contrast transform ──────────────────────────────────────────────
+
+private fun contrastRatio(a: Color, b: Color): Float {
+    val la = a.luminance() + 0.05f
+    val lb = b.luminance() + 0.05f
+    return if (la > lb) la / lb else lb / la
+}
+
+/**
+ * Steps a colour's HSL lightness away from [against] until the WCAG contrast
+ * ratio reaches [target]. [darken] chooses the direction (darken on light
+ * backgrounds, lighten on dark ones).
+ */
+private fun Color.adjustedForContrast(against: Color, target: Float, darken: Boolean): Color {
+    val hsl = FloatArray(3)
+    ColorUtils.colorToHSL(toArgb(), hsl)
+    var current = this
+    var steps = 0
+    while (contrastRatio(current, against) < target && steps < 20) {
+        hsl[2] = (hsl[2] + if (darken) -0.05f else 0.05f).coerceIn(0f, 1f)
+        current = Color.hsl(hsl[0], hsl[1], hsl[2])
+        steps++
+    }
+    return current
+}
+
+/**
+ * Derives a WCAG high-contrast variant of a palette programmatically: accent
+ * roles are pushed to at least 7:1 against the background (AAA for normal
+ * text), supporting text to 7:1, and outlines to 4.5:1. Backgrounds and
+ * surfaces are left untouched so the palette keeps its identity.
+ */
+fun ColorScheme.withWcagContrast(darkTheme: Boolean): ColorScheme {
+    val darken = !darkTheme
+    val fixedPrimary   = primary.adjustedForContrast(background, 7f, darken)
+    val fixedSecondary = secondary.adjustedForContrast(background, 7f, darken)
+    val fixedTertiary  = tertiary.adjustedForContrast(background, 7f, darken)
+    return copy(
+        primary          = fixedPrimary,
+        secondary        = fixedSecondary,
+        tertiary         = fixedTertiary,
+        surfaceTint      = fixedPrimary,
+        onSurfaceVariant = onSurfaceVariant.adjustedForContrast(surfaceVariant, 7f, darken),
+        outline          = outline.adjustedForContrast(background, 4.5f, darken),
+        onPrimaryContainer   = onPrimaryContainer.adjustedForContrast(primaryContainer, 7f, darken),
+        onSecondaryContainer = onSecondaryContainer.adjustedForContrast(secondaryContainer, 7f, darken),
+        onTertiaryContainer  = onTertiaryContainer.adjustedForContrast(tertiaryContainer, 7f, darken),
+    )
 }
 
 // ── Custom HSL scheme builder ─────────────────────────────────────────────────
+
+/** Near-black on bright colours, white on dark colours — keeps text legible on any pick. */
+private fun contrastingOn(color: Color): Color =
+    if (color.luminance() > 0.35f) Color(0xFF1C1B1F) else Color.White
 
 /**
  * Builds a Material 3 [ColorScheme] from three sets of HSL values (hue 0..360,
  * saturation 0..1, lightness 0..1).
  *
- * The primary, secondary, and tertiary roles use the caller-supplied H/S/L directly
- * for their main colour. Container, on-, surface, and outline tokens use fixed
- * lightness offsets derived from the primary hue to meet WCAG AA contrast targets.
+ * The picked colours are applied **verbatim** to the primary, secondary, and
+ * tertiary roles in both light and dark mode; on-colours are chosen by relative
+ * luminance so text stays legible whatever the user picks. Containers and
+ * neutrals are derived from the picked hues with mode-appropriate lightness.
+ *
+ * [backgroundArgb] overrides background/surface for the current mode (0 keeps
+ * the background derived from the primary hue).
  */
 fun buildCustomColorScheme(
     primaryH: Float,   primaryS: Float,   primaryL: Float,
     secondaryH: Float, secondaryS: Float, secondaryL: Float,
     tertiaryH: Float,  tertiaryS: Float,  tertiaryL: Float,
     darkTheme: Boolean,
+    backgroundArgb: Int = 0,
 ): ColorScheme {
-    fun hsl(h: Float, s: Float, l: Float) = Color.hsl(h, s, l)
+    val primary   = Color.hsl(primaryH,   primaryS,   primaryL)
+    val secondary = Color.hsl(secondaryH, secondaryS, secondaryL)
+    val tertiary  = Color.hsl(tertiaryH,  tertiaryS,  tertiaryL)
+
+    val background = when {
+        backgroundArgb != 0 -> Color(backgroundArgb)
+        darkTheme           -> Color.hsl(primaryH, 0.10f, 0.10f)
+        else                -> Color.hsl(primaryH, 0.10f, 0.98f)
+    }
+    val bg = FloatArray(3).also { ColorUtils.colorToHSL(background.toArgb(), it) }
+    val bgIsLight = background.luminance() > 0.35f
+    val onBackground     = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.10f) else Color.hsl(bg[0], 0.10f, 0.88f)
+    val surface          = if (darkTheme) Color.hsl(bg[0], bg[1], (bg[2] + 0.02f).coerceIn(0f, 1f)) else background
+    val surfaceVariant   = if (bgIsLight)
+        Color.hsl(bg[0], bg[1].coerceIn(0.05f, 0.20f), (bg[2] - 0.10f).coerceIn(0f, 1f))
+    else
+        Color.hsl(bg[0], bg[1].coerceAtMost(0.15f), (bg[2] + 0.15f).coerceIn(0f, 1f))
+    val onSurfaceVariant = if (bgIsLight) Color.hsl(bg[0], 0.15f, 0.25f) else Color.hsl(bg[0], 0.15f, 0.75f)
+    val outline          = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.45f) else Color.hsl(bg[0], 0.10f, 0.55f)
+    val outlineVariant   = if (bgIsLight) Color.hsl(bg[0], 0.15f, 0.75f) else Color.hsl(bg[0], 0.15f, 0.25f)
+    val inverseSurface   = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.18f) else Color.hsl(bg[0], 0.10f, 0.88f)
+    val inverseOnSurface = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.93f) else Color.hsl(bg[0], 0.10f, 0.10f)
 
     return if (!darkTheme) {
         lightColorScheme(
-            primary                = hsl(primaryH,   primaryS,   primaryL),
-            onPrimary              = hsl(primaryH,   0.10f, 0.97f),
-            primaryContainer       = hsl(primaryH,   primaryS.coerceAtMost(0.60f), 0.90f),
-            onPrimaryContainer     = hsl(primaryH,   primaryS,   0.12f),
-            secondary              = hsl(secondaryH, secondaryS, secondaryL),
-            onSecondary            = hsl(secondaryH, 0.10f, 0.97f),
-            secondaryContainer     = hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
-            onSecondaryContainer   = hsl(secondaryH, secondaryS, 0.12f),
-            tertiary               = hsl(tertiaryH,  tertiaryS,  tertiaryL),
-            onTertiary             = hsl(tertiaryH,  0.10f, 0.97f),
-            tertiaryContainer      = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.40f), 0.88f),
-            onTertiaryContainer    = hsl(tertiaryH,  tertiaryS,  0.12f),
+            primary                = primary,
+            onPrimary              = contrastingOn(primary),
+            primaryContainer       = Color.hsl(primaryH, primaryS.coerceAtMost(0.60f), 0.90f),
+            onPrimaryContainer     = Color.hsl(primaryH, primaryS, 0.12f),
+            secondary              = secondary,
+            onSecondary            = contrastingOn(secondary),
+            secondaryContainer     = Color.hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
+            onSecondaryContainer   = Color.hsl(secondaryH, secondaryS, 0.12f),
+            tertiary               = tertiary,
+            onTertiary             = contrastingOn(tertiary),
+            tertiaryContainer      = Color.hsl(tertiaryH, tertiaryS.coerceAtMost(0.40f), 0.88f),
+            onTertiaryContainer    = Color.hsl(tertiaryH, tertiaryS, 0.12f),
             error                  = Color(0xFFBA1A1A),
             errorContainer         = Color(0xFFFFDAD6),
             onError                = Color(0xFFFFFFFF),
             onErrorContainer       = Color(0xFF410002),
-            background             = hsl(primaryH,   0.10f, 0.98f),
-            onBackground           = hsl(primaryH,   0.10f, 0.10f),
-            surface                = hsl(primaryH,   0.10f, 0.98f),
-            onSurface              = hsl(primaryH,   0.10f, 0.10f),
-            surfaceVariant         = hsl(primaryH,   0.20f, 0.88f),
-            onSurfaceVariant       = hsl(primaryH,   0.15f, 0.25f),
-            outline                = hsl(primaryH,   0.10f, 0.45f),
-            inverseOnSurface       = hsl(primaryH,   0.10f, 0.93f),
-            inverseSurface         = hsl(primaryH,   0.10f, 0.18f),
-            inversePrimary         = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
-            surfaceTint            = hsl(primaryH,   primaryS,   primaryL),
-            outlineVariant         = hsl(primaryH,   0.15f, 0.75f),
+            background             = background,
+            onBackground           = onBackground,
+            surface                = surface,
+            onSurface              = onBackground,
+            surfaceVariant         = surfaceVariant,
+            onSurfaceVariant       = onSurfaceVariant,
+            outline                = outline,
+            inverseOnSurface       = inverseOnSurface,
+            inverseSurface         = inverseSurface,
+            inversePrimary         = Color.hsl(primaryH, primaryS.coerceAtMost(0.55f), 0.75f),
+            surfaceTint            = primary,
+            outlineVariant         = outlineVariant,
             scrim                  = Color(0xFF000000),
         )
     } else {
         darkColorScheme(
-            primary                = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
-            onPrimary              = hsl(primaryH,   primaryS,   0.14f),
-            primaryContainer       = hsl(primaryH,   primaryS.coerceAtMost(0.40f), 0.22f),
-            onPrimaryContainer     = hsl(primaryH,   primaryS.coerceAtMost(0.60f), 0.90f),
-            secondary              = hsl(secondaryH, secondaryS.coerceAtMost(0.35f), 0.72f),
-            onSecondary            = hsl(secondaryH, secondaryS, 0.14f),
-            secondaryContainer     = hsl(secondaryH, secondaryS.coerceAtMost(0.25f), 0.22f),
-            onSecondaryContainer   = hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
-            tertiary               = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.35f), 0.72f),
-            onTertiary             = hsl(tertiaryH,  tertiaryS,  0.14f),
-            tertiaryContainer      = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.25f), 0.22f),
-            onTertiaryContainer    = hsl(tertiaryH,  tertiaryS.coerceAtMost(0.40f), 0.88f),
+            primary                = primary,
+            onPrimary              = contrastingOn(primary),
+            primaryContainer       = Color.hsl(primaryH, primaryS.coerceAtMost(0.40f), 0.22f),
+            onPrimaryContainer     = Color.hsl(primaryH, primaryS.coerceAtMost(0.60f), 0.90f),
+            secondary              = secondary,
+            onSecondary            = contrastingOn(secondary),
+            secondaryContainer     = Color.hsl(secondaryH, secondaryS.coerceAtMost(0.25f), 0.22f),
+            onSecondaryContainer   = Color.hsl(secondaryH, secondaryS.coerceAtMost(0.40f), 0.88f),
+            tertiary               = tertiary,
+            onTertiary             = contrastingOn(tertiary),
+            tertiaryContainer      = Color.hsl(tertiaryH, tertiaryS.coerceAtMost(0.25f), 0.22f),
+            onTertiaryContainer    = Color.hsl(tertiaryH, tertiaryS.coerceAtMost(0.40f), 0.88f),
             error                  = Color(0xFFFFB4AB),
             errorContainer         = Color(0xFF93000A),
             onError                = Color(0xFF690005),
             onErrorContainer       = Color(0xFFFFDAD6),
-            background             = hsl(primaryH,   0.10f, 0.10f),
-            onBackground           = hsl(primaryH,   0.10f, 0.88f),
-            surface                = hsl(primaryH,   0.10f, 0.10f),
-            onSurface              = hsl(primaryH,   0.10f, 0.88f),
-            surfaceVariant         = hsl(primaryH,   0.15f, 0.25f),
-            onSurfaceVariant       = hsl(primaryH,   0.15f, 0.75f),
-            outline                = hsl(primaryH,   0.10f, 0.55f),
-            inverseOnSurface       = hsl(primaryH,   0.10f, 0.10f),
-            inverseSurface         = hsl(primaryH,   0.10f, 0.88f),
-            inversePrimary         = hsl(primaryH,   primaryS,   0.30f),
-            surfaceTint            = hsl(primaryH,   primaryS.coerceAtMost(0.55f), 0.75f),
-            outlineVariant         = hsl(primaryH,   0.15f, 0.25f),
+            background             = background,
+            onBackground           = onBackground,
+            surface                = surface,
+            onSurface              = onBackground,
+            surfaceVariant         = surfaceVariant,
+            onSurfaceVariant       = onSurfaceVariant,
+            outline                = outline,
+            inverseOnSurface       = inverseOnSurface,
+            inverseSurface         = inverseSurface,
+            inversePrimary         = Color.hsl(primaryH, primaryS, 0.30f),
+            surfaceTint            = primary,
+            outlineVariant         = outlineVariant,
             scrim                  = Color(0xFF000000),
         )
     }

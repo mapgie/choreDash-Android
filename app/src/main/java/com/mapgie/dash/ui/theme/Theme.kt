@@ -9,19 +9,23 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Carries all nine HSL values for the custom colour theme so [DashTheme] can
- * forward them to [buildCustomColorScheme] in one parameter.
+ * Carries all nine HSL values for the custom colour theme, plus the optional
+ * per-mode background overrides (0 = derive from the primary hue), so
+ * [DashTheme] can forward them to [buildCustomColorScheme] in one parameter.
  */
 data class CustomHSL(
     val primaryH: Float,   val primaryS: Float,   val primaryL: Float,
     val secondaryH: Float, val secondaryS: Float, val secondaryL: Float,
     val tertiaryH: Float,  val tertiaryS: Float,  val tertiaryL: Float,
+    val lightBackgroundArgb: Int = 0,
+    val darkBackgroundArgb: Int = 0,
 )
 
 @Composable
 fun DashTheme(
     appTheme:  AppTheme = AppTheme.MIST,
     darkTheme: Boolean  = isSystemInDarkTheme(),
+    wcag:      Boolean  = false,
     customHSL: CustomHSL? = null,
     content:   @Composable () -> Unit,
 ) {
@@ -37,9 +41,11 @@ fun DashTheme(
             tertiaryS  = customHSL.tertiaryS,
             tertiaryL  = customHSL.tertiaryL,
             darkTheme  = darkTheme,
+            backgroundArgb = if (darkTheme) customHSL.darkBackgroundArgb
+                             else customHSL.lightBackgroundArgb,
         )
     } else {
-        colorSchemeFor(appTheme, darkTheme)
+        colorSchemeFor(appTheme, darkTheme, wcag)
     }
 
     val view = LocalView.current

@@ -622,3 +622,22 @@ val initialCategory = remember { if (task != null) task.category ?: "" else DEFA
 var category by remember { mutableStateOf(initialCategory) }
 val isDirty = category != initialCategory
 ```
+
+## 27. Theme-builder parameters must come from user state, not clamps or constants
+
+The custom colour scheme builder used to clamp the picked saturation and
+hard-code the lightness in dark mode (`primaryS.coerceAtMost(0.55f)`, `L =
+0.75f`). It compiled, looked "tastefully muted" in review, and shipped — but it
+meant the user's picks had almost no effect: every dark custom theme converged
+on the same pastel wash, and the picker swatches (drawn from the raw HSL)
+never matched the applied theme.
+
+Two rules fall out of this:
+
+1. Apply the picked colour **verbatim** to its role and solve legibility on the
+   *derived* colours instead — compute `onX` from relative luminance
+   (near-black on bright picks, white on dark picks) rather than constraining
+   the pick itself.
+2. Previews must resolve through the same code path as the scheme builder. If
+   a swatch has its own S/L constants, it will drift from what the theme
+   actually renders.
