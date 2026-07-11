@@ -31,6 +31,25 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.21.0] - 2026-07-11
+
+### Added
+- WCAG accessible colours toggle: high-contrast variants of every built-in palette
+- Custom theme: pick exact colours with a full colour picker (saturation/brightness square, hue bar, and hex entry) instead of raw HSL sliders
+- Custom theme: light and dark background colours can now be set directly, with an Auto option that derives them from the primary colour
+- Smart chore visibility: chores now hide until they are close to due, based on how often each one repeats, with per-cadence lead times (daily, every few days, weekly, fortnightly, monthly) configurable under Settings > Display > Visibility
+
+### Changed
+- Custom theme colours are now applied exactly as picked in both light and dark mode; text colours adapt automatically to stay readable
+- Saved themes now record the brightness mode and background overrides, and restore them on load
+- Tapping a saved theme row now loads it
+- The single "Hide chores not due soon" day threshold has been replaced by smart chore visibility; an existing threshold is carried over as the starting lead time for every cadence
+
+### Fixed
+- Dark mode ignored the picked lightness and washed every custom theme out to the same pastel look
+- Deleting the active saved theme no longer resets the whole app back to the Mist palette
+
+---
 ## [0.20.0] - 2026-07-08
 
 ### Added
