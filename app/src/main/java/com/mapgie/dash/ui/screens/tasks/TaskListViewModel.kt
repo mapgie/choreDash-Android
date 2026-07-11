@@ -51,6 +51,8 @@ data class TaskUiState(
     val ownerHandle: String = "",
     val pinnedTaskId: String? = null,
     val hideThresholdDays: Int = -1,
+    val zenMode: Boolean = false,
+    val zenSortAscending: Boolean = true,
 ) {
     val displayed: List<TaskDto>
         get() {
@@ -65,6 +67,11 @@ data class TaskUiState(
                     OwnerFilter.MINE -> task.owner == null || task.owner == ownerHandle
                 }
                 matchesStatus && matchesOwner
+            }
+            if (zenMode) {
+                // Zen sort: ascending = most urgent (overdue) first, matching the due sort order
+                val byUrgency = filtered.sortedWith(compareBy({ it.urgency().ordinal }, { it.dueDate ?: "" }))
+                return if (zenSortAscending) byUrgency else byUrgency.reversed()
             }
             return when (sort) {
                 TaskSort.PRIORITY -> filtered.sortedWith(
@@ -124,6 +131,7 @@ class TaskListViewModel @Inject constructor(
                         ownerHandle = s.ownerHandle,
                         groupByCategory = s.groupTasksByCategory,
                         hideThresholdDays = s.taskHideThresholdDays,
+                        zenMode = s.taskZenMode,
                     )
                 }
             }
@@ -290,4 +298,12 @@ class TaskListViewModel @Inject constructor(
     }
     fun setOwnerFilter(f: OwnerFilter) = _uiState.update { it.copy(ownerFilter = f) }
     fun clearError() = _uiState.update { it.copy(error = null) }
+
+    fun setZenMode(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTaskZenMode(enabled) }
+    }
+
+    fun setZenSort(ascending: Boolean) {
+        _uiState.update { it.copy(zenSortAscending = ascending) }
+    }
 }

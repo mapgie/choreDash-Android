@@ -25,6 +25,7 @@ data class AppSettings(
     // High-contrast (WCAG) variants of the built-in palettes
     val wcagMode: Boolean = false,
     val zenMode: Boolean = false,
+    val taskZenMode: Boolean = false,
     val showDueCountdown: Boolean = false,
     val deliveryMode: String = "NOTIFICATION",
     // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
@@ -71,6 +72,7 @@ class SettingsRepository @Inject constructor(
         val THEME_MODE                     = stringPreferencesKey("theme_mode")
         val WCAG_MODE                      = booleanPreferencesKey("wcag_mode")
         val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
+        val TASK_ZEN_MODE                  = booleanPreferencesKey("task_zen_mode")
         val SHOW_DUE_COUNTDOWN             = booleanPreferencesKey("show_due_countdown")
         val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
         val APP_THEME                      = stringPreferencesKey("app_theme")
@@ -116,6 +118,7 @@ class SettingsRepository @Inject constructor(
                     ?: ThemeMode.SYSTEM,
                 wcagMode                    = prefs[Keys.WCAG_MODE] ?: false,
                 zenMode                     = prefs[Keys.ZEN_MODE] ?: false,
+                taskZenMode                 = prefs[Keys.TASK_ZEN_MODE] ?: false,
                 showDueCountdown            = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
                 deliveryMode                = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
                 // Normalise old per-mode entries to palette names for backward compatibility
@@ -171,6 +174,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setZenMode(enabled: Boolean) {
         context.dataStore.edit { it[Keys.ZEN_MODE] = enabled }
+    }
+
+    suspend fun setTaskZenMode(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.TASK_ZEN_MODE] = enabled }
     }
 
     suspend fun setShowDueCountdown(enabled: Boolean) {
