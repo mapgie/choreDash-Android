@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,8 @@ fun TaskCard(
     onToggleDone: () -> Unit,
     showCategory: Boolean = true,
     modifier: Modifier = Modifier,
-    showOwner: Boolean = true
+    showOwner: Boolean = true,
+    zenMode: Boolean = false
 ) {
     val isDone = task.completedAt != null
     val priorityColor = when (task.priorityEnum()) {
@@ -57,14 +59,16 @@ fun TaskCard(
         TaskPriority.NORMAL -> StatusFresh
         TaskPriority.LOWER -> MaterialTheme.colorScheme.outline
     }
+    val barColor = if (zenMode) Color.Transparent else priorityColor
 
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDone)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant
+            containerColor = when {
+                zenMode -> MaterialTheme.colorScheme.surface
+                isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
         ),
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -73,7 +77,7 @@ fun TaskCard(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(priorityColor)
+                    .background(barColor)
             )
             // Done checkbox
             Checkbox(
@@ -124,12 +128,12 @@ fun TaskCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (showCategory) {
+                    if (showCategory && !zenMode) {
                         task.category?.takeIf { it.isNotBlank() }?.let { cat ->
                             CategoryBadge(cat)
                         }
                     }
-                    DueBadge(task = task)
+                    if (zenMode) ZenDueLabel(task = task) else DueBadge(task = task)
                 }
             }
             // Owner badge
@@ -178,6 +182,17 @@ private fun DueBadge(task: TaskDto) {
         text = text,
         style = MaterialTheme.typography.labelSmall,
         color = color
+    )
+}
+
+/** Plain, uncoloured due date for zen mode, unlike DueBadge it never signals urgency. */
+@Composable
+private fun ZenDueLabel(task: TaskDto) {
+    val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return
+    Text(
+        text = date.format(DateTimeFormatter.ofPattern("MMM d")),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 

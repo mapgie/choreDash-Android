@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -121,35 +124,63 @@ fun TaskListScreen(
                         )
                     }
                     Spacer(Modifier.weight(1f))
-                    IconButton(
-                        onClick = { viewModel.setSort(uiState.sort.next()) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Sort,
-                            contentDescription = "Sort: ${uiState.sort.label}",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (uiState.ownerHandle.isNotBlank()) {
+                    if (!uiState.zenMode) {
                         IconButton(
-                            onClick = {
-                                viewModel.setOwnerFilter(
-                                    if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
-                                    else OwnerFilter.MINE
-                                )
-                            },
+                            onClick = { viewModel.setSort(uiState.sort.next()) },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                Icons.Filled.Person,
-                                contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                    "Show all owners" else "Show my tasks",
-                                tint = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                Icons.Filled.Sort,
+                                contentDescription = "Sort: ${uiState.sort.label}",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        if (uiState.ownerHandle.isNotBlank()) {
+                            IconButton(
+                                onClick = {
+                                    viewModel.setOwnerFilter(
+                                        if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
+                                        else OwnerFilter.MINE
+                                    )
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Person,
+                                    contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
+                                        "Show all owners" else "Show my tasks",
+                                    tint = if (uiState.ownerFilter == OwnerFilter.MINE)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most urgent first" else "Sorted: least urgent first",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { viewModel.setZenMode(!uiState.zenMode) },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Spa,
+                            contentDescription = if (uiState.zenMode)
+                                "Exit zen mode" else "Enter zen mode",
+                            tint = if (uiState.zenMode)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 }
 
@@ -170,7 +201,7 @@ fun TaskListScreen(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (uiState.groupByCategory && uiState.filter != TaskFilter.DONE) {
+                        if (uiState.groupByCategory && !uiState.zenMode && uiState.filter != TaskFilter.DONE) {
                             val grouped = active.groupBy { it.category?.takeIf(String::isNotBlank) ?: "Other" }
                             grouped.forEach { (cat, tasks) ->
                                 stickyHeader {
@@ -192,7 +223,8 @@ fun TaskListScreen(
                                         onToggleDone = { viewModel.markDone(task.id) },
                                         onSwipeToggleDone = { viewModel.markDone(task.id) },
                                         showCategory = false,
-                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
+                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                        zenMode = uiState.zenMode
                                     )
                                 }
                             }
@@ -205,7 +237,8 @@ fun TaskListScreen(
                                     onToggleDone = { viewModel.markDone(task.id) },
                                     onSwipeToggleDone = { viewModel.markDone(task.id) },
                                     showCategory = !uiState.groupByCategory,
-                                    showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
+                                    showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                    zenMode = uiState.zenMode
                                 )
                             }
                         }
@@ -241,7 +274,8 @@ fun TaskListScreen(
                                         onToggleDone = { viewModel.markUndone(task.id) },
                                         onSwipeToggleDone = { viewModel.markUndone(task.id) },
                                         showCategory = !uiState.groupByCategory,
-                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE)
+                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                        zenMode = uiState.zenMode
                                     )
                                 }
                             }
@@ -294,7 +328,8 @@ private fun SwipeToCompleteCard(
     onToggleDone: () -> Unit,
     onSwipeToggleDone: () -> Unit,
     showCategory: Boolean = true,
-    showOwner: Boolean = true
+    showOwner: Boolean = true,
+    zenMode: Boolean = false
 ) {
     val isDone = task.completedAt != null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -335,6 +370,7 @@ private fun SwipeToCompleteCard(
             onToggleDone = onToggleDone,
             showCategory = showCategory,
             showOwner = showOwner,
+            zenMode = zenMode,
             modifier = Modifier
                 .padding(horizontal = 12.dp)
                 .semantics { role = Role.Button }
