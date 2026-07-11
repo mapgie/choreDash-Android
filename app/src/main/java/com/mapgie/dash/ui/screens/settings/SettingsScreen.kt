@@ -4,7 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CheckCircle as FilledCheckCircle
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -75,7 +82,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -87,11 +97,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.mapgie.dash.BuildConfig
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.theme.AppTheme
@@ -99,9 +113,10 @@ import com.mapgie.dash.ui.theme.CompactThemePicker
 import com.mapgie.dash.ui.theme.SavedThemesList
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import kotlin.math.roundToInt
 
 private enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, DISPLAY, REMINDERS, WIDGET, ABOUT
+    NONE, CONNECTION, APPEARANCE, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -130,6 +145,10 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.DISPLAY -> DisplaySubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.QUICK_ADD -> QuickAddSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -174,6 +193,12 @@ private fun SettingsMainList(
                 subtitle = "Grouping and visibility filters for chores and tasks",
                 icon = Icons.Filled.Tune,
                 onClick = { onNavigate(SettingsSubScreen.DISPLAY) }
+            )
+            SettingsNavItem(
+                title = "Quick add button",
+                subtitle = "Reorder the + menu and name the reminders feature",
+                icon = Icons.Filled.Add,
+                onClick = { onNavigate(SettingsSubScreen.QUICK_ADD) }
             )
 
             HorizontalDivider()
@@ -659,6 +684,188 @@ private fun DisplaySubScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun QuickAddSubScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel,
+) {
+    val settings by viewModel.settings.collectAsState()
+    val fabOrder = settings?.fabOrder ?: DEFAULT_FAB_ORDER
+    val reminderLabel = settings?.reminderLabel ?: ReminderLabelStyle.REMINDERS
+
+    SettingsSubScreenScaffold(title = "Quick add button", onBack = onBack) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Menu order", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Drag a handle, or use the arrows, to change the order the + button's menu appears in.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            FabOrderList(
+                order = fabOrder,
+                reminderLabel = reminderLabel.singular,
+                onReorder = { viewModel.setFabOrder(it) }
+            )
+
+            HorizontalDivider()
+
+            Text("Reminder name", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Choose what the reminders feature is called throughout the app.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ReminderLabelStyle.entries.forEachIndexed { index, style ->
+                    SegmentedButton(
+                        selected = reminderLabel == style,
+                        onClick = { viewModel.setReminderLabel(style) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ReminderLabelStyle.entries.size
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        label = { Text(style.displayName) }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+private fun AddMenuOption.iconFor(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
+    AddMenuOption.TASK -> Icons.Filled.FilledCheckCircle
+    AddMenuOption.CHORE -> Icons.Filled.CleaningServices
+    AddMenuOption.REMINDER -> Icons.Filled.Notifications
+}
+
+private fun AddMenuOption.labelFor(reminderLabel: String): String = when (this) {
+    AddMenuOption.TASK -> "Task"
+    AddMenuOption.CHORE -> "Chore"
+    AddMenuOption.REMINDER -> reminderLabel
+}
+
+/**
+ * Reorderable list of the FAB's three menu items: a drag handle for pointer-based
+ * reordering, plus up/down buttons so the order can be changed accessibly (TalkBack,
+ * keyboard, switch access) without needing to perform a drag gesture.
+ */
+@Composable
+private fun FabOrderList(
+    order: List<AddMenuOption>,
+    reminderLabel: String,
+    onReorder: (List<AddMenuOption>) -> Unit,
+) {
+    var displayOrder by remember(order) { mutableStateOf(order) }
+    var draggedIndex by remember { mutableStateOf(-1) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    val rowHeightPx = with(LocalDensity.current) { 56.dp.toPx() }
+
+    fun moveItem(from: Int, to: Int) {
+        if (from == to || from !in displayOrder.indices || to !in displayOrder.indices) return
+        displayOrder = displayOrder.toMutableList().apply { add(to, removeAt(from)) }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        displayOrder.forEachIndexed { index, option ->
+            val isDragged = index == draggedIndex
+            val label = option.labelFor(reminderLabel)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(if (isDragged) 1f else 0f)
+                    .graphicsLayer { translationY = if (isDragged) dragOffsetY else 0f }
+                    .background(
+                        if (isDragged) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(
+                    option.iconFor(),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp)
+                )
+                IconButton(
+                    onClick = {
+                        moveItem(index, index - 1)
+                        onReorder(displayOrder)
+                    },
+                    enabled = index > 0,
+                ) {
+                    Icon(Icons.Filled.ArrowUpward, contentDescription = "Move $label up")
+                }
+                IconButton(
+                    onClick = {
+                        moveItem(index, index + 1)
+                        onReorder(displayOrder)
+                    },
+                    enabled = index < displayOrder.lastIndex,
+                ) {
+                    Icon(Icons.Filled.ArrowDownward, contentDescription = "Move $label down")
+                }
+                Icon(
+                    Icons.Filled.DragHandle,
+                    contentDescription = "Drag to reorder $label",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.pointerInput(index, displayOrder.size) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                draggedIndex = index
+                                dragOffsetY = 0f
+                            },
+                            onDragEnd = {
+                                draggedIndex = -1
+                                dragOffsetY = 0f
+                                onReorder(displayOrder)
+                            },
+                            onDragCancel = {
+                                draggedIndex = -1
+                                dragOffsetY = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffsetY += dragAmount.y
+                                val from = draggedIndex
+                                if (from != -1) {
+                                    val moves = (dragOffsetY / rowHeightPx).roundToInt()
+                                    if (moves != 0) {
+                                        val to = (from + moves).coerceIn(0, displayOrder.lastIndex)
+                                        if (to != from) {
+                                            moveItem(from, to)
+                                            dragOffsetY -= moves * rowHeightPx
+                                            draggedIndex = to
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                )
+            }
         }
     }
 }

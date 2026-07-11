@@ -38,8 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderDto
-import com.mapgie.dash.ui.components.AddMenuOption
+import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 
@@ -72,10 +73,12 @@ fun RemindersListScreen(
         }
     }
 
+    val labelStyle = uiState.reminderLabel
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(title = { Text("Reminders") })
+            TopAppBar(title = { Text(labelStyle.displayName) })
         }
     ) { innerPadding ->
         if (uiState.loading) {
@@ -98,7 +101,7 @@ fun RemindersListScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No reminders. Tap + to add one.",
+                    "No ${labelStyle.displayName.lowercase()}. Tap + to add one.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(32.dp)

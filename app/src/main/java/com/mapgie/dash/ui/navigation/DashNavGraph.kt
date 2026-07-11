@@ -16,15 +16,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuFab
-import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
@@ -51,7 +53,10 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Settings : Screen("settings", "Settings", Icons.Filled.Settings)
 }
 
-private val navItems = listOf(Screen.Tasks, Screen.Chores, Screen.Reminders, Screen.Settings)
+// The full set of tabs, independent of which ones are currently visible in the
+// bottom bar (e.g. the FAB must still work when reached on a hidden tab via a
+// widget deep link).
+private val allNavItems = listOf(Screen.Tasks, Screen.Chores, Screen.Reminders, Screen.Settings)
 
 private val Screen.addMenuOption: AddMenuOption?
     get() = when (this) {
@@ -83,7 +88,8 @@ fun DashNavGraph(
     onStartNfcWrite: (String) -> Unit,
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
-    startOnSettings: Boolean = false
+    startOnSettings: Boolean = false,
+    navViewModel: DashNavViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -91,6 +97,9 @@ fun DashNavGraph(
 
     var fabExpanded by remember { mutableStateOf(false) }
     var pendingAddIntent by remember { mutableStateOf<AddMenuOption?>(null) }
+
+    val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
+    val navItems = allNavItems.filter { it != Screen.Reminders || navUiState.hasOutstandingReminders }
 
     LaunchedEffect(pendingWidgetDestination) {
         val targetRoute = when (pendingWidgetDestination) {
@@ -124,7 +133,7 @@ fun DashNavGraph(
         }
     }
 
-    val showFab = navItems
+    val showFab = allNavItems
         .filter { it.addMenuOption != null }
         .any { screen -> currentDestination?.hierarchy?.any { it.route == screen.route } == true }
 
@@ -134,6 +143,8 @@ fun DashNavGraph(
                 AddMenuFab(
                     expanded = fabExpanded,
                     onExpandedChange = { fabExpanded = it },
+                    order = navUiState.fabOrder,
+                    reminderLabel = navUiState.reminderLabel.singular,
                     onSelect = { option ->
                         pendingAddIntent = option
                         val targetRoute = when (option) {
@@ -161,12 +172,17 @@ fun DashNavGraph(
                     val selected = currentDestination?.hierarchy
                         ?.any { it.route == screen.route } == true
                     val accent = screen.accentColors
+                    val label = if (screen == Screen.Reminders) {
+                        navUiState.reminderLabel.displayName
+                    } else {
+                        screen.label
+                    }
                     NavigationBarItem(
                         icon = {
-                            Icon(screen.icon, contentDescription = screen.label)
+                            Icon(screen.icon, contentDescription = label)
                         },
                         label = {
-                            Text(screen.label, style = MaterialTheme.typography.labelMedium)
+                            Text(label, style = MaterialTheme.typography.labelMedium)
                         },
                         selected = selected,
                         // Mirror GaMeD LESSONS.md lesson #4: all programmatic tab nav

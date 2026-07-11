@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.ReminderLabelStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -16,6 +18,8 @@ import javax.inject.Singleton
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "dash_settings")
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+val DEFAULT_FAB_ORDER = listOf(AddMenuOption.TASK, AddMenuOption.CHORE, AddMenuOption.REMINDER)
 
 data class AppSettings(
     val supabaseUrl: String = "",
@@ -58,6 +62,10 @@ data class AppSettings(
         CadenceBucket.entries.associateWith { it.defaultLeadDays },
     // Display — hide tasks not due soon (-1 = disabled, positive = threshold in days)
     val taskHideThresholdDays: Int = -1,
+    // Order the quick-add FAB's menu items appear in, top to bottom
+    val fabOrder: List<AddMenuOption> = DEFAULT_FAB_ORDER,
+    // Wording used for the reminders feature throughout the UI
+    val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
 )
 
 @Singleton
@@ -95,6 +103,8 @@ class SettingsRepository @Inject constructor(
         val CHORE_HIDE_THRESHOLD_DAYS      = intPreferencesKey("chore_hide_threshold_days")
         val TASK_HIDE_THRESHOLD_DAYS       = intPreferencesKey("task_hide_threshold_days")
         val SMART_CHORE_VISIBILITY         = booleanPreferencesKey("smart_chore_visibility")
+        val FAB_ORDER                      = stringPreferencesKey("fab_order")
+        val REMINDER_LABEL                 = stringPreferencesKey("reminder_label")
 
         fun choreLeadDays(bucket: CadenceBucket) =
             intPreferencesKey("chore_lead_days_${bucket.name.lowercase()}")
@@ -150,8 +160,21 @@ class SettingsRepository @Inject constructor(
                         ?: bucket.defaultLeadDays
                 },
                 taskHideThresholdDays       = prefs[Keys.TASK_HIDE_THRESHOLD_DAYS] ?: -1,
+                fabOrder                    = prefs[Keys.FAB_ORDER]?.let { parseFabOrder(it) } ?: DEFAULT_FAB_ORDER,
+                reminderLabel               = prefs[Keys.REMINDER_LABEL]
+                    ?.let { runCatching { ReminderLabelStyle.valueOf(it) }.getOrNull() }
+                    ?: ReminderLabelStyle.REMINDERS,
             )
         }
+
+    // Tolerates unknown/duplicate/missing entries (e.g. after an app update adds a
+    // new AddMenuOption) by de-duplicating and appending any missing options in
+    // default order, rather than discarding a saved order outright.
+    private fun parseFabOrder(raw: String): List<AddMenuOption> {
+        val saved = raw.split(",").mapNotNull { name -> runCatching { AddMenuOption.valueOf(name) }.getOrNull() }.distinct()
+        val missing = DEFAULT_FAB_ORDER.filterNot { it in saved }
+        return saved + missing
+    }
 
     suspend fun saveCredentials(url: String, key: String, owner: String) {
         context.dataStore.edit {
@@ -254,5 +277,13 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setTaskHideThresholdDays(days: Int) {
         context.dataStore.edit { it[Keys.TASK_HIDE_THRESHOLD_DAYS] = days }
+    }
+
+    suspend fun setFabOrder(order: List<AddMenuOption>) {
+        context.dataStore.edit { it[Keys.FAB_ORDER] = order.joinToString(",") { option -> option.name } }
+    }
+
+    suspend fun setReminderLabel(style: ReminderLabelStyle) {
+        context.dataStore.edit { it[Keys.REMINDER_LABEL] = style.name }
     }
 }

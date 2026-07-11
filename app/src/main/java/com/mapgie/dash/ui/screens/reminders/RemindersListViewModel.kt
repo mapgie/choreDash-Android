@@ -6,9 +6,11 @@ import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.isPast
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
@@ -26,7 +28,8 @@ data class ReminderUiState(
     val error: String? = null,
     val reminders: List<ReminderDto> = emptyList(),
     val chores: List<Chore> = emptyList(),
-    val tasks: List<TaskDto> = emptyList()
+    val tasks: List<TaskDto> = emptyList(),
+    val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
 ) {
     val active: List<ReminderDto>
         get() = reminders.filter {
@@ -53,6 +56,7 @@ class RemindersListViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val choreRepository: ChoreRepository,
     private val taskRepository: TaskRepository,
+    private val settingsRepository: SettingsRepository,
     private val alarmScheduler: AlarmScheduler
 ) : ViewModel() {
 
@@ -60,6 +64,11 @@ class RemindersListViewModel @Inject constructor(
     val uiState: StateFlow<ReminderUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _uiState.update { it.copy(reminderLabel = settings.reminderLabel) }
+            }
+        }
         load()
     }
 
