@@ -162,16 +162,6 @@ private fun SettingsMainList(
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
-            SettingsSectionHeader("Account")
-            SettingsNavItem(
-                title = "Supabase connection",
-                subtitle = "Project URL, anon key, and your owner handle",
-                icon = Icons.Filled.Storage,
-                onClick = { onNavigate(SettingsSubScreen.CONNECTION) }
-            )
-
-            HorizontalDivider()
-
             SettingsSectionHeader("Personalisation")
             SettingsNavItem(
                 title = "Appearance",
@@ -204,6 +194,16 @@ private fun SettingsMainList(
                 subtitle = "Notifications, exact alarms, and Do Not Disturb access",
                 icon = Icons.Filled.Notifications,
                 onClick = { onNavigate(SettingsSubScreen.REMINDERS) }
+            )
+
+            HorizontalDivider()
+
+            SettingsSectionHeader("Account")
+            SettingsNavItem(
+                title = "Supabase connection",
+                subtitle = "Project URL, anon key, and your owner handle",
+                icon = Icons.Filled.Storage,
+                onClick = { onNavigate(SettingsSubScreen.CONNECTION) }
             )
 
             HorizontalDivider()
