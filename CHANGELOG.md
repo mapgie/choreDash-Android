@@ -31,6 +31,23 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.22.0] - 2026-07-11
+
+### Added
+- Settings > Quick add button lets you reorder the + menu's Task/Chore/Reminder items by drag-and-drop or with up/down buttons
+- Settings > Quick add button lets you rename the reminders feature to Reminders, Alarms, or Memos throughout the app
+- Zen mode for Tasks, matching the calmer, decluttered view already available for Chores
+
+### Changed
+- The Reminders tab only appears in the bottom bar when there are outstanding (non-archived) reminders to manage
+- The quick add menu's button text is now just Task, Chore, or your chosen reminder name
+- Removed the version footer from the Chore page; the version is now shown in Settings > About
+- Moved Supabase connection to the penultimate position in Settings, since it is typically a one-time setup
+
+### Fixed
+- Custom themes with vivid backgrounds no longer render muddy, low-contrast card surfaces; neutral surface roles are now derived cleanly and the full Material 3 surface-container palette is set.
+
+---
 ## [0.21.0] - 2026-07-11
 
 ### Added

@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": ["Custom themes with vivid backgrounds no longer render muddy, low-contrast card surfaces; neutral surface roles are now derived cleanly and the full Material 3 surface-container palette is set."]
-}

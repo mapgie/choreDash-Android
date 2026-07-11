@@ -1,7 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "Removed the version footer from the Chore page; the version is now shown in Settings > About",
-    "Moved Supabase connection to the penultimate position in Settings, since it is typically a one-time setup"
-  ]
-}
