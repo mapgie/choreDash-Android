@@ -53,8 +53,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.TaskDto
-import com.mapgie.dash.ui.components.AddMenuOption
 import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet

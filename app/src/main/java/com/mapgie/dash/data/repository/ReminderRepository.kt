@@ -11,6 +11,7 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.remindAtInstant
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -35,16 +36,21 @@ class ReminderRepository @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun loadReminders(): List<ReminderDto> {
-        return context.reminderDataStore.data
-            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-            .map { prefs ->
-                prefs[Keys.REMINDERS]?.let {
-                    runCatching { json.decodeFromString<List<ReminderDto>>(it) }.getOrNull()
-                } ?: emptyList()
-            }
-            .first()
+    val remindersFlow: Flow<List<ReminderDto>> = context.reminderDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { prefs ->
+            prefs[Keys.REMINDERS]?.let {
+                runCatching { json.decodeFromString<List<ReminderDto>>(it) }.getOrNull()
+            } ?: emptyList()
+        }
+
+    // Reminders still needing attention: not yet archived. Drives whether the
+    // Reminders tab should appear at all.
+    val outstandingRemindersFlow: Flow<List<ReminderDto>> = remindersFlow.map { reminders ->
+        reminders.filter { it.archivedAt == null }
     }
+
+    suspend fun loadReminders(): List<ReminderDto> = remindersFlow.first()
 
     suspend fun addReminder(insert: ReminderInsert): ReminderDto {
         val reminder = ReminderDto(

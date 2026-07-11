@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.data.database.dao.CustomColorThemeDao
 import com.mapgie.dash.data.database.entities.CustomColorTheme
+import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.preferences.AppSettings
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
@@ -237,5 +239,15 @@ class SettingsViewModel @Inject constructor(
 
     fun setTaskHideThresholdDays(days: Int) {
         viewModelScope.launch { settingsRepository.setTaskHideThresholdDays(days) }
+    }
+
+    // ── Quick add (FAB) ──────────────────────────────────────────────────────
+
+    fun setFabOrder(order: List<AddMenuOption>) {
+        viewModelScope.launch { settingsRepository.setFabOrder(order) }
+    }
+
+    fun setReminderLabel(style: ReminderLabelStyle) {
+        viewModelScope.launch { settingsRepository.setReminderLabel(style) }
     }
 }

@@ -22,7 +22,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.data.model.AddMenuOption
+import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.ui.theme.TypeChoreContainer
 import com.mapgie.dash.ui.theme.TypeChoreOnContainer
 import com.mapgie.dash.ui.theme.TypeReminderContainer
@@ -30,7 +34,24 @@ import com.mapgie.dash.ui.theme.TypeReminderOnContainer
 import com.mapgie.dash.ui.theme.TypeTaskContainer
 import com.mapgie.dash.ui.theme.TypeTaskOnContainer
 
-enum class AddMenuOption { CHORE, TASK, REMINDER }
+private data class AddMenuOptionSpec(
+    val icon: ImageVector,
+    val label: String,
+    val containerColor: Color,
+    val contentColor: Color,
+)
+
+private fun AddMenuOption.spec(reminderLabel: String): AddMenuOptionSpec = when (this) {
+    AddMenuOption.REMINDER -> AddMenuOptionSpec(
+        Icons.Filled.Notifications, reminderLabel, TypeReminderContainer, TypeReminderOnContainer
+    )
+    AddMenuOption.CHORE -> AddMenuOptionSpec(
+        Icons.Filled.CleaningServices, "Chore", TypeChoreContainer, TypeChoreOnContainer
+    )
+    AddMenuOption.TASK -> AddMenuOptionSpec(
+        Icons.Filled.CheckCircle, "Task", TypeTaskContainer, TypeTaskOnContainer
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +59,8 @@ fun AddMenuFab(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onSelect: (AddMenuOption) -> Unit,
+    order: List<AddMenuOption> = DEFAULT_FAB_ORDER,
+    reminderLabel: String = "Reminder",
     modifier: Modifier = Modifier
 ) {
     Column(horizontalAlignment = Alignment.End, modifier = modifier) {
@@ -51,36 +74,19 @@ fun AddMenuFab(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onExpandedChange(false)
-                        onSelect(AddMenuOption.REMINDER)
-                    },
-                    icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
-                    text = { Text("One-off reminder") },
-                    containerColor = TypeReminderContainer,
-                    contentColor = TypeReminderOnContainer
-                )
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onExpandedChange(false)
-                        onSelect(AddMenuOption.CHORE)
-                    },
-                    icon = { Icon(Icons.Filled.CleaningServices, contentDescription = null) },
-                    text = { Text("Recurring chore") },
-                    containerColor = TypeChoreContainer,
-                    contentColor = TypeChoreOnContainer
-                )
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        onExpandedChange(false)
-                        onSelect(AddMenuOption.TASK)
-                    },
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) },
-                    text = { Text("One-time task") },
-                    containerColor = TypeTaskContainer,
-                    contentColor = TypeTaskOnContainer
-                )
+                order.forEach { option ->
+                    val spec = option.spec(reminderLabel)
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            onExpandedChange(false)
+                            onSelect(option)
+                        },
+                        icon = { Icon(spec.icon, contentDescription = null) },
+                        text = { Text(spec.label) },
+                        containerColor = spec.containerColor,
+                        contentColor = spec.contentColor
+                    )
+                }
             }
         }
         FloatingActionButton(onClick = { onExpandedChange(!expanded) }) {
