@@ -641,3 +641,31 @@ Two rules fall out of this:
 2. Previews must resolve through the same code path as the scheme builder. If
    a swatch has its own S/L constants, it will drift from what the theme
    actually renders.
+
+## 28. Derive Material 3 surface ramps from luminance, never from a background's raw HSL
+
+When building a custom `ColorScheme` around a user-chosen background colour,
+the "is this a light or dark surface?" decision has to be made from perceived
+**luminance** (`Color.luminance()`), but the neutral tones themselves must not
+reuse the background's own HSL saturation or lightness. Those two measures
+diverge badly for vivid mid-lightness hues: pure yellow `#F3FF00` has luminance
+~0.93 (clearly "light") yet HSL lightness only 0.5, so a `surfaceVariant`
+computed as `hsl(bgHue, bgSat.coerceIn(...), bgL - 0.10)` collapses to
+`hsl(63, 0.20, 0.40)` — a dark olive that painted every card muddy while the
+page background stayed bright yellow.
+
+The fix, and the general rule:
+
+1. Derive all neutral/surface roles from the background **hue only**, at a
+   near-zero fixed saturation (~0.04), so a saturated background can never tint
+   surfaces muddy.
+2. Anchor surface lightness to **absolute per-mode values** (a monotonic ramp
+   like 0.99 down to 0.87 in light mode, 0.06 up to 0.24 in dark mode), not to
+   the background's own lightness.
+3. Pick `onBackground` / `onSurface` by contrast (reuse `contrastingOn`) so text
+   stays legible on any pick.
+4. Set the entire `surfaceContainer*` family plus `surfaceDim` / `surfaceBright`
+   explicitly. If you leave them out of `lightColorScheme(...)` /
+   `darkColorScheme(...)`, Material 3 fills them with a fixed default neutral
+   (lavender in light, charcoal in dark) that clashes with the custom
+   background in menus, bottom sheets, and the navigation bar.
