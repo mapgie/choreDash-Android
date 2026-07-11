@@ -482,8 +482,11 @@ private fun contrastingOn(color: Color): Color =
  *
  * The picked colours are applied **verbatim** to the primary, secondary, and
  * tertiary roles in both light and dark mode; on-colours are chosen by relative
- * luminance so text stays legible whatever the user picks. Containers and
- * neutrals are derived from the picked hues with mode-appropriate lightness.
+ * luminance so text stays legible whatever the user picks. Containers are
+ * derived from the picked hues with mode-appropriate lightness. Neutrals and
+ * the full `surfaceContainer*` ramp are derived from the background's *hue
+ * only*, at a near-zero fixed saturation and absolute per-mode lightness
+ * values, so a vivid background can never turn the neutral surfaces muddy.
  *
  * [backgroundArgb] overrides background/surface for the current mode (0 keeps
  * the background derived from the primary hue).
@@ -506,17 +509,32 @@ fun buildCustomColorScheme(
     }
     val bg = FloatArray(3).also { ColorUtils.colorToHSL(background.toArgb(), it) }
     val bgIsLight = background.luminance() > 0.35f
-    val onBackground     = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.10f) else Color.hsl(bg[0], 0.10f, 0.88f)
-    val surface          = if (darkTheme) Color.hsl(bg[0], bg[1], (bg[2] + 0.02f).coerceIn(0f, 1f)) else background
-    val surfaceVariant   = if (bgIsLight)
-        Color.hsl(bg[0], bg[1].coerceIn(0.05f, 0.20f), (bg[2] - 0.10f).coerceIn(0f, 1f))
-    else
-        Color.hsl(bg[0], bg[1].coerceAtMost(0.15f), (bg[2] + 0.15f).coerceIn(0f, 1f))
-    val onSurfaceVariant = if (bgIsLight) Color.hsl(bg[0], 0.15f, 0.25f) else Color.hsl(bg[0], 0.15f, 0.75f)
-    val outline          = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.45f) else Color.hsl(bg[0], 0.10f, 0.55f)
-    val outlineVariant   = if (bgIsLight) Color.hsl(bg[0], 0.15f, 0.75f) else Color.hsl(bg[0], 0.15f, 0.25f)
-    val inverseSurface   = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.18f) else Color.hsl(bg[0], 0.10f, 0.88f)
-    val inverseOnSurface = if (bgIsLight) Color.hsl(bg[0], 0.10f, 0.93f) else Color.hsl(bg[0], 0.10f, 0.10f)
+
+    // Neutrals are derived from the background's hue only, at a near-zero fixed
+    // saturation and an absolute per-mode lightness. This is deliberately
+    // independent of the background's own HSL saturation/lightness (bg[1]/bg[2]):
+    // for a vivid mid-lightness hue like yellow those diverge badly from
+    // luminance-based "is this light or dark" and used to produce olive mud.
+    val bgHue = bg[0]
+    fun neutral(l: Float) = Color.hsl(bgHue, 0.04f, l.coerceIn(0f, 1f))
+
+    val surface          = background
+    val onBackground     = contrastingOn(background)
+    val onSurface        = contrastingOn(surface)
+
+    val surfaceContainerLowest  = if (bgIsLight) neutral(0.99f) else neutral(0.06f)
+    val surfaceContainerLow     = if (bgIsLight) neutral(0.97f) else neutral(0.10f)
+    val surfaceContainer        = if (bgIsLight) neutral(0.95f) else neutral(0.12f)
+    val surfaceContainerHigh    = if (bgIsLight) neutral(0.93f) else neutral(0.15f)
+    val surfaceContainerHighest = if (bgIsLight) neutral(0.91f) else neutral(0.17f)
+    val surfaceVariant          = if (bgIsLight) neutral(0.90f) else neutral(0.17f)
+    val surfaceBright           = if (bgIsLight) neutral(0.99f) else neutral(0.24f)
+    val surfaceDim              = if (bgIsLight) neutral(0.87f) else neutral(0.06f)
+    val onSurfaceVariant        = if (bgIsLight) neutral(0.30f) else neutral(0.80f)
+    val outline                 = if (bgIsLight) neutral(0.50f) else neutral(0.55f)
+    val outlineVariant          = if (bgIsLight) neutral(0.80f) else neutral(0.30f)
+    val inverseSurface          = if (bgIsLight) neutral(0.20f) else neutral(0.90f)
+    val inverseOnSurface        = if (bgIsLight) neutral(0.95f) else neutral(0.10f)
 
     return if (!darkTheme) {
         lightColorScheme(
@@ -539,9 +557,16 @@ fun buildCustomColorScheme(
             background             = background,
             onBackground           = onBackground,
             surface                = surface,
-            onSurface              = onBackground,
+            onSurface              = onSurface,
             surfaceVariant         = surfaceVariant,
             onSurfaceVariant       = onSurfaceVariant,
+            surfaceContainerLowest  = surfaceContainerLowest,
+            surfaceContainerLow     = surfaceContainerLow,
+            surfaceContainer        = surfaceContainer,
+            surfaceContainerHigh    = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            surfaceBright          = surfaceBright,
+            surfaceDim             = surfaceDim,
             outline                = outline,
             inverseOnSurface       = inverseOnSurface,
             inverseSurface         = inverseSurface,
@@ -571,9 +596,16 @@ fun buildCustomColorScheme(
             background             = background,
             onBackground           = onBackground,
             surface                = surface,
-            onSurface              = onBackground,
+            onSurface              = onSurface,
             surfaceVariant         = surfaceVariant,
             onSurfaceVariant       = onSurfaceVariant,
+            surfaceContainerLowest  = surfaceContainerLowest,
+            surfaceContainerLow     = surfaceContainerLow,
+            surfaceContainer        = surfaceContainer,
+            surfaceContainerHigh    = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            surfaceBright          = surfaceBright,
+            surfaceDim             = surfaceDim,
             outline                = outline,
             inverseOnSurface       = inverseOnSurface,
             inverseSurface         = inverseSurface,
