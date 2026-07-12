@@ -51,7 +51,7 @@ data class ChoreUiState(
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
     val showDueCountdown: Boolean = false,
-    val showDistant: Boolean = false,
+    val showHidden: Boolean = false,
     // Off until settings load so chores aren't hidden with unconfigured lead times
     val smartVisibility: Boolean = false,
     val choreLeadDays: Map<CadenceBucket, Int> = emptyMap(),
@@ -60,31 +60,43 @@ data class ChoreUiState(
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList()
 ) {
-    val distantChores: List<Chore>
+    private val ownerFiltered: List<Chore>
         get() {
             var result = active
             if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
                 result = result.filter { it.owner == null || it.owner == ownerHandle }
             }
-            return result.filter { it.isDistant() }
+            return result
+        }
+
+    /** True if this chore belongs in the main list under its cadence bucket's lead time. */
+    private fun withinLeadTime(chore: Chore): Boolean {
+        val last = chore.lastScanned ?: return true
+        val intervalDays = chore.intervalDays ?: return true
+        val bucket = CadenceBucket.forInterval(intervalDays)
+        val leadDays = choreLeadDays[bucket] ?: bucket.defaultLeadDays
+        val dueInstant = last.plus((intervalDays * 24).toLong(), ChronoUnit.HOURS)
+        return Duration.between(Instant.now(), dueInstant).toDays() <= leadDays
+    }
+
+    /**
+     * Chores kept out of the main list but revealable via the collapsed section:
+     * everything beyond its lead time when smart visibility is on, otherwise only
+     * the legacy distant (due 60+ days out) chores.
+     */
+    val hiddenChores: List<Chore>
+        get() = if (smartVisibility) {
+            ownerFiltered.filterNot(::withinLeadTime)
+        } else {
+            ownerFiltered.filter { it.isDistant() }
         }
 
     val displayed: List<Chore>
         get() {
-            var result = active
-            if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
-                result = result.filter { it.owner == null || it.owner == ownerHandle }
-            }
-            result = result.filter { !it.isDistant() }
-            if (smartVisibility) {
-                result = result.filter { chore ->
-                    val last = chore.lastScanned ?: return@filter true
-                    val intervalDays = chore.intervalDays ?: return@filter true
-                    val bucket = CadenceBucket.forInterval(intervalDays)
-                    val leadDays = choreLeadDays[bucket] ?: bucket.defaultLeadDays
-                    val dueInstant = last.plus((intervalDays * 24).toLong(), ChronoUnit.HOURS)
-                    Duration.between(Instant.now(), dueInstant).toDays() <= leadDays
-                }
+            var result = if (smartVisibility) {
+                ownerFiltered.filter(::withinLeadTime)
+            } else {
+                ownerFiltered.filter { !it.isDistant() }
             }
             result = when (filter) {
                 ChoreFilter.ALL -> result
@@ -320,7 +332,7 @@ class ChoreListViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setShowDueCountdown(enabled) }
     }
 
-    fun toggleShowDistant() {
-        _uiState.update { it.copy(showDistant = !it.showDistant) }
+    fun toggleShowHidden() {
+        _uiState.update { it.copy(showHidden = !it.showHidden) }
     }
 }
