@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.ui.components.EditTaskSheet
+import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
 
@@ -315,6 +316,14 @@ fun TaskListScreen(
                 showTaskSheet = true
             },
             onDismiss = { showOverviewSheet = false }
+        )
+    }
+
+    uiState.pinChooser?.let { chooser ->
+        PinWidgetChooserDialog(
+            widgetIds = chooser.widgetIds,
+            onChoose = { appWidgetId -> viewModel.pinToWidget(appWidgetId) },
+            onDismiss = { viewModel.dismissPinChooser() }
         )
     }
 }
