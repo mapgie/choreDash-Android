@@ -173,7 +173,15 @@ private fun SettingsMainList(
     onNavigate: (SettingsSubScreen) -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Settings") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier

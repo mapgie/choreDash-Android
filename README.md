@@ -54,24 +54,29 @@ app/src/main/java/com/mapgie/dash/
     preferences/              # SettingsRepository (DataStore)
     repository/               # ChoreRepository, TaskRepository (Supabase)
     supabase/                 # SupabaseClientProvider
+    database/                 # Room DB (AppDatabase + dao/ + entities/) for saved custom themes
   di/
-    AppModule.kt              # Hilt modules
+    AppModule.kt              # Hilt module (app-wide dependencies)
+    SupabaseModule.kt         # Hilt module (Supabase client wiring)
   notification/
     NotificationHelper.kt     # Channel creation + show helpers
   permission/
     PermissionHelper.kt       # Settings deep links for exact alarms + notifications
   nfc/
     NfcHandler.kt             # NDEF/URI/raw-hex tag-ID extraction
+  util/                       # DateFormat, CalendarShareUtils (.ics export)
+  widget/                     # Glance home-screen widgets + update workers
   ui/
-    theme/                    # Color.kt, Theme.kt, Type.kt
+    theme/                    # Color.kt, Theme.kt, Type.kt, colour picker + saved-theme UI
     navigation/               # DashNavGraph.kt
     screens/
       chores/                 # ChoreListViewModel + ChoreListScreen
       tasks/                  # TaskListViewModel + TaskListScreen
+      reminders/              # RemindersListViewModel + RemindersListScreen
       settings/               # SettingsViewModel + SettingsScreen
       licenses/               # LicensesScreen
     components/               # ChoreCard, LogBottomSheet, EditChoreSheet,
-                              #   TaskCard, EditTaskSheet
+                              #   TaskCard, EditTaskSheet, AddMenuFab
 ```
 
 ---
