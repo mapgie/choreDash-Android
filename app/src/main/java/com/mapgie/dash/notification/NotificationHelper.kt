@@ -14,113 +14,133 @@ import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
 import com.mapgie.dash.alarm.AlarmActionReceiver
 
+// What kind of alert is being delivered. Every kind gets the same Alarm/Notification/Silent
+// channel trio (see ChannelStyle) so DND-bypass behaviour is identical across chores, tasks,
+// and standalone reminders — only the channel copy and base importance differ per kind.
+enum class ReminderKind { TASK_REMINDER, CHORE_ALERT }
+
+private enum class ChannelStyle { ALARM, NOTIFICATION, SILENT }
+
+private fun styleForDeliveryMode(deliveryMode: String): ChannelStyle = when (deliveryMode) {
+    "ALARM" -> ChannelStyle.ALARM
+    "SILENT" -> ChannelStyle.SILENT
+    else -> ChannelStyle.NOTIFICATION
+}
+
+private data class ChannelDef(
+    val kind: ReminderKind,
+    val style: ChannelStyle,
+    val id: String,
+    val nameRes: Int,
+    val descRes: Int,
+    val importance: Int,
+)
+
 object NotificationHelper {
-    // Three-way split replacing the old single dash_task_reminders_v3 channel.
-    // Channel settings (importance, sound, vibration) are immutable once created,
-    // so new channel ids are required for changes to take effect on existing installs.
-    // Legacy channels are deleted in createChannels() below.
-    const val CHANNEL_TASK_REMINDERS_ALARM = "dash_task_reminders_alarm_v1"
-    const val CHANNEL_TASK_REMINDERS_NOTIF = "dash_task_reminders_notif_v1"
-    const val CHANNEL_TASK_REMINDERS_SILENT = "dash_task_reminders_silent_v1"
+    // Single source of truth for every alert channel. Channel settings (importance, sound,
+    // vibration) are immutable once created, so a new "_v1"-style id is required whenever
+    // one of these changes for an existing install; bump the id and add the old one to
+    // legacyChannelIds below so it gets deleted on next createChannels() run.
+    private val channelDefs = listOf(
+        ChannelDef(
+            ReminderKind.TASK_REMINDER, ChannelStyle.ALARM, "dash_task_reminders_alarm_v1",
+            R.string.channel_task_reminders_alarm_name, R.string.channel_task_reminders_alarm_desc,
+            NotificationManager.IMPORTANCE_HIGH
+        ),
+        ChannelDef(
+            ReminderKind.TASK_REMINDER, ChannelStyle.NOTIFICATION, "dash_task_reminders_notif_v1",
+            R.string.channel_task_reminders_notif_name, R.string.channel_task_reminders_notif_desc,
+            NotificationManager.IMPORTANCE_HIGH
+        ),
+        ChannelDef(
+            ReminderKind.TASK_REMINDER, ChannelStyle.SILENT, "dash_task_reminders_silent_v1",
+            R.string.channel_task_reminders_silent_name, R.string.channel_task_reminders_silent_desc,
+            NotificationManager.IMPORTANCE_LOW
+        ),
+        ChannelDef(
+            ReminderKind.CHORE_ALERT, ChannelStyle.ALARM, "dash_chore_alerts_alarm_v1",
+            R.string.channel_chore_alerts_alarm_name, R.string.channel_chore_alerts_alarm_desc,
+            NotificationManager.IMPORTANCE_HIGH
+        ),
+        ChannelDef(
+            ReminderKind.CHORE_ALERT, ChannelStyle.NOTIFICATION, "dash_chore_alerts_notif_v1",
+            R.string.channel_chore_alerts_notif_name, R.string.channel_chore_alerts_notif_desc,
+            NotificationManager.IMPORTANCE_DEFAULT
+        ),
+        ChannelDef(
+            ReminderKind.CHORE_ALERT, ChannelStyle.SILENT, "dash_chore_alerts_silent_v1",
+            R.string.channel_chore_alerts_silent_name, R.string.channel_chore_alerts_silent_desc,
+            NotificationManager.IMPORTANCE_LOW
+        ),
+    )
 
     // Legacy channel ids — deleted on first run after upgrade
-    private const val CHANNEL_TASK_REMINDERS_V3 = "dash_task_reminders_v3"
-    private const val CHANNEL_TASK_REMINDERS_V2 = "dash_task_reminders_v2"
-    private const val CHANNEL_TASK_REMINDERS_LEGACY = "dash_task_reminders"
-
-    const val CHANNEL_CHORE_ALERTS = "dash_chore_alerts"
+    private val legacyChannelIds = listOf(
+        "dash_task_reminders", "dash_task_reminders_v2", "dash_task_reminders_v3", "dash_chore_alerts"
+    )
 
     const val EXTRA_TASK_ID = "task_id"
     const val EXTRA_TASK_TITLE = "task_title"
     const val EXTRA_REMINDER_ID = "reminder_id"
     const val EXTRA_REMINDER_SUBJECT = "reminder_subject"
 
-    // Single place that maps the delivery-mode setting ("ALARM"/"NOTIFICATION"/"SILENT")
-    // to a channel. Resolved at delivery time (AlarmReceiver, BootWorker) so the current
-    // setting always wins; the mode is never baked into alarm or action intents.
-    fun channelForDeliveryMode(deliveryMode: String): String = when (deliveryMode) {
-        "ALARM" -> CHANNEL_TASK_REMINDERS_ALARM
-        "SILENT" -> CHANNEL_TASK_REMINDERS_SILENT
-        else -> CHANNEL_TASK_REMINDERS_NOTIF
+    // Single place that maps (kind, delivery-mode setting) to a channel. Resolved at delivery
+    // time (AlarmReceiver, BootWorker, DailyStaleChoreWorker) so the current setting always
+    // wins; the mode is never baked into alarm or action intents. Chores, tasks, and standalone
+    // reminders all go through this one function, so there is exactly one place that can drift
+    // out of sync if a delivery mode is ever added or renamed.
+    fun channelId(kind: ReminderKind, deliveryMode: String): String {
+        val style = styleForDeliveryMode(deliveryMode)
+        return channelDefs.first { it.kind == kind && it.style == style }.id
     }
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_LEGACY)
-        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_V2)
-        nm.deleteNotificationChannel(CHANNEL_TASK_REMINDERS_V3)
+        legacyChannelIds.forEach { nm.deleteNotificationChannel(it) }
 
-        // Alarm channel: uses alarm sound and bypasses DND (only if access granted)
         val alarmSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         val alarmAudioAttributes = AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .setUsage(AudioAttributes.USAGE_ALARM)
             .build()
 
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_TASK_REMINDERS_ALARM,
-                context.getString(R.string.channel_task_reminders_alarm_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = context.getString(R.string.channel_task_reminders_alarm_desc)
-                setSound(alarmSoundUri, alarmAudioAttributes)
-                enableVibration(true)
-                // Only takes effect if the user has granted Do Not Disturb access;
-                // see SettingsScreen's "Do Not Disturb access" permission row.
-                if (nm.isNotificationPolicyAccessGranted) {
-                    setBypassDnd(true)
-                }
-            }
-        )
-
-        // Notification channel: uses standard notification sound, no DND bypass
         val notifSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notifAudioAttributes = AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .build()
 
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_TASK_REMINDERS_NOTIF,
-                context.getString(R.string.channel_task_reminders_notif_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = context.getString(R.string.channel_task_reminders_notif_desc)
-                setSound(notifSoundUri, notifAudioAttributes)
-                enableVibration(true)
-            }
-        )
-
-        // Silent channel: low importance, no sound, no vibration
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_TASK_REMINDERS_SILENT,
-                context.getString(R.string.channel_task_reminders_silent_name),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = context.getString(R.string.channel_task_reminders_silent_desc)
-                setSound(null, null)
-                enableVibration(false)
-            }
-        )
-
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_CHORE_ALERTS,
-                context.getString(R.string.channel_chore_alerts_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = context.getString(R.string.channel_chore_alerts_desc)
-                enableVibration(false)
-            }
-        )
+        channelDefs.forEach { def ->
+            nm.createNotificationChannel(
+                NotificationChannel(def.id, context.getString(def.nameRes), def.importance).apply {
+                    description = context.getString(def.descRes)
+                    when (def.style) {
+                        ChannelStyle.ALARM -> {
+                            setSound(alarmSoundUri, alarmAudioAttributes)
+                            enableVibration(true)
+                            // Only takes effect if the user has granted Do Not Disturb access;
+                            // see SettingsScreen's "Do Not Disturb access" permission row.
+                            if (nm.isNotificationPolicyAccessGranted) {
+                                setBypassDnd(true)
+                            }
+                        }
+                        ChannelStyle.NOTIFICATION -> {
+                            setSound(notifSoundUri, notifAudioAttributes)
+                            enableVibration(true)
+                        }
+                        ChannelStyle.SILENT -> {
+                            setSound(null, null)
+                            enableVibration(false)
+                        }
+                    }
+                }
+            )
+        }
     }
 
     @SuppressLint("MissingPermission")
-    fun showTaskReminder(context: Context, taskId: String, taskTitle: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF) {
+    fun showTaskReminder(context: Context, taskId: String, taskTitle: String, channelId: String = channelId(ReminderKind.TASK_REMINDER, "NOTIFICATION")) {
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
             Intent(context, MainActivity::class.java).apply {
@@ -166,7 +186,7 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = CHANNEL_TASK_REMINDERS_NOTIF, taskId: String? = null) {
+    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = channelId(ReminderKind.TASK_REMINDER, "NOTIFICATION"), taskId: String? = null) {
         val notifyId = ("reminder_$reminderId").hashCode()
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
@@ -214,7 +234,7 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showStaleChoresSummary(context: Context, choreLabels: List<String>) {
+    fun showStaleChoresSummary(context: Context, choreLabels: List<String>, channelId: String = channelId(ReminderKind.CHORE_ALERT, "NOTIFICATION")) {
         if (choreLabels.isEmpty()) return
         val openIntent = PendingIntent.getActivity(
             context, 0,
@@ -229,7 +249,7 @@ object NotificationHelper {
         } else {
             "${choreLabels.size} chores are overdue: ${choreLabels.take(3).joinToString(", ")}"
         }
-        val notification = NotificationCompat.Builder(context, CHANNEL_CHORE_ALERTS)
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("Overdue chores")
             .setContentText(body)

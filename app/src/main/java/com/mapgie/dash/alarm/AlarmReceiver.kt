@@ -7,6 +7,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.notification.NotificationHelper
+import com.mapgie.dash.notification.ReminderKind
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Delivery mode is presentation: resolve it from the current setting at
                 // fire time so a settings change applies to already-scheduled alarms.
                 // A settings read failure must never cost the user the notification.
-                val channelId = NotificationHelper.channelForDeliveryMode(
+                val channelId = NotificationHelper.channelId(
+                    ReminderKind.TASK_REMINDER,
                     runCatching { settingsRepository.settings.first().deliveryMode }
                         .getOrDefault("NOTIFICATION")
                 )
