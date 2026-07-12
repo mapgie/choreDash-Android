@@ -7,8 +7,12 @@
     <string name="channel_task_reminders_notif_desc">Standard notification sound for task reminders</string>
     <string name="channel_task_reminders_silent_name">Task reminders (Silent)</string>
     <string name="channel_task_reminders_silent_desc">No sound or vibration for task reminders</string>
-    <string name="channel_chore_alerts_name">Overdue chores</string>
-    <string name="channel_chore_alerts_desc">Daily summary of overdue chores</string>
+    <string name="channel_chore_alerts_alarm_name">Overdue chores (Alarm)</string>
+    <string name="channel_chore_alerts_alarm_desc">Plays alarm sound and bypasses Do Not Disturb</string>
+    <string name="channel_chore_alerts_notif_name">Overdue chores (Notification)</string>
+    <string name="channel_chore_alerts_notif_desc">Standard notification sound for overdue chores</string>
+    <string name="channel_chore_alerts_silent_name">Overdue chores (Silent)</string>
+    <string name="channel_chore_alerts_silent_desc">No sound or vibration for overdue chores</string>
     <string name="widget_quick_add_label">Quick Add Task</string>
     <string name="widget_quick_add_chore_label">Quick Add Chore</string>
     <string name="widget_next_up_label">Next Up</string>

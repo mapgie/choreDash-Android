@@ -10,6 +10,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.notification.NotificationHelper
+import com.mapgie.dash.notification.ReminderKind
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
@@ -27,7 +28,7 @@ class BootWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = runCatching {
         val deliveryMode = settingsRepository.settings.first().deliveryMode
-        val channelId = NotificationHelper.channelForDeliveryMode(deliveryMode)
+        val channelId = NotificationHelper.channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val now = Instant.now()
 
         val pendingReminders = reminderRepository.pendingReminders()
