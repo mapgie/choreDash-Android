@@ -1,9 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "The collapsed section at the bottom of the chores list now reveals everything hidden by smart visibility, not just chores due 60+ days out, and its label reflects why chores are hidden"
-  ],
-  "fixed": [
-    "Chores hidden by smart visibility could not be viewed or logged from the chores screen"
-  ]
-}

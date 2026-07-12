@@ -31,6 +31,20 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.23.0] - 2026-07-12
+
+### Added
+- Multiple Pinned Item widgets placed on the same home screen can now each pin a different task or chore, with a chooser shown when pinning while 2+ are placed
+
+### Changed
+- The collapsed section at the bottom of the chores list now reveals everything hidden by smart visibility, not just chores due 60+ days out, and its label reflects why chores are hidden
+- The Add Task and Add Chore widgets now show the same icon and accent colour used for Tasks and Chores elsewhere in the app, instead of a generic plus sign
+
+### Fixed
+- Overdue chore notifications now respect the Alarm/Notification/Silent delivery mode and Do Not Disturb bypass setting, matching task and reminder alerts instead of using a single fixed channel
+- Chores hidden by smart visibility could not be viewed or logged from the chores screen
+
+---
 ## [0.22.0] - 2026-07-11
 
 ### Added

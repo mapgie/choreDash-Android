@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "Multiple Pinned Item widgets placed on the same home screen can now each pin a different task or chore, with a chooser shown when pinning while 2+ are placed"
-  ]
-}

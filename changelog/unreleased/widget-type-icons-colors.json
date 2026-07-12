@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "The Add Task and Add Chore widgets now show the same icon and accent colour used for Tasks and Chores elsewhere in the app, instead of a generic plus sign"
-  ]
-}
