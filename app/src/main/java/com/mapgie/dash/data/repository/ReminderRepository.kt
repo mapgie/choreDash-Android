@@ -9,7 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
-import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.needsScheduling
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -99,15 +99,8 @@ class ReminderRepository @Inject constructor(
         saveAll(loadReminders().filterNot { it.id == id })
     }
 
-    // Includes past-due entries: a reminder whose fire time elapsed while the device
-    // was off is still pending until it has actually been shown (reminded flag).
-    // BootWorker decides whether to schedule an alarm or deliver immediately.
-    suspend fun pendingReminders(): List<ReminderDto> {
-        return loadReminders().filter { dto ->
-            if (dto.reminded || dto.completedAt != null || dto.archivedAt != null) return@filter false
-            dto.remindAtInstant() != null
-        }
-    }
+    suspend fun pendingReminders(): List<ReminderDto> =
+        loadReminders().filter { it.needsScheduling() }
 
     private suspend fun update(id: String, transform: (ReminderDto) -> ReminderDto) {
         saveAll(loadReminders().map { if (it.id == id) transform(it) else it })

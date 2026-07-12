@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import com.mapgie.dash.notification.NotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -14,6 +15,12 @@ import javax.inject.Singleton
 // Delivery mode (ALARM/NOTIFICATION/SILENT) is deliberately NOT part of the alarm
 // intent: AlarmReceiver resolves it from the current setting at fire time, so a
 // settings change applies to alarms that are already scheduled.
+//
+// Every alarm intent is stamped with a unique data URI. PendingIntent identity is
+// (request code + Intent.filterEquals), and filterEquals ignores extras — with only
+// hashCode-derived request codes, two ids whose hashes collide would silently cancel
+// or clobber each other's alarms. The URI makes every task/reminder a distinct
+// intent regardless of request code (same defence GaMeD uses).
 @Singleton
 class AlarmScheduler @Inject constructor(
     @ApplicationContext private val context: Context
@@ -28,10 +35,13 @@ class AlarmScheduler @Inject constructor(
     }
 
     fun cancelTask(taskId: String) {
+        val intent = Intent(context, AlarmReceiver::class.java)
+            .setPackage(context.packageName)
+            .setData(taskAlarmUri(taskId))
         val pending = PendingIntent.getBroadcast(
             context,
             taskId.hashCode(),
-            Intent(context, AlarmReceiver::class.java).setPackage(context.packageName),
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pending)
@@ -45,13 +55,42 @@ class AlarmScheduler @Inject constructor(
     }
 
     fun cancelReminder(reminderId: String) {
+        val intent = Intent(context, AlarmReceiver::class.java)
+            .setPackage(context.packageName)
+            .setData(reminderAlarmUri(reminderId))
         val pending = PendingIntent.getBroadcast(
             context,
             reminderRequestCode(reminderId),
-            Intent(context, AlarmReceiver::class.java).setPackage(context.packageName),
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pending)
+    }
+
+    /**
+     * Cancels alarms registered by app versions that built PendingIntents without a
+     * data URI. Those legacy intents are not filterEquals-matched by the URI-stamped
+     * form, so after an update they would stay armed alongside the new alarms and
+     * double-fire. Called from BootWorker, which runs on MY_PACKAGE_REPLACED.
+     */
+    fun cancelLegacyAlarms(taskIds: List<String>, reminderIds: List<String>) {
+        val bareIntent = Intent(context, AlarmReceiver::class.java).setPackage(context.packageName)
+        taskIds.forEach { taskId ->
+            alarmManager.cancel(
+                PendingIntent.getBroadcast(
+                    context, taskId.hashCode(), bareIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+        }
+        reminderIds.forEach { reminderId ->
+            alarmManager.cancel(
+                PendingIntent.getBroadcast(
+                    context, reminderRequestCode(reminderId), bareIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+        }
     }
 
     fun canScheduleExactAlarms(): Boolean =
@@ -69,9 +108,14 @@ class AlarmScheduler @Inject constructor(
         }
     }
 
+    private fun taskAlarmUri(taskId: String): Uri = Uri.parse("choredash://alarm/task/$taskId")
+
+    private fun reminderAlarmUri(reminderId: String): Uri = Uri.parse("choredash://alarm/reminder/$reminderId")
+
     private fun buildPendingIntent(taskId: String, taskTitle: String): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
+            data = taskAlarmUri(taskId)
             putExtra(NotificationHelper.EXTRA_TASK_ID, taskId)
             putExtra(NotificationHelper.EXTRA_TASK_TITLE, taskTitle)
         }
@@ -86,6 +130,7 @@ class AlarmScheduler @Inject constructor(
     private fun buildReminderPendingIntent(reminderId: String, subject: String, taskId: String? = null): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             setPackage(context.packageName)
+            data = reminderAlarmUri(reminderId)
             putExtra(NotificationHelper.EXTRA_REMINDER_ID, reminderId)
             putExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT, subject)
             taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }

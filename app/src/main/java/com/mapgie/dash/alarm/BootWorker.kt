@@ -37,6 +37,15 @@ class BootWorker @AssistedInject constructor(
         val taskIdsWithReminder = pendingReminders.mapNotNull { it.taskId }.toSet()
 
         val pendingTasks = taskRepository.pendingReminders()
+
+        // Sweep alarms armed by pre-URI app versions: they keep their old PendingIntent
+        // identity (no data URI) and would otherwise stay armed alongside the freshly
+        // scheduled ones and double-fire. Runs on MY_PACKAGE_REPLACED via BootReceiver.
+        alarmScheduler.cancelLegacyAlarms(
+            pendingTasks.map { it.id },
+            pendingReminders.map { it.id }
+        )
+
         pendingTasks.forEach { task ->
             if (task.id !in taskIdsWithReminder) {
                 val reminderAt = task.reminderInstant() ?: return@forEach

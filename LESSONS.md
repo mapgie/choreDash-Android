@@ -669,3 +669,23 @@ The fix, and the general rule:
    `darkColorScheme(...)`, Material 3 fills them with a fixed default neutral
    (lavender in light, charcoal in dark) that clashes with the custom
    background in menus, bottom sheets, and the navigation bar.
+
+---
+
+## 29. PendingIntent identity needs a data URI, not just a namespaced request code
+
+Lesson 13 namespaced request codes per entity type, but that is only half the
+identity story: `PendingIntent` identity is (request code + `Intent.filterEquals`),
+and `filterEquals` ignores extras. All alarm intents here wrapped the same bare
+`Intent(context, AlarmReceiver::class.java)`, so two ids whose `String.hashCode()`
+values collide would silently cancel or clobber each other's alarms, and
+`FLAG_UPDATE_CURRENT` could swap extras between unrelated alarms.
+
+Stamp a unique `data` URI onto every alarm intent
+(`choredash://alarm/task/$taskId`, `choredash://alarm/reminder/$reminderId`):
+`filterEquals` compares data URIs, so every entity is a distinct intent regardless
+of request code. When changing PendingIntent identity, alarms registered by the
+*old* app version keep the old identity — sweep-cancel the legacy (no-URI) form once
+from BootWorker (which runs on `MY_PACKAGE_REPLACED`), or they stay armed alongside
+the new ones and double-fire. Same defence GaMeD adopted after hitting the collision
+in production; see its LESSONS entry "PendingIntent identity ignores extras".

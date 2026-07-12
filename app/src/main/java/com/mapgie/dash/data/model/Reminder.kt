@@ -30,3 +30,10 @@ fun ReminderDto.remindAtInstant(): Instant? =
 
 fun ReminderDto.isPast(): Boolean =
     remindAtInstant()?.isBefore(Instant.now()) ?: false
+
+// True when this reminder still needs an alarm or immediate delivery: never shown,
+// not completed, not archived, and carries a parseable fire time. Past-due entries
+// are included deliberately — a reminder that came due while the device was off is
+// still pending, and BootWorker decides between scheduling and immediate delivery.
+fun ReminderDto.needsScheduling(): Boolean =
+    !reminded && completedAt == null && archivedAt == null && remindAtInstant() != null
