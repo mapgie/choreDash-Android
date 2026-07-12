@@ -33,6 +33,7 @@ import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
+import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
 import kotlinx.coroutines.launch
 
@@ -470,6 +471,14 @@ fun ChoreListScreen(
                     onNfcConsumed()
                 }
             }
+        )
+    }
+
+    uiState.pinChooser?.let { chooser ->
+        PinWidgetChooserDialog(
+            widgetIds = chooser.widgetIds,
+            onChoose = { appWidgetId -> viewModel.pinToWidget(appWidgetId) },
+            onDismiss = { viewModel.dismissPinChooser() }
         )
     }
 

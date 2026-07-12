@@ -13,6 +13,7 @@ import androidx.glance.action.clickable
 import androidx.glance.Button
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
@@ -56,7 +57,8 @@ class PinnedItemWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val entryPoint = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
-        val data = loadPinnedData(entryPoint)
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val data = loadPinnedData(entryPoint, appWidgetId)
         provideContent {
             GlanceTheme(colors = DashGlanceTheme.colors) {
                 PinnedContent(data)
@@ -64,8 +66,8 @@ class PinnedItemWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun loadPinnedData(entryPoint: WidgetEntryPoint): PinnedData {
-        val pinned = entryPoint.pinnedItemStore().pinnedItem.first() ?: return PinnedData.NotSet
+    private suspend fun loadPinnedData(entryPoint: WidgetEntryPoint, appWidgetId: Int): PinnedData {
+        val pinned = entryPoint.pinnedItemStore().pinnedItemFor(appWidgetId).first() ?: return PinnedData.NotSet
 
         val settings = entryPoint.settingsRepository().settings.first()
         if (settings.supabaseUrl.isBlank() || settings.supabaseKey.isBlank()) {

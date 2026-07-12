@@ -19,6 +19,7 @@ import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.widget.PinChooserState
 import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
@@ -53,6 +54,7 @@ data class TaskUiState(
     val hideThresholdDays: Int = -1,
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
+    val pinChooser: PinChooserState? = null,
 ) {
     val displayed: List<TaskDto>
         get() {
@@ -146,10 +148,33 @@ class TaskListViewModel @Inject constructor(
     }
 
     fun togglePin(taskId: String) {
+        val item = PinnedWidgetItem(PinnedItemType.TASK, taskId)
         viewModelScope.launch {
-            pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.TASK, taskId))
+            val placedWidgetIds = pinnedItemStore.placedAppWidgetIds()
+            if (placedWidgetIds.size > 1) {
+                _uiState.update { it.copy(pinChooser = PinChooserState(item, placedWidgetIds)) }
+                return@launch
+            }
+            pinnedItemStore.togglePinned(item)
+            // With at most one widget placed, that widget should always track the default
+            // pin, not a stale per-instance override left over from when more were placed.
+            placedWidgetIds.singleOrNull()?.let { pinnedItemStore.setPinnedFor(it, null) }
             WidgetUpdater.updateAll(appContext)
         }
+    }
+
+    /** Commits the pin to a specific widget instance chosen from [TaskUiState.pinChooser]. */
+    fun pinToWidget(appWidgetId: Int) {
+        val chooser = _uiState.value.pinChooser ?: return
+        _uiState.update { it.copy(pinChooser = null) }
+        viewModelScope.launch {
+            pinnedItemStore.togglePinnedFor(appWidgetId, chooser.item)
+            WidgetUpdater.updateAll(appContext)
+        }
+    }
+
+    fun dismissPinChooser() {
+        _uiState.update { it.copy(pinChooser = null) }
     }
 
     fun load() {

@@ -13,6 +13,7 @@ import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
+import com.mapgie.dash.widget.PinChooserState
 import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
@@ -58,7 +59,8 @@ data class ChoreUiState(
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     val pinnedChoreId: String? = null,
-    val scanHistory: List<ScanDto> = emptyList()
+    val scanHistory: List<ScanDto> = emptyList(),
+    val pinChooser: PinChooserState? = null
 ) {
     private val ownerFiltered: List<Chore>
         get() {
@@ -168,10 +170,33 @@ class ChoreListViewModel @Inject constructor(
     }
 
     fun togglePin(choreId: String) {
+        val item = PinnedWidgetItem(PinnedItemType.CHORE, choreId)
         viewModelScope.launch {
-            pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.CHORE, choreId))
+            val placedWidgetIds = pinnedItemStore.placedAppWidgetIds()
+            if (placedWidgetIds.size > 1) {
+                _uiState.update { it.copy(pinChooser = PinChooserState(item, placedWidgetIds)) }
+                return@launch
+            }
+            pinnedItemStore.togglePinned(item)
+            // With at most one widget placed, that widget should always track the default
+            // pin, not a stale per-instance override left over from when more were placed.
+            placedWidgetIds.singleOrNull()?.let { pinnedItemStore.setPinnedFor(it, null) }
             WidgetUpdater.updateAll(appContext)
         }
+    }
+
+    /** Commits the pin to a specific widget instance chosen from [ChoreUiState.pinChooser]. */
+    fun pinToWidget(appWidgetId: Int) {
+        val chooser = _uiState.value.pinChooser ?: return
+        _uiState.update { it.copy(pinChooser = null) }
+        viewModelScope.launch {
+            pinnedItemStore.togglePinnedFor(appWidgetId, chooser.item)
+            WidgetUpdater.updateAll(appContext)
+        }
+    }
+
+    fun dismissPinChooser() {
+        _uiState.update { it.copy(pinChooser = null) }
     }
 
     fun load() {
