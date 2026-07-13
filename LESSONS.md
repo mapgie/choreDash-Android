@@ -491,7 +491,7 @@ degrades to the system font when the GMS cache is cold on first launch).
 
 ---
 
-## 25. Lazy singleton with async init creates a cold-start race for all consumers
+## 24. Lazy singleton with async init creates a cold-start race for all consumers
 
 `SupabaseClientProvider` is a Hilt singleton whose `init {}` block launches a
 background IO coroutine to collect the first settings emission and build the
@@ -532,7 +532,7 @@ no call-site changes are needed.
 
 ---
 
-## 24. AppWidget receivers must be `android:exported="true"`
+## 25. AppWidget receivers must be `android:exported="true"`
 
 AppWidget broadcast receivers need `android:exported="true"` even though they look like
 internal components. The system (OS) sends `APPWIDGET_UPDATE` from a different process/UID,
@@ -623,7 +623,7 @@ var category by remember { mutableStateOf(initialCategory) }
 val isDirty = category != initialCategory
 ```
 
-## 27. Theme-builder parameters must come from user state, not clamps or constants
+## 28. Theme-builder parameters must come from user state, not clamps or constants
 
 The custom colour scheme builder used to clamp the picked saturation and
 hard-code the lightness in dark mode (`primaryS.coerceAtMost(0.55f)`, `L =
@@ -642,7 +642,7 @@ Two rules fall out of this:
    a swatch has its own S/L constants, it will drift from what the theme
    actually renders.
 
-## 28. Derive Material 3 surface ramps from luminance, never from a background's raw HSL
+## 29. Derive Material 3 surface ramps from luminance, never from a background's raw HSL
 
 When building a custom `ColorScheme` around a user-chosen background colour,
 the "is this a light or dark surface?" decision has to be made from perceived
@@ -669,3 +669,26 @@ The fix, and the general rule:
    `darkColorScheme(...)`, Material 3 fills them with a fixed default neutral
    (lavender in light, charcoal in dark) that clashes with the custom
    background in menus, bottom sheets, and the navigation bar.
+
+## 30. Make "fixed" accent colours theme-aware through a CompositionLocal, not top-level vals
+
+The content-type accents (Tasks/Chores/Reminders tones on the bottom nav and
+add menu) were plain top-level `val`s in `Color.kt`, imported directly by the
+nav graph and the FAB. That kept them stable across the built-in palettes, but
+it also made them impossible to adapt: under a vivid custom theme they stayed
+fixed lavender/mint/peach and read as three random colours unrelated to the
+user's picks.
+
+The fix is a `staticCompositionLocalOf` (`LocalTypeAccents`) that defaults to
+the fixed identity tones, with `DashTheme` overriding it for the custom theme by
+mapping each content type onto the user's primary/secondary/tertiary container
+roles. Consumers read `LocalTypeAccents.current` instead of importing the
+constants. General rule: when a colour needs to be a stable default in some
+themes but derive from the scheme in others, resolve it through a
+CompositionLocal provided next to `MaterialTheme` (which is the one place that
+knows both the active `AppTheme` and the built `ColorScheme`), not through a
+top-level constant that call sites import directly.
+
+The Glance home-screen widgets keep importing the `Type*` constants directly:
+they render outside the Compose `MaterialTheme` tree and can't read this
+CompositionLocal, so their type colours stay fixed by design.

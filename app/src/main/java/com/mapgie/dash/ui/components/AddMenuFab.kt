@@ -27,12 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
-import com.mapgie.dash.ui.theme.TypeChoreContainer
-import com.mapgie.dash.ui.theme.TypeChoreOnContainer
-import com.mapgie.dash.ui.theme.TypeReminderContainer
-import com.mapgie.dash.ui.theme.TypeReminderOnContainer
-import com.mapgie.dash.ui.theme.TypeTaskContainer
-import com.mapgie.dash.ui.theme.TypeTaskOnContainer
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.TypeAccentColors
 
 private data class AddMenuOptionSpec(
     val icon: ImageVector,
@@ -41,15 +37,15 @@ private data class AddMenuOptionSpec(
     val contentColor: Color,
 )
 
-private fun AddMenuOption.spec(reminderLabel: String): AddMenuOptionSpec = when (this) {
+private fun AddMenuOption.spec(reminderLabel: String, accents: TypeAccentColors): AddMenuOptionSpec = when (this) {
     AddMenuOption.REMINDER -> AddMenuOptionSpec(
-        Icons.Filled.Notifications, reminderLabel, TypeReminderContainer, TypeReminderOnContainer
+        Icons.Filled.Notifications, reminderLabel, accents.reminderContainer, accents.onReminderContainer
     )
     AddMenuOption.CHORE -> AddMenuOptionSpec(
-        Icons.Filled.CleaningServices, "Chore", TypeChoreContainer, TypeChoreOnContainer
+        Icons.Filled.CleaningServices, "Chore", accents.choreContainer, accents.onChoreContainer
     )
     AddMenuOption.TASK -> AddMenuOptionSpec(
-        Icons.Filled.CheckCircle, "Task", TypeTaskContainer, TypeTaskOnContainer
+        Icons.Filled.CheckCircle, "Task", accents.taskContainer, accents.onTaskContainer
     )
 }
 
@@ -63,6 +59,7 @@ fun AddMenuFab(
     reminderLabel: String = "Reminder",
     modifier: Modifier = Modifier
 ) {
+    val accents = LocalTypeAccents.current
     Column(horizontalAlignment = Alignment.End, modifier = modifier) {
         AnimatedVisibility(
             visible = expanded,
@@ -75,7 +72,7 @@ fun AddMenuFab(
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
                 order.forEach { option ->
-                    val spec = option.spec(reminderLabel)
+                    val spec = option.spec(reminderLabel, accents)
                     ExtendedFloatingActionButton(
                         onClick = {
                             onExpandedChange(false)

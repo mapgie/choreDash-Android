@@ -32,12 +32,8 @@ import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
-import com.mapgie.dash.ui.theme.TypeChoreContainer
-import com.mapgie.dash.ui.theme.TypeChoreOnContainer
-import com.mapgie.dash.ui.theme.TypeReminderContainer
-import com.mapgie.dash.ui.theme.TypeReminderOnContainer
-import com.mapgie.dash.ui.theme.TypeTaskContainer
-import com.mapgie.dash.ui.theme.TypeTaskOnContainer
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.TypeAccentColors
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_CHORE
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_REMINDER
@@ -67,13 +63,14 @@ private val Screen.addMenuOption: AddMenuOption?
     }
 
 // Gives each content-type tab its own colour tone (indicator pill + selected
-// icon/text), on top of the icon and label that already distinguish them.
-// Settings has no type accent and falls back to the theme's primary colour.
-private val Screen.accentColors: Pair<Color, Color>?
-    get() = when (this) {
-        Screen.Tasks -> TypeTaskContainer to TypeTaskOnContainer
-        Screen.Chores -> TypeChoreContainer to TypeChoreOnContainer
-        Screen.Reminders -> TypeReminderContainer to TypeReminderOnContainer
+// icon/text), on top of the icon and label that already distinguish them. The
+// tones come from [TypeAccentColors] so the custom theme can map them onto the
+// user's picks. Settings has no type accent and falls back to the theme primary.
+private fun Screen.accentColors(accents: TypeAccentColors): Pair<Color, Color>? =
+    when (this) {
+        Screen.Tasks -> accents.taskContainer to accents.onTaskContainer
+        Screen.Chores -> accents.choreContainer to accents.onChoreContainer
+        Screen.Reminders -> accents.reminderContainer to accents.onReminderContainer
         else -> null
     }
 
@@ -168,10 +165,11 @@ fun DashNavGraph(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
+                val typeAccents = LocalTypeAccents.current
                 navItems.forEach { screen ->
                     val selected = currentDestination?.hierarchy
                         ?.any { it.route == screen.route } == true
-                    val accent = screen.accentColors
+                    val accent = screen.accentColors(typeAccents)
                     val label = if (screen == Screen.Reminders) {
                         navUiState.reminderLabel.displayName
                     } else {
