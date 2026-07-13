@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -78,7 +79,13 @@ fun RemindersListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(title = { Text(labelStyle.displayName) })
+            TopAppBar(
+                title = { Text(labelStyle.displayName) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
         }
     ) { innerPadding ->
         if (uiState.loading) {

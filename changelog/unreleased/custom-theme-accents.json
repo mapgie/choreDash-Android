@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Custom themes now colour the Tasks, Chores, and Reminders accents (bottom nav indicator and add menu) from your primary, secondary, and tertiary picks, and give list screens a consistent top bar, so your chosen colours show throughout the app instead of clashing with fixed pastels."]
+}
