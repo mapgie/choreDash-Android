@@ -692,3 +692,28 @@ top-level constant that call sites import directly.
 The Glance home-screen widgets keep importing the `Type*` constants directly:
 they render outside the Compose `MaterialTheme` tree and can't read this
 CompositionLocal, so their type colours stay fixed by design.
+
+## 32. One delivery-mode -> channel table shared by every notification "kind", not one per feature
+
+Overdue-chore alerts (`DailyStaleChoreWorker`) were on a single fixed
+notification channel with no Do Not Disturb bypass and no Alarm/Silent
+variants, while task reminders and standalone reminders already resolved one
+of three channels from the global delivery-mode setting via
+`NotificationHelper.channelForDeliveryMode()`. The obvious fix (copy that
+function into a second `choreChannelForDeliveryMode()` plus a second
+three-channel `createNotificationChannel()` block) would have worked, but it
+duplicates channel ids, importance defaults, DND-bypass logic, and
+legacy-channel cleanup across two near-identical code paths that can drift
+independently the next time a delivery mode is added, renamed, or
+re-tuned.
+
+Instead, model every notification source as one `ReminderKind` enum
+(`TASK_REMINDER`, `CHORE_ALERT`, ...) crossed with one `ChannelStyle` enum
+(`ALARM`/`NOTIFICATION`/`SILENT`), stored as a single list of `ChannelDef`s
+(id, name/desc string resource, importance). `createChannels()` loops that
+list once instead of hand-writing a `createNotificationChannel()` call per
+channel; `channelId(kind, deliveryMode)` is the one function every caller
+(`AlarmReceiver`, `BootWorker`, `DailyStaleChoreWorker`) resolves through.
+Adding a third notification kind later means adding rows to the table, not
+a third parallel set of functions that can quietly fall out of sync with
+the first two.
