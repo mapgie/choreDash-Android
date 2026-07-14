@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "Task and reminder alarms can no longer cancel or overwrite each other in the rare case of colliding internal ids"
-  ]
-}

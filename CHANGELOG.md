@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.23.1] - 2026-07-14
+
+### Changed
+- Custom themes now colour the Tasks, Chores, and Reminders accents (bottom nav indicator and add menu) from your primary, secondary, and tertiary picks, and give list screens a consistent top bar, so your chosen colours show throughout the app instead of clashing with fixed pastels.
+
+### Fixed
+- Task and reminder alarms can no longer cancel or overwrite each other in the rare case of colliding internal ids
+
+---
 ## [0.23.0] - 2026-07-12
 
 ### Added
