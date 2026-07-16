@@ -107,6 +107,7 @@ import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.data.preferences.ThemeMode
+import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CompactThemePicker
@@ -949,7 +950,15 @@ private fun RemindersSubScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
                 notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
-                dndAccessGranted = PermissionHelper.isDndAccessGranted(context)
+                val nowDndGranted = PermissionHelper.isDndAccessGranted(context)
+                if (nowDndGranted && !dndAccessGranted) {
+                    // Access just granted: recreate channels so the alarm channels are made
+                    // with Do Not Disturb bypass. Channel settings are immutable once created
+                    // (LESSONS #17), so NotificationHelper does this by switching to a new
+                    // channel id rather than mutating the existing no-bypass channel.
+                    NotificationHelper.createChannels(context)
+                }
+                dndAccessGranted = nowDndGranted
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

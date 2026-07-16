@@ -344,6 +344,18 @@ fun createChannels(context: Context) {
 Any future change to a channel's importance/sound/vibration/DND-bypass needs
 the same treatment: new id, delete the old one.
 
+**Corollary, and the non-obvious part: DND bypass depends on access at creation
+time.** `setBypassDnd(true)` is honoured only if the app already holds Do Not
+Disturb access (`isNotificationPolicyAccessGranted`) *at the moment the channel
+is first created*. Combined with the immutability above, a channel created
+before the user grants access will never bypass DND afterwards, even though
+`createChannels()` re-runs and calls `setBypassDnd(true)` again on the same id.
+The alarm channels work around this by switching to a distinct id (`..._dnd`)
+while bypass is active, so granting access creates a fresh, bypassing channel
+instead of trying to mutate the existing one, and `createChannels()` is re-run
+the instant access is granted (from the Settings "Do Not Disturb access" row's
+`ON_RESUME` check) so the bypassing channel exists before the next alarm fires.
+
 ---
 
 ## 18. Migrating composables to a shared file: re-check imports on both ends
