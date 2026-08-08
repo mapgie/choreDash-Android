@@ -96,11 +96,26 @@ Two rules follow, and the shared shell enforces both:
    `dismissState.dismissDirection != Settled` (or `targetValue`/progress), so nothing sits
    behind a resting card at all.
 
-### 5c. Memos is missing the features the other two tabs have
+### 5c. Memos is a collation surface, not a third list of things
 
-No filter chips, no zen mode, no owner indicator, no sort control. Memos gets a `TopAppBar`
-instead, which is the one thing the other two do not have. The tab reads as an
-afterthought because structurally it is one.
+Settled scope: Memos collates task alarms, chore alarms, and ad hoc alarms. It is a view of
+*when things ring*, not a place where work is owned or triaged. Therefore:
+
+- **No owner indicator.** The owner lives on the underlying task or chore.
+- **No zen mode.** Nothing to de-emphasise; an alarm list is already the calm view.
+- **No sort control, ever.** Always ordered next-to-ring first. `RemindersListViewModel.kt:37`
+  already does `sortedBy { it.remindAt }` for the active set, so this is the existing
+  behaviour, now stated as a rule rather than left as an accident.
+- **No filter chips.** The Done and Archived collapsible sections are the only partitioning
+  the tab needs.
+
+What Memos *does* need from the shared layer is the thing unique to a collation surface: a
+**source chip** on every row saying where the alarm came from. `linkedLabel` already renders
+"Chore: Air Plant" and "Task: Wash whites" as plain primary-coloured text
+(`ReminderCard.kt:100-106`). Make it a `SourceChip` tinted from `LocalTypeAccents` — green
+for chore-sourced, lavender for task-sourced, neutral for ad hoc. The user then reads the
+origin of an alarm from the same colour vocabulary as the nav bar and the identity strip,
+with the text label carrying the meaning on its own.
 
 ### 6. Screen scaffolding is copy-pasted and has already drifted
 
@@ -195,14 +210,34 @@ fun TaskDto.statusTone(): StatusTone       // from urgency(), not priorityEnum()
 fun ReminderDto.statusTone(): StatusTone   // replaces the errorContainer usage
 ```
 
-**Decision needed, with a recommendation.** The task bar should switch from encoding
-*priority* to encoding *urgency*, so red means "act now" on every screen. Priority then
-needs a non-colour carrier — recommend a small leading marker on the title (`!` for higher,
-nothing for normal, a downward chevron for lower), which is also better for the ~9% of
-users with red-green colour blindness than the current colour-only priority. The
-alternative — keep priority on the bar and change Chores instead — is worse, because
-overdue is the more urgent signal and deserves the loudest channel. Either way, the two
-screens must agree.
+#### Priority and urgency are different axes
+
+They are independent, and the app already models both separately for tasks:
+
+| | Priority | Urgency |
+|---|---|---|
+| Question it answers | How much does this matter? | How soon must it happen? |
+| Source | User-declared, stored on the row (`TaskDto.priority`) | Derived from the due date every time it is read (`urgency()`, `Task.kt:59-76`) |
+| Changes by itself | No. Only when the user edits it. | Yes. A task becomes urgent overnight with no edit. |
+| Values | `HIGHER` / `NORMAL` / `LOWER` | `OVERDUE` / `TODAY` / `THIS_WEEK` / `LATER` / `NONE` |
+| Exists for chores | No | Yes, as staleness (`ChoreStatus`) |
+| Exists for memos | No | Yes, as time-to-ring |
+
+"Citizenship" is high priority and not urgent. "Printer Toner" due yesterday is urgent and
+low priority. Neither implies the other.
+
+**Decision needed, with a recommendation.** The task accent bar currently encodes
+*priority* (`TaskCard.kt:57-61`) while the label beside it encodes *urgency*
+(`DueBadge`, `TaskCard.kt:162-186`) — two scales in one row, with the louder channel given
+to the axis that does not move. Recommend the bar encodes **urgency** on all three tabs,
+because it is the only axis all three share: chores and memos have no priority at all, so a
+priority bar can never be app-wide. That also matches the documented meaning of the colours
+in `Color.kt:125-127`, where red already means "action required".
+
+Priority then needs a non-colour carrier on Tasks: a small leading marker on the title
+(`!` for higher, nothing for normal, a downward chevron for lower). That is strictly better
+than today for the ~9% of users with red-green colour blindness, who currently cannot read
+task priority at all.
 
 ### `OwnerAvatar` — rightmost, consistent, per-person
 
@@ -273,14 +308,15 @@ of the thin strip on all three tabs.
 *Touches:* `ChoreListScreen.kt`, `TaskListScreen.kt`, `RemindersListScreen.kt`,
 `DashNavGraph.kt`.
 
-### PR 4 — Memos catches up (`minor`)
+### PR 4 — Memos onto the shared layer (`patch`)
 `ReminderCard` onto `DashListCard`, dropping the `errorContainer` misuse and fixing the
-archived-card rendering. Bring Memos to parity with the other tabs: filter chips, zen mode,
-and the shared collapsible section headers (§5c). Overview sheets (`ChoreOverviewSheet`,
-`TaskOverviewSheet`) adopt `OwnerAvatar` and `CategoryBadge` so the detail views match the
-list views.
-*Touches:* `ReminderCard.kt`, `RemindersListScreen.kt`, `RemindersListViewModel.kt`,
-`ChoreOverviewSheet.kt`, `TaskOverviewSheet.kt`.
+archived-card rendering. Add the `SourceChip` for alarm origin. Adopt the shared
+collapsible section headers. No owner avatar, no zen mode, no sort control, no filter chips
+(§5c) — the shell's slots are optional, so Memos simply leaves them empty, which is the
+point of a slot API. Overview sheets (`ChoreOverviewSheet`, `TaskOverviewSheet`) adopt
+`OwnerAvatar` and `CategoryBadge` so the detail views match the list views.
+*Touches:* `ReminderCard.kt`, `RemindersListScreen.kt`, `ChoreOverviewSheet.kt`,
+`TaskOverviewSheet.kt`.
 
 ### PR 5 — Gallery, guardrails, docs (`patch`)
 A `Gallery.kt` of `@Preview`s covering every component in light/dark, zen/normal,
