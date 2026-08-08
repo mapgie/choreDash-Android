@@ -70,6 +70,38 @@ stripe means "act now" on one screen and "high priority, due next month" on the 
 overdue reminder. `CLAUDE.md` reserves `error` for genuine errors and destructive
 confirmations. It should use the same overdue vocabulary as the other two cards.
 
+### 5b. Translucent card containers leak the swipe background (visible bug)
+
+An archived, overdue Memo renders as a purple card with a red rim and the word "Done✔"
+printed underneath its own title. That is not a colour-scheme choice, it is a layering bug:
+
+- `SwipeToDismissBox` composes `backgroundContent` **at all times**, not only mid-swipe. At
+  rest, the `primaryContainer` panel with the "Done✔" label sits directly behind every card
+  (`RemindersListScreen.kt:284-302`).
+- `ReminderCard` containers are semi-transparent: `surfaceVariant.copy(alpha = 0.5f)` when
+  done, `errorContainer.copy(alpha = 0.25f)` when overdue (`ReminderCard.kt:48-52`). A 25%
+  alpha fill lets the purple panel and its label read straight through.
+- The rim appears because the swipe panel is inset `vertical = 4.dp` while the card is not,
+  so the card's tinted edge overhangs the panel against the page background.
+
+`TaskCard.kt:69` has the same `alpha = 0.5f` container for done tasks, so completed tasks
+leak the purple panel too — less obviously, because 50% hides more than 25%.
+
+Two rules follow, and the shared shell enforces both:
+
+1. **Card containers are always opaque.** To dim a done or archived row, blend toward the
+   surface (`lerp(surfaceVariant, surface, 0.5f)`) or drop content alpha, never the
+   container's.
+2. **Compose the swipe panel only while a swipe is in progress**, gated on
+   `dismissState.dismissDirection != Settled` (or `targetValue`/progress), so nothing sits
+   behind a resting card at all.
+
+### 5c. Memos is missing the features the other two tabs have
+
+No filter chips, no zen mode, no owner indicator, no sort control. Memos gets a `TopAppBar`
+instead, which is the one thing the other two do not have. The tab reads as an
+afterthought because structurally it is one.
+
 ### 6. Screen scaffolding is copy-pasted and has already drifted
 
 - Sticky category header: `ChoreListScreen.kt:246-256` and `TaskListScreen.kt:208-218` are
@@ -83,7 +115,9 @@ confirmations. It should use the same overdue vocabulary as the other two cards.
   `TaskListScreen.kt:191-198` inlines a `Box`; `RemindersListScreen.kt:100-116` inlines
   another.
 - The filter chip row plus 48dp icon toggles is duplicated between the two list screens.
-- Reminders has a `TopAppBar`; Chores and Tasks do not.
+- Reminders has a `TopAppBar` styled with `primaryContainer`; Chores and Tasks have nothing.
+  That is a third distinct treatment of the top of a screen, and it costs roughly 64dp of
+  list space to display one word.
 
 ### 7. Every screen re-declares its own accessibility plumbing
 
@@ -109,6 +143,7 @@ ui/
       ListSectionHeader.kt NEW  sticky header + collapsible header
       DashStates.kt        NEW  empty / error / loading
       DashFilterBar.kt     NEW  filter chips + trailing icon actions
+      DashScreenHeader.kt  NEW  the thin type-coloured identity strip
       Gallery.kt           NEW  @Preview gallery of every component above
     ChoreCard.kt         becomes a thin binding: Chore -> DashListCard slots
     TaskCard.kt          becomes a thin binding: TaskDto -> DashListCard slots
@@ -185,6 +220,31 @@ fun OwnerAvatar(handle: String, modifier: Modifier = Modifier)
   is decoration and never the only signal
 - callers pass the handle; no caller decides colour, size, or position again
 
+### `DashScreenHeader` — the thin identity strip
+
+Replaces the Reminders `TopAppBar` and is added to all three list tabs, so every tab opens
+the same way.
+
+```kotlin
+@Composable
+fun DashScreenHeader(title: String, modifier: Modifier = Modifier)  // colour from the route
+```
+
+- **Colour comes from `LocalTypeAccents`**, the same pair already driving the bottom nav
+  indicator pill and the add-menu FAB (`DashNavGraph.kt:69-76`): lavender for Tasks
+  (`TypeTaskContainer`), green for Chores, peach for Memos. The strip at the top and the lit
+  tab at the bottom then match, which is exactly the "where am I" cue being asked for, and
+  it needs no new colours. Text uses the paired `on*Container` tone.
+- **Thin.** Roughly 28dp of content height against the current `TopAppBar`'s 64dp,
+  absorbing the status bar inset so the colour runs cleanly to the top edge.
+- **Administrative, not decorative.** `labelMedium`, letter-spaced, not a display heading.
+  It names the page; it does not compete with the list.
+- **Title source.** `Screen.label` for Tasks and Chores; for Memos it must come from
+  `ReminderLabelStyle.displayName` in settings, since the user renames that tab.
+- The `Type*Container` tones are deliberately fixed across light and dark palettes
+  (`Color.kt:132-143`), so the strip keeps its identity in dark mode. That is already true
+  of the nav pill, so the two stay in step.
+
 ## Sequenced work
 
 Five PRs. Each is independently shippable and independently revertable, and each needs a
@@ -201,20 +261,26 @@ delete the private copies. Visible change: owner circles become one size, one po
 ### PR 2 — The card shell (`minor`)
 Add `DashListCard` and rewrite `ChoreCard` and `TaskCard` as bindings onto it. This is
 where the two screens actually converge: solid container, centred alignment, shared insets,
-shared accent bar. Includes the priority-vs-urgency decision from above.
+shared accent bar. Enforces the opaque-container rule from §5b, which fixes the leaking
+swipe panel on done tasks. Includes the priority-vs-urgency decision from above.
 *Touches:* `ChoreCard.kt`, `TaskCard.kt`, `ChoreListScreen.kt`, `TaskListScreen.kt`.
 
-### PR 3 — List scaffolding (`patch`)
-Add `SwipeActionRow`, `ListSectionHeader`, `CollapsibleSectionHeader`, `DashStates`,
-`DashFilterBar`; delete the per-screen copies. Settle whether Reminders keeps its
-`TopAppBar` (recommend: drop it, so all three tabs start with the same filter row).
-*Touches:* `ChoreListScreen.kt`, `TaskListScreen.kt`, `RemindersListScreen.kt`.
+### PR 3 — List scaffolding and the identity strip (`minor`)
+Add `SwipeActionRow` (gating the panel on an in-progress swipe, §5b),
+`ListSectionHeader`, `CollapsibleSectionHeader`, `DashStates`, `DashFilterBar`, and
+`DashScreenHeader`; delete the per-screen copies. Drops the Reminders `TopAppBar` in favour
+of the thin strip on all three tabs.
+*Touches:* `ChoreListScreen.kt`, `TaskListScreen.kt`, `RemindersListScreen.kt`,
+`DashNavGraph.kt`.
 
-### PR 4 — Reminders and the sheets (`patch`)
-`ReminderCard` onto `DashListCard`, dropping the `errorContainer` misuse. Overview sheets
-(`ChoreOverviewSheet`, `TaskOverviewSheet`) adopt `OwnerAvatar` and `CategoryBadge` so the
-detail views match the list views.
-*Touches:* `ReminderCard.kt`, `ChoreOverviewSheet.kt`, `TaskOverviewSheet.kt`.
+### PR 4 — Memos catches up (`minor`)
+`ReminderCard` onto `DashListCard`, dropping the `errorContainer` misuse and fixing the
+archived-card rendering. Bring Memos to parity with the other tabs: filter chips, zen mode,
+and the shared collapsible section headers (§5c). Overview sheets (`ChoreOverviewSheet`,
+`TaskOverviewSheet`) adopt `OwnerAvatar` and `CategoryBadge` so the detail views match the
+list views.
+*Touches:* `ReminderCard.kt`, `RemindersListScreen.kt`, `RemindersListViewModel.kt`,
+`ChoreOverviewSheet.kt`, `TaskOverviewSheet.kt`.
 
 ### PR 5 — Gallery, guardrails, docs (`patch`)
 A `Gallery.kt` of `@Preview`s covering every component in light/dark, zen/normal,
@@ -236,5 +302,7 @@ own rendering. Worth a follow-up to align their colours with `StatusTone` once i
 - No `Card(` call outside `components/core/`.
 - No hardcoded `.dp` spacing inside screen files.
 - `python3 a11y_check.py` passes with the clickable declared in one place rather than five.
-- Screenshot the two tabs side by side: same card silhouette, same avatar treatment in the
-  same corner, same meaning for the same colour.
+- No `Color.copy(alpha = ...)` on any card container, anywhere.
+- Screenshot all three tabs side by side: same card silhouette, same avatar treatment in the
+  same corner, same meaning for the same colour, same thin coloured strip at the top
+  matching the lit tab at the bottom.
