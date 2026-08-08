@@ -89,13 +89,29 @@ object NotificationHelper {
     // wins; the mode is never baked into alarm or action intents. Chores, tasks, and standalone
     // reminders all go through this one function, so there is exactly one place that can drift
     // out of sync if a delivery mode is ever added or renamed.
+    // DND bypass is only honoured if setBypassDnd was applied when the channel was first
+    // created, and channel settings are immutable afterwards (LESSONS #17). So while bypass
+    // is active the alarm channels use a distinct "_dnd" id: granting Do Not Disturb access
+    // creates that variant fresh (with bypass) rather than trying to mutate the existing
+    // no-bypass channel, which the system silently ignores. Cached from the last
+    // createChannels() run so channelId() resolves to the same id the channel was created under.
+    @Volatile private var dndBypassActive: Boolean = false
+
+    private const val ALARM_DND_SUFFIX = "_dnd"
+
+    private fun alarmIdFor(baseId: String, dndActive: Boolean): String =
+        if (dndActive) baseId + ALARM_DND_SUFFIX else baseId
+
     fun channelId(kind: ReminderKind, deliveryMode: String): String {
         val style = styleForDeliveryMode(deliveryMode)
-        return channelDefs.first { it.kind == kind && it.style == style }.id
+        val base = channelDefs.first { it.kind == kind && it.style == style }.id
+        return if (style == ChannelStyle.ALARM) alarmIdFor(base, dndBypassActive) else base
     }
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val dndActive = nm.isNotificationPolicyAccessGranted
+        dndBypassActive = dndActive
 
         legacyChannelIds.forEach { nm.deleteNotificationChannel(it) }
 
@@ -112,16 +128,23 @@ object NotificationHelper {
             .build()
 
         channelDefs.forEach { def ->
+            val effectiveId = if (def.style == ChannelStyle.ALARM) alarmIdFor(def.id, dndActive) else def.id
+            if (def.style == ChannelStyle.ALARM) {
+                // Drop the opposite-state alarm channel so a stale bypass / no-bypass copy
+                // doesn't linger after the user toggles Do Not Disturb access.
+                nm.deleteNotificationChannel(alarmIdFor(def.id, !dndActive))
+            }
             nm.createNotificationChannel(
-                NotificationChannel(def.id, context.getString(def.nameRes), def.importance).apply {
+                NotificationChannel(effectiveId, context.getString(def.nameRes), def.importance).apply {
                     description = context.getString(def.descRes)
                     when (def.style) {
                         ChannelStyle.ALARM -> {
                             setSound(alarmSoundUri, alarmAudioAttributes)
                             enableVibration(true)
-                            // Only takes effect if the user has granted Do Not Disturb access;
-                            // see SettingsScreen's "Do Not Disturb access" permission row.
-                            if (nm.isNotificationPolicyAccessGranted) {
+                            // Bypass only sticks if applied at creation time (LESSONS #17);
+                            // the "_dnd" channel id above is what makes a fresh, bypassing
+                            // channel appear when the user grants Do Not Disturb access.
+                            if (dndActive) {
                                 setBypassDnd(true)
                             }
                         }
