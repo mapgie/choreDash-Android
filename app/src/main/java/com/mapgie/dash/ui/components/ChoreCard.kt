@@ -2,18 +2,18 @@ package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.ui.components.core.CategoryBadge
+import com.mapgie.dash.ui.components.core.MetaLabel
+import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.theme.StatusAging
 import com.mapgie.dash.ui.theme.StatusFresh
 import com.mapgie.dash.ui.theme.StatusStale
@@ -64,11 +64,11 @@ fun ChoreCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 12.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Left: title (and optional category pill beneath)
-                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         chore.label,
                         style = MaterialTheme.typography.titleMedium
@@ -78,28 +78,20 @@ fun ChoreCard(
                     }
                 }
 
-                // Owner badge (if shown) — placed between title and dates
-                if (showOwner && chore.owner != null) {
-                    OwnerBadge(initial = chore.owner.firstOrNull()?.uppercaseChar() ?: '?')
-                    Spacer(Modifier.width(8.dp))
-                }
-
-                // Right: dates column
+                // Middle: dates column
                 Column(horizontalAlignment = Alignment.End) {
                     when {
                         chore.lastScanned == null -> {
-                            Text(
-                                "Never",
+                            MetaLabel(
+                                text = "Never",
                                 style = MaterialTheme.typography.bodySmall,
-                                fontStyle = FontStyle.Italic,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                italic = true
                             )
                         }
                         zenMode -> {
-                            Text(
-                                formatAbsoluteDate(chore.lastScanned),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            MetaLabel(
+                                text = formatAbsoluteDate(chore.lastScanned),
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                         else -> {
@@ -111,69 +103,32 @@ fun ChoreCard(
                                         style = MaterialTheme.typography.titleMedium,
                                         color = dateColor
                                     )
-                                    Text(
-                                        relativeTime(chore.lastScanned),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    MetaLabel(text = relativeTime(chore.lastScanned))
                                 } else {
-                                    Text(
-                                        relativeTime(chore.lastScanned),
+                                    MetaLabel(
+                                        text = relativeTime(chore.lastScanned),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = dateColor
                                     )
                                 }
                             } else {
-                                Text(
-                                    formatAbsoluteDate(chore.lastScanned),
+                                MetaLabel(
+                                    text = formatAbsoluteDate(chore.lastScanned),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = dateColor
                                 )
-                                Text(
-                                    relativeTime(chore.lastScanned),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                MetaLabel(text = relativeTime(chore.lastScanned))
                             }
                         }
                     }
                 }
+
+                // Right: owner avatar, pinned rightmost so the same person renders
+                // identically here and on the Tasks list.
+                if (showOwner && chore.owner != null) {
+                    OwnerAvatar(handle = chore.owner)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun OwnerBadge(initial: Char) {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .background(
-                MaterialTheme.colorScheme.secondaryContainer,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            initial.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    }
-}
-
-@Composable
-private fun CategoryBadge(category: String) {
-    Box(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = category.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
     }
 }

@@ -141,6 +141,36 @@ val TypeChoreOnContainer = Color(0xFF1B4438)
 val TypeReminderContainer = Color(0xFFF6E1C6)
 val TypeReminderOnContainer = Color(0xFF6B4718)
 
+// Owner avatar palette. A person's handle hashes to one of these six tones via
+// ownerColorFor(), so the same owner shows the same colour on every screen and in
+// the overview sheets. Containers are pastel with dark on-colours and, like the
+// Type* accents above, are deliberately fixed across light and dark palettes so a
+// person's identity colour stays stable. The initial letter is always drawn and the
+// avatar carries a "Owner: <handle>" description, so colour is never the only signal.
+data class AvatarTone(val container: Color, val onContainer: Color)
+
+val AvatarTones: List<AvatarTone> = listOf(
+    AvatarTone(Color(0xFFF8D7DD), Color(0xFF6E2434)), // rose
+    AvatarTone(Color(0xFFF6E4C0), Color(0xFF614100)), // amber
+    AvatarTone(Color(0xFFD6E8D0), Color(0xFF244420)), // green
+    AvatarTone(Color(0xFFC9E7E6), Color(0xFF104A48)), // teal
+    AvatarTone(Color(0xFFD5E2FA), Color(0xFF1B3B6B)), // blue
+    AvatarTone(Color(0xFFE7D9F7), Color(0xFF432B63)), // violet
+)
+
+/**
+ * Stable mapping from an owner handle to one of [AvatarTones]. Plain Kotlin (no
+ * Compose) so the Glance widgets can share it. Case- and whitespace-insensitive, so
+ * "Alice", "alice", and " Alice " all resolve to the same tone.
+ */
+fun ownerColorFor(handle: String): AvatarTone {
+    val key = handle.trim().lowercase()
+    var hash = 0
+    for (ch in key) hash = hash * 31 + ch.code
+    val index = ((hash % AvatarTones.size) + AvatarTones.size) % AvatarTones.size
+    return AvatarTones[index]
+}
+
 // ── Sage colour schemes ───────────────────────────────────────────────────────
 
 private val SageLightColors = lightColorScheme(

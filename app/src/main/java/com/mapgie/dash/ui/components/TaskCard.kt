@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.Card
@@ -26,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +34,9 @@ import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
+import com.mapgie.dash.ui.components.core.CategoryBadge
+import com.mapgie.dash.ui.components.core.MetaLabel
+import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.theme.StatusAging
 import com.mapgie.dash.ui.theme.StatusFresh
 import com.mapgie.dash.ui.theme.StatusStale
@@ -136,23 +137,15 @@ fun TaskCard(
                     if (zenMode) ZenDueLabel(task = task) else DueBadge(task = task)
                 }
             }
-            // Owner badge
+            // Owner avatar, pinned rightmost — same size, colour, and position as the
+            // Chores list, so the same person renders identically on both screens.
             task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
-                Box(
-                    contentAlignment = Alignment.Center,
+                OwnerAvatar(
+                    handle = owner,
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .align(Alignment.CenterVertically)
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Text(
-                        text = owner.take(1).uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+                )
             }
         }
     }
@@ -189,25 +182,5 @@ private fun DueBadge(task: TaskDto) {
 @Composable
 private fun ZenDueLabel(task: TaskDto) {
     val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return
-    Text(
-        text = date.format(DateTimeFormatter.ofPattern("MMM d")),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-@Composable
-private fun CategoryBadge(category: String) {
-    Box(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = category.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    }
+    MetaLabel(text = date.format(DateTimeFormatter.ofPattern("MMM d")))
 }
