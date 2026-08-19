@@ -1,0 +1,12 @@
+{
+  "bump": "minor",
+  "added": [
+    "Every list tab (Chores, Tasks, Memos) now opens with a thin coloured strip naming the page, in the same colour as the highlighted tab in the bottom bar, so it is always clear which tab you are on."
+  ],
+  "changed": [
+    "The Memos tab's large top bar is replaced by the same thin strip used on the other tabs, giving the list more room."
+  ],
+  "fixed": [
+    "Swipe action panels (Done, Log, Delete) now appear only while you are actually swiping a row, so a coloured panel no longer shows behind cards at rest."
+  ]
+}
