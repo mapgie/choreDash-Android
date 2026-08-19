@@ -1,0 +1,10 @@
+{
+  "bump": "minor",
+  "changed": [
+    "The Chores and Tasks lists now share one card style, so the two screens look and behave the same.",
+    "A task's coloured stripe now reflects how soon it is due (matching Chores and Memos) instead of its priority. Priority is now shown by a marker on the title: an exclamation for higher, a downward chevron for lower, so it stays readable without relying on colour."
+  ],
+  "fixed": [
+    "Completed tasks no longer let the swipe action panel show through the card."
+  ]
+}

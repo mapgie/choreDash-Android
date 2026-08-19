@@ -724,3 +724,32 @@ of request code. When changing PendingIntent identity, alarms registered by the
 from BootWorker (which runs on `MY_PACKAGE_REPLACED`), or they stay armed alongside
 the new ones and double-fire. Same defence GaMeD adopted after hitting the collision
 in production; see its LESSONS entry "PendingIntent identity ignores extras".
+
+---
+
+## 32. Card containers must be opaque; a `SwipeToDismissBox` panel sits behind the card at rest
+
+A done task, and an archived overdue memo, rendered with the swipe action panel
+("Done✔" / "Log✔", `primaryContainer`) bleeding through the card, plus a coloured
+rim around the edge. Two independent causes, both in the "translucent card" pattern:
+
+- `SwipeToDismissBox` composes its `backgroundContent` **at all times**, not only
+  mid-swipe, so the action panel is layered directly behind every resting card.
+- The card container was semi-transparent (`surfaceVariant.copy(alpha = 0.5f)` for
+  done, `errorContainer.copy(alpha = 0.25f)` for overdue). A translucent fill lets
+  whatever is behind it (here, the panel) read straight through.
+- The rim came from an inset mismatch: the swipe panel was inset `vertical = 4.dp`
+  while the card was not, so the card's tinted edge overhung the panel.
+
+Rules, now enforced by the shared `DashListCard` shell:
+1. **Card containers are always opaque.** To dim a done/archived row, blend the
+   container toward the surface (`lerp(surfaceVariant, surface, 0.5f)`) or drop the
+   *content* alpha (text/icon), never the container's alpha.
+2. **Match the swipe panel's inset to the card's** (or, better, gate the panel on an
+   in-progress swipe: `dismissState.dismissDirection != Settled`) so nothing shows at
+   rest and no rim appears.
+
+General rule: any time a composable is layered in front of another (swipe
+backgrounds, `Box` stacks, bottom sheets over scrims), a `copy(alpha = ...)` on the
+*front* layer's fill is a latent bug. Dim by blending toward the base colour or by
+lowering content alpha, not by making the surface see-through.

@@ -2,7 +2,6 @@ package com.mapgie.dash.ui.screens.chores
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,9 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +31,7 @@ import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.theme.Dimens
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -238,7 +235,8 @@ fun ChoreListScreen(
                         val hiddenChores = uiState.hiddenChores
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 88.dp)
+                            contentPadding = PaddingValues(bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(Dimens.cardGap)
                         ) {
                             if (uiState.groupByCategory && !uiState.zenMode) {
                                 val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
@@ -345,15 +343,12 @@ fun ChoreListScreen(
                                             zenMode = uiState.zenMode,
                                             showDueCountdown = uiState.showDueCountdown,
                                             showCategory = !uiState.groupByCategory,
-                                            modifier = Modifier
-                                                .semantics { role = Role.Button }
-                                                .combinedClickable(
-                                                    onClick = {},
-                                                    onLongClick = {
-                                                        editTargetChore = chore
-                                                        showEditSheet = true
-                                                    }
-                                                )
+                                            // Archived rows have no tap action, so no
+                                            // onClick: the shell then announces no button.
+                                            onLongClick = {
+                                                editTargetChore = chore
+                                                showEditSheet = true
+                                            }
                                         )
                                     }
                                 }
@@ -513,7 +508,7 @@ private fun SwipeToLogCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .padding(horizontal = Dimens.cardInset)
                     .background(
                         MaterialTheme.colorScheme.primaryContainer,
                         shape = MaterialTheme.shapes.medium
@@ -535,12 +530,8 @@ private fun SwipeToLogCard(
             zenMode = zenMode,
             showDueCountdown = showDueCountdown,
             showCategory = showCategory,
-            modifier = Modifier
-                .semantics { role = Role.Button }
-                .combinedClickable(
-                    onClick = { onTap(chore) },
-                    onLongClick = { onLongPress(chore) }
-                )
+            onClick = { onTap(chore) },
+            onLongClick = { onLongPress(chore) }
         )
     }
 }
