@@ -23,6 +23,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ScanDto
+import com.mapgie.dash.ui.components.core.CategoryBadge
+import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
@@ -91,13 +93,17 @@ fun ChoreOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    if (chore.category != null) {
-                        Text(
-                            chore.category.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        // 4dp between eyebrow and title
+                    val hasOwner = chore.owner?.isNotBlank() == true
+                    if (chore.category != null || hasOwner) {
+                        // Same category badge and owner avatar as the list card.
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            chore.category?.let { CategoryBadge(it) }
+                            if (hasOwner) OwnerAvatar(chore.owner!!)
+                        }
+                        // 4dp between identity row and title
                         Spacer(Modifier.height(4.dp))
                     }
                     Text(chore.label, style = MaterialTheme.typography.headlineLarge)

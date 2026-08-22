@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.components.core
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.barColor
@@ -114,6 +116,7 @@ fun DashListCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(Dimens.cardPadding),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 content = content
             )
             // Optional trailing slot (e.g. due / last-scanned dates), end-aligned.
