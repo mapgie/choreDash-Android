@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Owner initials on the Chores and Tasks lists now use one consistent size, sit in the same rightmost position, and give each person a stable colour so the same owner looks the same on both screens."]
-}

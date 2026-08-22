@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": ["Alarm-style reminders now bypass Do Not Disturb even when you grant Do Not Disturb access after first launch. Previously the alarm notification channel was created once without bypass and could never gain it, so alarms stayed silenced under Do Not Disturb."]
-}

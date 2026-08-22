@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.23.2] - 2026-08-22
+
+### Changed
+- Owner initials on the Chores and Tasks lists now use one consistent size, sit in the same rightmost position, and give each person a stable colour so the same owner looks the same on both screens.
+
+### Fixed
+- Alarm-style reminders now bypass Do Not Disturb even when you grant Do Not Disturb access after first launch. Previously the alarm notification channel was created once without bypass and could never gain it, so alarms stayed silenced under Do Not Disturb.
+
+---
 ## [0.23.1] - 2026-07-14
 
 ### Changed
