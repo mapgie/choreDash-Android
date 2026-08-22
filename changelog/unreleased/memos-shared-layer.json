@@ -1,0 +1,13 @@
+{
+  "bump": "patch",
+  "added": [
+    "Memo rows now show a colour-coded source chip naming where the alarm came from: green for a chore, lavender for a task.",
+    "The chore and task detail sheets now show the same category badge and owner avatar as the lists."
+  ],
+  "changed": [
+    "Overdue Memos now use the same overdue styling as Chores and Tasks (a red edge and red time) instead of the reserved error colours."
+  ],
+  "fixed": [
+    "Archived or completed Memos no longer show a coloured panel or a stray label bleeding through the card."
+  ]
+}

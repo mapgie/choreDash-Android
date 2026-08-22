@@ -1,14 +1,8 @@
 package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,10 +15,27 @@ import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.isPast
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.ui.components.core.DashListCard
+import com.mapgie.dash.ui.components.core.MetaLabel
+import com.mapgie.dash.ui.components.core.SourceChip
+import com.mapgie.dash.ui.components.core.SourceKind
+import com.mapgie.dash.ui.theme.statusTone
+import com.mapgie.dash.ui.theme.textColor
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Thin binding of a [ReminderDto] onto the shared [DashListCard].
+ *
+ * Memos is a collation surface, so this fills only the slots that make sense here:
+ * a done checkbox, the subject, the fire time, and a [SourceChip] naming where the
+ * alarm came from. No owner avatar, no zen mode, no trailing column (§5c).
+ *
+ * Overdue no longer uses the reserved `error` palette: it maps through [statusTone]
+ * to the shared overdue vocabulary (a red accent bar and red "Overdue" text), and
+ * the container stays opaque, so an archived overdue Memo no longer leaks the swipe
+ * panel behind it.
+ */
 @Composable
 fun ReminderCard(
     reminder: ReminderDto,
@@ -34,77 +45,63 @@ fun ReminderCard(
     modifier: Modifier = Modifier
 ) {
     val isDone = reminder.completedAt != null
-    val isPast = reminder.isPast()
-    // Overdue: time has passed but user hasn't explicitly marked it done
-    val isOverdue = isPast && !isDone
+    val isOverdue = reminder.isPast() && !isDone
+    val tone = reminder.statusTone()
 
-    val formatter = remember(reminder.remindAt) {
-        DateTimeFormatter.ofPattern("MMM d, yyyy 'at' HH:mm")
-    }
+    val formatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy 'at' HH:mm") }
     val whenLabel = reminder.remindAtInstant()
         ?.atZone(ZoneId.systemDefault())
         ?.format(formatter)
-
-    val containerColor = when {
-        isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        isOverdue -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-
+    val timeText = if (isOverdue) whenLabel?.let { "Overdue: $it" } ?: "Overdue" else whenLabel
     val timeColor = when {
-        isDone -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        isOverdue -> MaterialTheme.colorScheme.error
+        isDone -> MaterialTheme.colorScheme.onSurfaceVariant
+        isOverdue -> tone.textColor()
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    val timeText = when {
-        isOverdue -> whenLabel?.let { "Overdue: $it" } ?: "Overdue"
-        else -> whenLabel
+    val sourceKind = when {
+        reminder.choreId != null -> SourceKind.CHORE
+        reminder.taskId != null -> SourceKind.TASK
+        else -> null
     }
 
-    Card(
+    DashListCard(
+        tone = tone,
+        modifier = modifier,
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        dimmed = isDone,
+        leading = {
             Checkbox(
                 checked = isDone,
-                onCheckedChange = { onToggleDone() }
+                onCheckedChange = { onToggleDone() },
+                modifier = Modifier.align(Alignment.CenterVertically)
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp, top = 10.dp, bottom = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = reminder.subject,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textDecoration = if (isDone) TextDecoration.LineThrough else null,
-                    color = if (isDone)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    else
-                        MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+        }
+    ) {
+        Text(
+            text = reminder.subject,
+            style = MaterialTheme.typography.bodyLarge,
+            textDecoration = if (isDone) TextDecoration.LineThrough else null,
+            color = if (isDone)
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            timeText?.let {
+                MetaLabel(
+                    text = it,
+                    color = timeColor,
+                    style = MaterialTheme.typography.labelMedium
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    timeText?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = timeColor
-                        )
-                    }
-                    linkedLabel?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+            }
+            if (sourceKind != null && linkedLabel != null) {
+                SourceChip(kind = sourceKind, label = linkedLabel)
             }
         }
     }

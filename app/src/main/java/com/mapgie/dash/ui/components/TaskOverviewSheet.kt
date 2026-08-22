@@ -20,6 +20,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.ui.components.core.CategoryBadge
+import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventForDate
 import com.mapgie.dash.util.calendarEventForInstant
@@ -66,14 +68,18 @@ fun TaskOverviewSheet(
             // 24dp after drag handle
             Spacer(Modifier.height(24.dp))
 
-            // Category eyebrow
-            if (task.category != null) {
-                Text(
-                    task.category.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                // 4dp between eyebrow and title
+            // Category badge + owner avatar, matching the list card.
+            val hasOwner = task.owner?.isNotBlank() == true
+            val category = task.category?.takeIf { it.isNotBlank() }
+            if (category != null || hasOwner) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    category?.let { CategoryBadge(it) }
+                    if (hasOwner) OwnerAvatar(task.owner!!)
+                }
+                // 4dp between identity row and title
                 Spacer(Modifier.height(4.dp))
             }
 
