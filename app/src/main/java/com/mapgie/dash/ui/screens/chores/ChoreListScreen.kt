@@ -1,7 +1,6 @@
 package com.mapgie.dash.ui.screens.chores
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,7 +29,17 @@ import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.components.core.CollapsibleSectionHeader
+import com.mapgie.dash.ui.components.core.DashEmptyState
+import com.mapgie.dash.ui.components.core.DashErrorState
+import com.mapgie.dash.ui.components.core.DashFilterBar
+import com.mapgie.dash.ui.components.core.DashScreenHeader
+import com.mapgie.dash.ui.components.core.ListSectionHeader
+import com.mapgie.dash.ui.components.core.SwipeAction
+import com.mapgie.dash.ui.components.core.SwipeActionRow
+import com.mapgie.dash.ui.components.core.SwipeTone
 import com.mapgie.dash.ui.theme.Dimens
+import com.mapgie.dash.ui.theme.LocalTypeAccents
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -51,6 +59,7 @@ fun ChoreListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val accents = LocalTypeAccents.current
 
     // SheetState hoisted above the composables that use them (GoFlo LESSONS.md)
     val logSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -136,15 +145,15 @@ fun ChoreListScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Filter chips + toggles
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ChoreFilter.entries.forEach { f ->
+                // Thin identity strip, matching the lit Chores tab in the bottom nav.
+                DashScreenHeader(
+                    title = "Chores",
+                    containerColor = accents.choreContainer,
+                    contentColor = accents.onChoreContainer,
+                )
+                DashFilterBar(
+                    chips = {
+                        ChoreFilter.entries.forEach { f ->
                         FilterChip(
                             selected = uiState.filter == f,
                             onClick = { viewModel.setFilter(f) },
@@ -155,9 +164,10 @@ fun ChoreListScreen(
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (!uiState.zenMode) {
+                        }
+                    },
+                    actions = {
+                        if (!uiState.zenMode) {
                         IconButton(
                             onClick = {
                                 viewModel.setOwnerFilter(
@@ -216,15 +226,16 @@ fun ChoreListScreen(
                             modifier = Modifier.size(32.dp)
                         )
                     }
-                }
+                    }
+                )
 
                 when {
-                    uiState.error != null -> ErrorState(
+                    uiState.error != null -> DashErrorState(
                         message = uiState.error!!,
                         onRetry = { viewModel.load() }
                     )
 
-                    !uiState.loading && uiState.active.isEmpty() -> EmptyState(
+                    !uiState.loading && uiState.active.isEmpty() -> DashEmptyState(
                         message = if (uiState.owners.isEmpty())
                             "Configure Supabase credentials in Settings to get started"
                         else "No chores found. Tap + to add one, or scan an NFC tag."
@@ -242,15 +253,7 @@ fun ChoreListScreen(
                                 val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
                                 grouped.forEach { (category, chores) ->
                                     stickyHeader {
-                                        Text(
-                                            text = category.uppercase(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(MaterialTheme.colorScheme.background)
-                                                .padding(horizontal = 16.dp, vertical = 6.dp)
-                                        )
+                                        ListSectionHeader(title = category)
                                     }
                                     items(chores, key = { it.id }) { chore ->
                                         SwipeToLogCard(
@@ -318,19 +321,12 @@ fun ChoreListScreen(
 
                             if (uiState.archived.isNotEmpty()) {
                                 item {
-                                    TextButton(
-                                        onClick = { showArchivedSection = !showArchivedSection },
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                                    ) {
-                                        Text(
-                                            if (showArchivedSection)
-                                                "Hide archived (${uiState.archived.size})"
-                                            else
-                                                "Show archived (${uiState.archived.size})",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                                    CollapsibleSectionHeader(
+                                        title = "Archived",
+                                        count = uiState.archived.size,
+                                        expanded = showArchivedSection,
+                                        onToggle = { showArchivedSection = !showArchivedSection }
+                                    )
                                 }
                                 if (showArchivedSection) {
                                     items(
@@ -479,7 +475,6 @@ fun ChoreListScreen(
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeToLogCard(
     chore: Chore,
@@ -491,38 +486,12 @@ private fun SwipeToLogCard(
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onSwipeLog(chore)
-            }
-            false // never actually dismiss the item
-        },
-        positionalThreshold = { it * 0.3f }
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = Dimens.cardInset)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    "Log✔",
-                    modifier = Modifier.padding(start = 24.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
+    SwipeActionRow(
+        startAction = SwipeAction(
+            label = "Log✔",
+            tone = SwipeTone.POSITIVE,
+            onSwipe = { onSwipeLog(chore) }
+        )
     ) {
         ChoreCard(
             chore = chore,
@@ -532,36 +501,6 @@ private fun SwipeToLogCard(
             showCategory = showCategory,
             onClick = { onTap(chore) },
             onLongClick = { onLongPress(chore) }
-        )
-    }
-}
-
-@Composable
-private fun ErrorState(message: String, onRetry: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Text(
-                message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(onClick = onRetry) { Text("Retry") }
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(message: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(32.dp)
         )
     }
 }

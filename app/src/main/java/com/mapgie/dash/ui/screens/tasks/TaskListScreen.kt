@@ -1,15 +1,10 @@
 package com.mapgie.dash.ui.screens.tasks
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,8 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Spa
@@ -31,13 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,7 +43,16 @@ import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
+import com.mapgie.dash.ui.components.core.CollapsibleSectionHeader
+import com.mapgie.dash.ui.components.core.DashEmptyState
+import com.mapgie.dash.ui.components.core.DashFilterBar
+import com.mapgie.dash.ui.components.core.DashScreenHeader
+import com.mapgie.dash.ui.components.core.ListSectionHeader
+import com.mapgie.dash.ui.components.core.SwipeAction
+import com.mapgie.dash.ui.components.core.SwipeActionRow
+import com.mapgie.dash.ui.components.core.SwipeTone
 import com.mapgie.dash.ui.theme.Dimens
+import com.mapgie.dash.ui.theme.LocalTypeAccents
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -91,6 +88,8 @@ fun TaskListScreen(
         }
     }
 
+    val accents = LocalTypeAccents.current
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { innerPadding ->
@@ -102,116 +101,105 @@ fun TaskListScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Filter chips + toggles
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TaskFilter.entries.forEach { f ->
-                        FilterChip(
-                            selected = uiState.filter == f,
-                            onClick = { viewModel.setFilter(f) },
-                            label = { Text(f.label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (!uiState.zenMode) {
-                        IconButton(
-                            onClick = { viewModel.setSort(uiState.sort.next()) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Sort,
-                                contentDescription = "Sort: ${uiState.sort.label}",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                // Thin identity strip, matching the lit Tasks tab in the bottom nav.
+                DashScreenHeader(
+                    title = "Tasks",
+                    containerColor = accents.taskContainer,
+                    contentColor = accents.onTaskContainer,
+                )
+
+                DashFilterBar(
+                    chips = {
+                        TaskFilter.entries.forEach { f ->
+                            FilterChip(
+                                selected = uiState.filter == f,
+                                onClick = { viewModel.setFilter(f) },
+                                label = { Text(f.label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
                         }
-                        if (uiState.ownerHandle.isNotBlank()) {
+                    },
+                    actions = {
+                        if (!uiState.zenMode) {
                             IconButton(
-                                onClick = {
-                                    viewModel.setOwnerFilter(
-                                        if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
-                                        else OwnerFilter.MINE
-                                    )
-                                },
+                                onClick = { viewModel.setSort(uiState.sort.next()) },
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
-                                    Icons.Filled.Person,
-                                    contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                        "Show all owners" else "Show my tasks",
-                                    tint = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Icons.Filled.Sort,
+                                    contentDescription = "Sort: ${uiState.sort.label}",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                IconButton(
+                                    onClick = {
+                                        viewModel.setOwnerFilter(
+                                            if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
+                                            else OwnerFilter.MINE
+                                        )
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Person,
+                                        contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
+                                            "Show all owners" else "Show my tasks",
+                                        tint = if (uiState.ownerFilter == OwnerFilter.MINE)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            IconButton(
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                    contentDescription = if (uiState.zenSortAscending)
+                                        "Sorted: most urgent first" else "Sorted: least urgent first",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                    } else {
                         IconButton(
-                            onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most urgent first" else "Sorted: least urgent first",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                Icons.Filled.Spa,
+                                contentDescription = if (uiState.zenMode)
+                                    "Exit zen mode" else "Enter zen mode",
+                                tint = if (uiState.zenMode)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }
-                    IconButton(
-                        onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Spa,
-                            contentDescription = if (uiState.zenMode)
-                                "Exit zen mode" else "Enter zen mode",
-                            tint = if (uiState.zenMode)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                )
 
                 val active = uiState.activeTasks
                 val done = uiState.doneTasks
 
                 if (!uiState.loading && active.isEmpty() && done.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            "No tasks",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    DashEmptyState("No tasks")
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(bottom = 88.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.cardGap),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         if (uiState.groupByCategory && !uiState.zenMode && uiState.filter != TaskFilter.DONE) {
                             val grouped = active.groupBy { it.category?.takeIf(String::isNotBlank) ?: "Other" }
                             grouped.forEach { (cat, tasks) ->
                                 stickyHeader {
-                                    Text(
-                                        text = cat.uppercase(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(MaterialTheme.colorScheme.background)
-                                            .padding(horizontal = 16.dp, vertical = 6.dp)
-                                    )
+                                    ListSectionHeader(title = cat)
                                 }
                                 items(tasks, key = { it.id }) { task ->
                                     SwipeToCompleteCard(
@@ -243,25 +231,12 @@ fun TaskListScreen(
 
                         if (done.isNotEmpty()) {
                             item(key = "done_header") {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                ) {
-                                    Text(
-                                        text = "Done (${done.size})",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    TextButton(onClick = { doneExpanded = !doneExpanded }) {
-                                        Icon(
-                                            if (doneExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                            contentDescription = if (doneExpanded) "Collapse" else "Expand"
-                                        )
-                                    }
-                                }
+                                CollapsibleSectionHeader(
+                                    title = "Done",
+                                    count = done.size,
+                                    expanded = doneExpanded,
+                                    onToggle = { doneExpanded = !doneExpanded }
+                                )
                             }
                             if (doneExpanded) {
                                 items(done, key = { it.id }) { task ->
@@ -325,7 +300,6 @@ fun TaskListScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeToCompleteCard(
     task: TaskDto,
@@ -338,38 +312,12 @@ private fun SwipeToCompleteCard(
     zenMode: Boolean = false
 ) {
     val isDone = task.completedAt != null
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onSwipeToggleDone()
-            }
-            false // never actually dismiss the item
-        },
-        positionalThreshold = { it * 0.3f }
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = Dimens.cardInset)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    if (isDone) "Undo" else "Done✔",
-                    modifier = Modifier.padding(start = 24.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
+    SwipeActionRow(
+        startAction = SwipeAction(
+            label = if (isDone) "Undo" else "Done✔",
+            tone = SwipeTone.POSITIVE,
+            onSwipe = onSwipeToggleDone
+        )
     ) {
         TaskCard(
             task = task,
