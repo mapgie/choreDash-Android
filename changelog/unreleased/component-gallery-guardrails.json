@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "changed": ["Internal: added a @Preview gallery and a components guide (README) for the shared UI layer; no user-visible change."]
+}
