@@ -756,3 +756,17 @@ Build such PATCH bodies as `Map<String, String?>` (or a `JsonObject`)
 instead: map entries have no defaults, so null values are sent as explicit
 JSON nulls. `ChoreRepository.archiveTag` and `TaskRepository`'s payload
 builders are the pattern; `TaskPayloadTest` pins the behaviour.
+
+---
+
+## 34. "Could not find or load main class" with a BLANK name means an empty argv word
+
+`gradlew` failed with `Error: Could not find or load main class ` (empty
+class name). The launch line evaluated `'"$JAVA_OPTS"'` and
+`'"$GRADLE_OPTS"'` as quoted expansions, so when those variables are unset
+they become empty-string arguments; java takes the first non-option
+argument as the main class, and that argument was `""`. Expand optional
+option variables unquoted in the wrapper (`$JAVA_OPTS`), so unset means
+zero words, or filter empties the way the upstream Gradle script does with
+xargs. The blank class name in the error is the tell: some argv word
+before the real main class evaluated to an empty string.
