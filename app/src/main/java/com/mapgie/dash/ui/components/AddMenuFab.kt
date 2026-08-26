@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -18,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -60,14 +62,16 @@ fun AddMenuFab(
     modifier: Modifier = Modifier
 ) {
     val accents = LocalTypeAccents.current
-    Column(horizontalAlignment = Alignment.End, modifier = modifier) {
+    // Centre-docked: the FAB sits in the middle of the screen above the nav bar,
+    // so the expanded quick-add menu stacks centred above it.
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
         AnimatedVisibility(
             visible = expanded,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically()
         ) {
             Column(
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
@@ -86,7 +90,14 @@ fun AddMenuFab(
                 }
             }
         }
-        FloatingActionButton(onClick = { onExpandedChange(!expanded) }) {
+        // Circular sage add button per the Cozy Cream design (secondary is the
+        // sage role in the Cream palette and stays on-palette elsewhere).
+        FloatingActionButton(
+            onClick = { onExpandedChange(!expanded) },
+            shape = CircleShape,
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary,
+        ) {
             Icon(
                 imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.Add,
                 contentDescription = if (expanded) "Close add menu" else "Add"

@@ -724,3 +724,17 @@ of request code. When changing PendingIntent identity, alarms registered by the
 from BootWorker (which runs on `MY_PACKAGE_REPLACED`), or they stay armed alongside
 the new ones and double-fire. Same defence GaMeD adopted after hitting the collision
 in production; see its LESSONS entry "PendingIntent identity ignores extras".
+
+---
+
+## 32. A follow-up PR needs a NEW changelog fragment, never an edit to an unreleased one
+
+`check_changelog_fragment.py` counts only fragments with git status `A`
+(added) in `git diff base...HEAD`. Extending a fragment that a previous
+PR already merged into `changelog/unreleased/` shows as `M`, so the check
+fails with "no fragment added" even though the file carries new entries.
+
+For follow-up work on an already-merged PR, always add a fresh
+`changelog/unreleased/<new-slug>.json` and leave the merged fragment
+untouched; the release consolidation merges all fragments anyway, so
+splitting them costs nothing.

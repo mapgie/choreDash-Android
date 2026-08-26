@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,18 +33,27 @@ import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
-import com.mapgie.dash.ui.components.core.CategoryBadge
+import com.mapgie.dash.ui.components.core.DoneToggleChip
+import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.theme.Dimens
-import com.mapgie.dash.ui.theme.StatusAging
-import com.mapgie.dash.ui.theme.StatusFresh
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.statusTone
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/**
+ * Cozy Cream list card for a task: urgency spine, circular done-toggle chip on the
+ * task accent, title with an uppercase "category · priority" caption beneath, and a
+ * right column carrying the due badge above the owner avatar.
+ *
+ * The spine colour means urgency (the app-wide bar meaning, see `StatusTone.kt`);
+ * priority is carried by the caption text, never by colour alone.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
@@ -57,12 +65,8 @@ fun TaskCard(
     zenMode: Boolean = false
 ) {
     val isDone = task.completedAt != null
-    val priorityColor = when (task.priorityEnum()) {
-        TaskPriority.HIGHER -> StatusAging
-        TaskPriority.NORMAL -> StatusFresh
-        TaskPriority.LOWER -> MaterialTheme.colorScheme.outline
-    }
-    val barColor = if (zenMode) Color.Transparent else priorityColor
+    val accents = LocalTypeAccents.current
+    val barColor = if (zenMode) Color.Transparent else task.statusTone().barColor()
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -75,25 +79,30 @@ fun TaskCard(
         ),
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Priority bar
+            // Urgency spine
             Box(
                 modifier = Modifier
                     .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
                     .background(barColor)
             )
-            // Done checkbox
-            Checkbox(
-                checked = isDone,
-                onCheckedChange = { onToggleDone() },
-                modifier = Modifier.align(Alignment.CenterVertically)
+            DoneToggleChip(
+                isDone = isDone,
+                onToggle = onToggleDone,
+                containerColor = if (zenMode) Color.Transparent else accents.taskContainer,
+                contentColor = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant
+                               else accents.onTaskContainer,
+                modifier = Modifier
+                    .padding(start = 10.dp, top = 10.dp, bottom = 10.dp)
+                    .align(Alignment.CenterVertically)
             )
-            // Content
+            // Title + meta caption
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 8.dp, top = 12.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+                    .align(Alignment.CenterVertically),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -127,27 +136,34 @@ fun TaskCard(
                         )
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (showCategory && !zenMode) {
-                        task.category?.takeIf { it.isNotBlank() }?.let { cat ->
-                            CategoryBadge(cat)
-                        }
+                if (zenMode) {
+                    ZenDueLabel(task = task)
+                } else {
+                    val priorityLabel = when (task.priorityEnum()) {
+                        TaskPriority.HIGHER -> "higher"
+                        TaskPriority.NORMAL -> "normal"
+                        TaskPriority.LOWER -> "lower"
                     }
-                    if (zenMode) ZenDueLabel(task = task) else DueBadge(task = task)
+                    val caption = listOfNotNull(
+                        task.category?.takeIf { showCategory && it.isNotBlank() },
+                        priorityLabel,
+                    ).joinToString(" · ")
+                    MetaCaption(text = caption)
                 }
             }
-            // Owner avatar, pinned rightmost — same size, colour, and position as the
-            // Chores list, so the same person renders identically on both screens.
-            task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
-                OwnerAvatar(
-                    handle = owner,
-                    modifier = Modifier
-                        .padding(end = 12.dp)
-                        .align(Alignment.CenterVertically)
-                )
+            // Right column: due badge above the owner avatar, pinned rightmost so
+            // the same person renders identically here and on the Chores list.
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
+                    .align(Alignment.CenterVertically)
+            ) {
+                if (!zenMode) DueBadge(task = task)
+                task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
+                    OwnerAvatar(handle = owner, modifier = Modifier.align(Alignment.End))
+                }
             }
         }
     }
