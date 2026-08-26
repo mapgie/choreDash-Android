@@ -34,22 +34,23 @@ class TaskRepository @Inject constructor(
         return client.from("todos").insert(task) { select() }.decodeSingle<TaskDto>()
     }
 
-    suspend fun updateTask(taskId: String, update: TaskUpdate): TaskDto {
+    suspend fun updateTask(taskId: String, update: TaskUpdate): TaskDto =
+        patchTask(taskId, editTaskPayload(update))
+
+    suspend fun markDone(taskId: String): TaskDto =
+        patchTask(taskId, completedAtPayload(Instant.now().toString()))
+
+    suspend fun markUndone(taskId: String): TaskDto =
+        patchTask(taskId, completedAtPayload(null))
+
+    private suspend fun patchTask(taskId: String, payload: Map<String, String?>): TaskDto {
         val client = requireClient()
         return client.from("todos")
-            .update(update) {
+            .update(payload) {
                 select()
                 filter { eq("id", taskId) }
             }
             .decodeSingle<TaskDto>()
-    }
-
-    suspend fun markDone(taskId: String): TaskDto {
-        return updateTask(taskId, TaskUpdate(completedAt = Instant.now().toString()))
-    }
-
-    suspend fun markUndone(taskId: String): TaskDto {
-        return updateTask(taskId, TaskUpdate(completedAt = null))
     }
 
     suspend fun markReminded(taskId: String) {
@@ -80,3 +81,32 @@ class TaskRepository @Inject constructor(
             }
     }
 }
+
+// PATCH payloads are built as maps rather than by serializing [TaskUpdate]:
+// kotlinx.serialization omits properties equal to their default (encodeDefaults
+// is false in the Supabase client), and every TaskUpdate field defaults to null,
+// so "set this column to null" was silently dropped from the request body.
+// That turned clearing a field into a no-op, and made un-completing a task an
+// empty PATCH whose response failed decodeSingle with "List is empty".
+// Map entries have no defaults, so a null value is sent as an explicit JSON null
+// (the same pattern ChoreRepository.archiveTag already uses). See LESSONS.md #33.
+
+/**
+ * Full edit-sheet save: the sheet owns exactly these columns and always submits
+ * all of them, with null meaning "clear". Completion, archival, and reminded
+ * state are deliberately absent so an edit never clobbers them.
+ */
+internal fun editTaskPayload(update: TaskUpdate): Map<String, String?> = mapOf(
+    "title" to update.title,
+    "notes" to update.notes,
+    "category" to update.category,
+    "owner" to update.owner,
+    "priority" to update.priority,
+    "due_date" to update.dueDate,
+    "due_period" to update.duePeriod,
+    "reminder_at" to update.reminderAt,
+)
+
+/** Single-column payload flipping completion; null restores the task to active. */
+internal fun completedAtPayload(completedAt: String?): Map<String, String?> =
+    mapOf("completed_at" to completedAt)
