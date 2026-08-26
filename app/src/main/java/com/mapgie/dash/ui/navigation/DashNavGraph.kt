@@ -135,6 +135,9 @@ fun DashNavGraph(
         .any { screen -> currentDestination?.hierarchy?.any { it.route == screen.route } == true }
 
     Scaffold(
+        // Centre-docked add button, lifted above the middle of the nav bar as in
+        // the Cozy Cream design.
+        floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             if (showFab) {
                 AddMenuFab(

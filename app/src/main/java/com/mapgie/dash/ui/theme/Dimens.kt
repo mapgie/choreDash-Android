@@ -28,6 +28,13 @@ object Dimens {
     val avatarSize = 26.dp
 
     /**
+     * Diameter of the circular icon chip at the left of every list card. Also
+     * the card's done-toggle where the item can be completed in place, so it
+     * clears the 44dp minimum tap target.
+     */
+    val iconChipSize = 46.dp
+
+    /**
      * Minimum height of a tappable list row. 56dp comfortably clears the 44dp
      * minimum tap target required by `CLAUDE.md`.
      */

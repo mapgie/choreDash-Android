@@ -76,6 +76,24 @@ data class Chore(
     }
 
     /**
+     * Fraction of this chore's cadence window already elapsed, clamped to 0..1
+     * (1 = due or overdue). The window is the full interval for interval-based
+     * chores and the category aging threshold otherwise, matching the point at
+     * which [computeStatus] turns the chore stale. Null if never scanned.
+     */
+    fun pressureFraction(): Float? {
+        val last = lastScanned ?: return null
+        val hoursSince = ChronoUnit.HOURS.between(last, Instant.now()).toFloat()
+        val windowHours = if (intervalDays != null) {
+            (intervalDays * 24).toFloat()
+        } else {
+            ((CATEGORY_AGING_DAYS[category] ?: 5L) * 24).toFloat()
+        }
+        if (windowHours <= 0f) return 1f
+        return (hoursSince / windowHours).coerceIn(0f, 1f)
+    }
+
+    /**
      * Countdown text matching choreDash web's nextDueText(), e.g. "in 2d", "in 5h",
      * "1d overdue", "3h overdue". Returns null if never scanned.
      */
