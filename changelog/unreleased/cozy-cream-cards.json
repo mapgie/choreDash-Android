@@ -1,0 +1,12 @@
+{
+  "bump": "minor",
+  "added": [
+    "Chore cards show a slim cadence-pressure bar that fills as the chore approaches due"
+  ],
+  "changed": [
+    "List cards redesigned: a circular icon chip on the left (also the done toggle for tasks and reminders), an uppercase category and cadence caption under the title, and the status badge above the owner avatar on the right",
+    "Task card spines now show urgency (matching chores); priority moved into the caption text",
+    "The add button is now a round sage button docked at the centre of the bottom bar",
+    "Overdue reminders use the shared rose status style instead of error colours"
+  ]
+}
