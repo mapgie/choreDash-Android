@@ -70,7 +70,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +108,7 @@ import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.permission.PermissionHelper
+import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CompactThemePicker
 import com.mapgie.dash.ui.theme.SavedThemesList
@@ -173,23 +173,17 @@ fun SettingsScreen(
 private fun SettingsMainList(
     onNavigate: (SettingsSubScreen) -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-            )
-        }
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
+            PageHeader(
+                title = "settings",
+                accent = MaterialTheme.colorScheme.primary,
+            )
             SettingsSectionHeader("Personalisation")
             SettingsNavItem(
                 title = "Appearance",
@@ -285,17 +279,13 @@ private fun ConnectionSubScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
-                title = { Text("Supabase connection") },
+                title = { SubScreenTitle("Supabase connection") },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.semantics { role = Role.Button }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                colors = subScreenTopAppBarColors()
             )
         }
     ) { innerPadding ->
@@ -419,8 +409,8 @@ private fun AppearanceSubScreen(
     }
 
     val selectedAppTheme = settings?.let {
-        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.MIST)
-    } ?: AppTheme.MIST
+        runCatching { AppTheme.valueOf(it.appTheme) }.getOrDefault(AppTheme.CREAM)
+    } ?: AppTheme.CREAM
 
     val customPrimaryHue          = settings?.customPrimaryHue          ?: 150f
     val customPrimarySaturation   = settings?.customPrimarySaturation   ?: 0.5f

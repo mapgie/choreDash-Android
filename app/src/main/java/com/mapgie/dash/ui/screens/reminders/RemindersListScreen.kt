@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.screens.reminders
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +19,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -26,7 +26,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +43,8 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
+import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.theme.LocalTypeAccents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,135 +78,130 @@ fun RemindersListScreen(
     val labelStyle = uiState.reminderLabel
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHost) },
-        topBar = {
-            TopAppBar(
-                title = { Text(labelStyle.displayName) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-            )
-        }
+        snackbarHost = { SnackbarHost(snackbarHost) }
     ) { innerPadding ->
-        if (uiState.loading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            PageHeader(
+                title = labelStyle.displayName,
+                accent = LocalTypeAccents.current.onReminderContainer,
+            )
+            if (uiState.loading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Scaffold
+            }
+
+            val active = uiState.active
+            val done = uiState.done
+            val archived = uiState.archived
+
+            if (active.isEmpty() && done.isEmpty() && archived.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No ${labelStyle.displayName.lowercase()}. Tap + to add one.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(32.dp)
+                    )
+                }
+                return@Scaffold
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
+                items(active, key = { it.id }) { reminder ->
+                    SwipeToCompleteReminderCard(
+                        reminder = reminder,
+                        linkedLabel = uiState.linkedLabel(reminder),
+                        onClick = { editTarget = reminder },
+                        onToggleDone = { viewModel.markDone(reminder.id) },
+                        onDelete = { viewModel.deleteReminder(reminder.id) }
+                    )
+                }
 
-        val active = uiState.active
-        val done = uiState.done
-        val archived = uiState.archived
-
-        if (active.isEmpty() && done.isEmpty() && archived.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "No ${labelStyle.displayName.lowercase()}. Tap + to add one.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(32.dp)
-                )
-            }
-            return@Scaffold
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(active, key = { it.id }) { reminder ->
-                SwipeToCompleteReminderCard(
-                    reminder = reminder,
-                    linkedLabel = uiState.linkedLabel(reminder),
-                    onClick = { editTarget = reminder },
-                    onToggleDone = { viewModel.markDone(reminder.id) },
-                    onDelete = { viewModel.deleteReminder(reminder.id) }
-                )
-            }
-
-            if (done.isNotEmpty()) {
-                item(key = "done_header") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        Text(
-                            text = "Done (${done.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(onClick = { doneExpanded = !doneExpanded }) {
-                            Icon(
-                                if (doneExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                contentDescription = if (doneExpanded) "Collapse" else "Expand"
+                if (done.isNotEmpty()) {
+                    item(key = "done_header") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = "Done (${done.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { doneExpanded = !doneExpanded }) {
+                                Icon(
+                                    if (doneExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    contentDescription = if (doneExpanded) "Collapse" else "Expand"
+                                )
+                            }
+                        }
+                    }
+                    if (doneExpanded) {
+                        items(done, key = { it.id }) { reminder ->
+                            SwipeToCompleteReminderCard(
+                                reminder = reminder,
+                                linkedLabel = uiState.linkedLabel(reminder),
+                                onClick = { editTarget = reminder },
+                                onToggleDone = {
+                                    if (reminder.completedAt == null) viewModel.markDone(reminder.id)
+                                    else viewModel.markUndone(reminder.id)
+                                },
+                                onDelete = { viewModel.deleteReminder(reminder.id) }
                             )
                         }
                     }
                 }
-                if (doneExpanded) {
-                    items(done, key = { it.id }) { reminder ->
-                        SwipeToCompleteReminderCard(
-                            reminder = reminder,
-                            linkedLabel = uiState.linkedLabel(reminder),
-                            onClick = { editTarget = reminder },
-                            onToggleDone = {
-                                if (reminder.completedAt == null) viewModel.markDone(reminder.id)
-                                else viewModel.markUndone(reminder.id)
-                            },
-                            onDelete = { viewModel.deleteReminder(reminder.id) }
-                        )
-                    }
-                }
-            }
 
-            if (archived.isNotEmpty()) {
-                item(key = "archived_header") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        Text(
-                            text = "Archived (${archived.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(onClick = { archivedExpanded = !archivedExpanded }) {
-                            Icon(
-                                if (archivedExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                contentDescription = if (archivedExpanded) "Collapse" else "Expand"
+                if (archived.isNotEmpty()) {
+                    item(key = "archived_header") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = "Archived (${archived.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
                             )
+                            TextButton(onClick = { archivedExpanded = !archivedExpanded }) {
+                                Icon(
+                                    if (archivedExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    contentDescription = if (archivedExpanded) "Collapse" else "Expand"
+                                )
+                            }
                         }
                     }
-                }
-                if (archivedExpanded) {
-                    items(archived, key = { "archived_${it.id}" }) { reminder ->
-                        SwipeToCompleteReminderCard(
-                            reminder = reminder,
-                            linkedLabel = uiState.linkedLabel(reminder),
-                            onClick = { editTarget = reminder },
-                            onToggleDone = {
-                                if (reminder.completedAt == null) viewModel.markDone(reminder.id)
-                                else viewModel.markUndone(reminder.id)
-                            },
-                            onDelete = { viewModel.deleteReminder(reminder.id) }
-                        )
+                    if (archivedExpanded) {
+                        items(archived, key = { "archived_${it.id}" }) { reminder ->
+                            SwipeToCompleteReminderCard(
+                                reminder = reminder,
+                                linkedLabel = uiState.linkedLabel(reminder),
+                                onClick = { editTarget = reminder },
+                                onToggleDone = {
+                                    if (reminder.completedAt == null) viewModel.markDone(reminder.id)
+                                    else viewModel.markUndone(reminder.id)
+                                },
+                                onDelete = { viewModel.deleteReminder(reminder.id) }
+                            )
+                        }
                     }
                 }
             }

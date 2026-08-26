@@ -33,7 +33,7 @@ data class AppSettings(
     val showDueCountdown: Boolean = false,
     val deliveryMode: String = "NOTIFICATION",
     // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
-    val appTheme: String = "MIST",
+    val appTheme: String = "CREAM",
     // Custom HSL values for AppTheme.CUSTOM
     val customPrimaryHue: Float = 150f,
     val customPrimarySaturation: Float = 0.5f,
@@ -132,7 +132,7 @@ class SettingsRepository @Inject constructor(
                 showDueCountdown            = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
                 deliveryMode                = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
                 // Normalise old per-mode entries to palette names for backward compatibility
-                appTheme                    = when (val raw = prefs[Keys.APP_THEME] ?: "MIST") {
+                appTheme                    = when (val raw = prefs[Keys.APP_THEME] ?: "CREAM") {
                     "SYSTEM_DEFAULT", "SAGE_LIGHT", "SAGE_DARK" -> "SAGE"
                     "CORAL_LIGHT", "CORAL_DARK", "CORAL_SYSTEM" -> "CORAL"
                     "TEAL_LIGHT", "TEAL_DARK", "TEAL_SYSTEM"   -> "TEAL"

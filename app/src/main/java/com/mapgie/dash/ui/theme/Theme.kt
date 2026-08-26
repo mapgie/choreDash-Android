@@ -49,7 +49,7 @@ val LocalTypeAccents = staticCompositionLocalOf {
 
 @Composable
 fun DashTheme(
-    appTheme:  AppTheme = AppTheme.MIST,
+    appTheme:  AppTheme = AppTheme.CREAM,
     darkTheme: Boolean  = isSystemInDarkTheme(),
     wcag:      Boolean  = false,
     customHSL: CustomHSL? = null,
@@ -104,6 +104,7 @@ fun DashTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography  = DashTypography,
+            shapes      = DashShapes,
             content     = content,
         )
     }

@@ -1,0 +1,12 @@
+{
+  "bump": "minor",
+  "added": [
+    "New default \"Cream\" colour palette: warm cream ground with lavender, sage and amber accents, plus a matching warm dark mode"
+  ],
+  "changed": [
+    "Main tabs now open with a serif lowercase page title and a slim gradient accent strip",
+    "Softer rose, amber and sage status colours; due dates and countdowns now show as small tinted badges",
+    "Rounder cards, sheets and filter chips, a wider card status spine, and bolder card titles",
+    "Section and group labels restyled as small spaced capitals; settings screens use flat serif headers instead of coloured app bars"
+  ]
+}
