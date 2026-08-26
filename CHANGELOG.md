@@ -31,6 +31,23 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.24.0] - 2026-08-26
+
+### Added
+- Chore cards show a slim cadence-pressure bar that fills as the chore approaches due
+- New default "Cream" colour palette: warm cream ground with lavender, sage and amber accents, plus a matching warm dark mode
+
+### Changed
+- List cards redesigned: a circular icon chip on the left (also the done toggle for tasks and reminders), an uppercase category and cadence caption under the title, and the status badge above the owner avatar on the right
+- Task card spines now show urgency (matching chores); priority moved into the caption text
+- The add button is now a round sage button docked at the centre of the bottom bar
+- Overdue reminders use the shared rose status style instead of error colours
+- Main tabs now open with a serif lowercase page title and a slim gradient accent strip
+- Softer rose, amber and sage status colours; due dates and countdowns now show as small tinted badges
+- Rounder cards, sheets and filter chips, a wider card status spine, and bolder card titles
+- Section and group labels restyled as small spaced capitals; settings screens use flat serif headers instead of coloured app bars
+
+---
 ## [0.23.2] - 2026-08-22
 
 ### Changed
