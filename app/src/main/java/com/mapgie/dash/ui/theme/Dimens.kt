@@ -16,16 +16,16 @@ object Dimens {
     val cardInset = 16.dp
 
     /** Vertical gap between consecutive list cards. */
-    val cardGap = 6.dp
+    val cardGap = 8.dp
 
     /** Inner content padding inside a card, between the accent bar and the edge. */
     val cardPadding = 12.dp
 
-    /** Width of the leading status accent bar. */
-    val accentBarWidth = 4.dp
+    /** Width of the leading status accent bar (the card "spine"). */
+    val accentBarWidth = 7.dp
 
     /** Diameter of the owner avatar on every surface. */
-    val avatarSize = 24.dp
+    val avatarSize = 26.dp
 
     /**
      * Minimum height of a tappable list row. 56dp comfortably clears the 44dp

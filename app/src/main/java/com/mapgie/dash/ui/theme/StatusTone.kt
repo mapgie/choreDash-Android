@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ReminderDto
@@ -48,14 +49,40 @@ fun StatusTone.barColor(): Color = when (this) {
     StatusTone.NONE -> Color.Transparent
 }
 
-/** Text colour for a status-coloured label (e.g. a due badge) matching the tone. */
+/** True when the current scheme reads as dark (works for custom themes too). */
 @Composable
-fun StatusTone.textColor(): Color = when (this) {
-    StatusTone.CRITICAL -> StatusStale
-    StatusTone.ATTENTION -> StatusAging
-    StatusTone.OK -> StatusFresh
-    StatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
-    StatusTone.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+/**
+ * Text colour for a status-coloured label (e.g. a due badge) matching the tone.
+ * Light surfaces use the deep tones (the mid amber/sage are too pale for text);
+ * dark surfaces use the mid tones, which read as the lighter variant there.
+ */
+@Composable
+fun StatusTone.textColor(): Color {
+    val dark = isDarkScheme()
+    return when (this) {
+        StatusTone.CRITICAL -> if (dark) StatusStale else StatusStaleDeep
+        StatusTone.ATTENTION -> if (dark) StatusAging else StatusAgingDeep
+        StatusTone.OK -> if (dark) StatusFresh else StatusFreshDeep
+        StatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
+        StatusTone.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
+/**
+ * Background tint for a status badge pill. Returns null for tones that don't
+ * signal (the label then renders as plain text without a pill).
+ */
+@Composable
+fun StatusTone.badgeContainerColor(): Color? {
+    val dark = isDarkScheme()
+    return when (this) {
+        StatusTone.CRITICAL -> if (dark) StatusStaleTintDark else StatusStaleTint
+        StatusTone.ATTENTION -> if (dark) StatusAgingTintDark else StatusAgingTint
+        StatusTone.OK -> if (dark) StatusFreshTintDark else StatusFreshTint
+        StatusTone.NEUTRAL, StatusTone.NONE -> null
+    }
 }
 
 /** Chore staleness mapped onto the shared scale. */

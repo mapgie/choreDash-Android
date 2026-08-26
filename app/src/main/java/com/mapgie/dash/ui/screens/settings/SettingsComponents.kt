@@ -42,17 +42,17 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.ui.components.core.SectionLabel
 
 /**
- * Uppercase, semibold, primary-coloured label above a group of settings items.
+ * Uppercase, letterspaced label above a group of settings items, in the shared
+ * [SectionLabel] style.
  */
 @Composable
 fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp, end = 16.dp)
+    SectionLabel(
+        text = title,
+        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp, end = 16.dp)
     )
 }
 
@@ -92,8 +92,33 @@ fun SettingsNavItem(
 }
 
 /**
- * Wraps a settings sub-screen in a Scaffold with a TopAppBar and back arrow,
- * using primaryContainer for the app bar, matching the main list.
+ * Serif sub-screen title in the Cozy Cream style: lowercase with a
+ * primary-tinted full stop ("appearance.").
+ */
+@Composable
+fun SubScreenTitle(title: String) {
+    Text(
+        text = buildAnnotatedString {
+            append(title.lowercase())
+            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(".") }
+        },
+        style = MaterialTheme.typography.titleLarge,
+    )
+}
+
+/** Shared app-bar colours for settings sub-screens: flat on the page ground. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun subScreenTopAppBarColors() = TopAppBarDefaults.topAppBarColors(
+    containerColor = MaterialTheme.colorScheme.background,
+    titleContentColor = MaterialTheme.colorScheme.onBackground,
+    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+)
+
+/**
+ * Wraps a settings sub-screen in a Scaffold with a TopAppBar and back arrow.
+ * The bar sits flat on the page ground with a lowercase serif title, matching
+ * the tab page headers.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,17 +130,13 @@ fun SettingsSubScreenScaffold(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = { SubScreenTitle(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.semantics { role = Role.Button }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                colors = subScreenTopAppBarColors()
             )
         },
         content = content,

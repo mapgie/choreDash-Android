@@ -59,6 +59,10 @@ import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
+import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.SectionLabel
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -105,6 +109,10 @@ fun TaskListScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                PageHeader(
+                    title = if (uiState.zenMode) "zen" else "tasks",
+                    accent = LocalTypeAccents.current.onTaskContainer,
+                )
                 // Filter chips + toggles
                 Row(
                     modifier = Modifier
@@ -118,6 +126,7 @@ fun TaskListScreen(
                             selected = uiState.filter == f,
                             onClick = { viewModel.setFilter(f) },
                             label = { Text(f.label) },
+                            shape = PillShape,
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -206,10 +215,8 @@ fun TaskListScreen(
                             val grouped = active.groupBy { it.category?.takeIf(String::isNotBlank) ?: "Other" }
                             grouped.forEach { (cat, tasks) ->
                                 stickyHeader {
-                                    Text(
-                                        text = cat.uppercase(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    SectionLabel(
+                                        text = cat,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .background(MaterialTheme.colorScheme.background)

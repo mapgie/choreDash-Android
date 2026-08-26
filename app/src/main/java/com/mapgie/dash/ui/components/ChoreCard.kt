@@ -7,16 +7,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.ui.components.core.CategoryBadge
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
-import com.mapgie.dash.ui.theme.StatusAging
-import com.mapgie.dash.ui.theme.StatusFresh
-import com.mapgie.dash.ui.theme.StatusStale
+import com.mapgie.dash.ui.components.core.StatusBadge
+import com.mapgie.dash.ui.theme.Dimens
+import com.mapgie.dash.ui.theme.barColor
+import com.mapgie.dash.ui.theme.statusTone
+import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.util.formatAbsoluteDate
 import com.mapgie.dash.util.relativeTime
 
@@ -29,15 +30,10 @@ fun ChoreCard(
     showCategory: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val statusColor = when (chore.status) {
-        ChoreStatus.STALE, ChoreStatus.NEVER -> StatusStale
-        ChoreStatus.AGING -> StatusAging
-        ChoreStatus.FRESH -> StatusFresh
-    }
-    val barColor = if (zenMode) Color.Transparent else statusColor
+    val tone = chore.statusTone()
+    val barColor = if (zenMode) Color.Transparent else tone.barColor()
     val dateColor = when (chore.status) {
-        ChoreStatus.STALE, ChoreStatus.NEVER -> StatusStale
-        ChoreStatus.AGING -> StatusAging
+        ChoreStatus.STALE, ChoreStatus.NEVER, ChoreStatus.AGING -> tone.textColor()
         ChoreStatus.FRESH -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -46,8 +42,10 @@ fun ChoreCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
+            // Same card ground as the Tasks list; status is carried by the spine,
+            // the badge, and the date text rather than a whole-card wash.
             containerColor = if (zenMode) MaterialTheme.colorScheme.surface
-                             else lerp(MaterialTheme.colorScheme.surface, statusColor, 0.07f)
+                             else MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -55,7 +53,7 @@ fun ChoreCard(
             // Left status accent bar
             Box(
                 modifier = Modifier
-                    .width(4.dp)
+                    .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
                     .background(barColor)
             )
@@ -98,11 +96,7 @@ fun ChoreCard(
                             if (showDueCountdown) {
                                 val dueText = chore.nextDueText()
                                 if (dueText != null) {
-                                    Text(
-                                        dueText,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = dateColor
-                                    )
+                                    StatusBadge(text = dueText, tone = tone)
                                     MetaLabel(text = relativeTime(chore.lastScanned))
                                 } else {
                                     MetaLabel(

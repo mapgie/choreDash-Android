@@ -37,9 +37,11 @@ import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.ui.components.core.CategoryBadge
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
+import com.mapgie.dash.ui.components.core.StatusBadge
+import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.StatusAging
 import com.mapgie.dash.ui.theme.StatusFresh
-import com.mapgie.dash.ui.theme.StatusStale
+import com.mapgie.dash.ui.theme.statusTone
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -76,7 +78,7 @@ fun TaskCard(
             // Priority bar
             Box(
                 modifier = Modifier
-                    .width(4.dp)
+                    .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
                     .background(barColor)
             )
@@ -153,29 +155,18 @@ fun TaskCard(
 
 @Composable
 private fun DueBadge(task: TaskDto) {
-    val urgency = task.urgency()
-    val (text, color) = when (urgency) {
-        TaskUrgency.OVERDUE -> "Overdue" to StatusStale
-        TaskUrgency.TODAY -> "Today" to StatusAging
-        TaskUrgency.THIS_WEEK -> {
-            val label = task.dueDate
-                ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("EEE")) }.getOrNull() }
-                ?: "This week"
-            label to StatusFresh
-        }
-        TaskUrgency.LATER -> {
-            val label = task.dueDate
-                ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("MMM d")) }.getOrNull() }
-                ?: "Later"
-            label to MaterialTheme.colorScheme.onSurfaceVariant
-        }
+    val text = when (task.urgency()) {
+        TaskUrgency.OVERDUE -> "Overdue"
+        TaskUrgency.TODAY -> "Today"
+        TaskUrgency.THIS_WEEK -> task.dueDate
+            ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("EEE")) }.getOrNull() }
+            ?: "This week"
+        TaskUrgency.LATER -> task.dueDate
+            ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("MMM d")) }.getOrNull() }
+            ?: "Later"
         TaskUrgency.NONE -> return
     }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = color
-    )
+    StatusBadge(text = text, tone = task.statusTone())
 }
 
 /** Plain, uncoloured due date for zen mode, unlike DueBadge it never signals urgency. */

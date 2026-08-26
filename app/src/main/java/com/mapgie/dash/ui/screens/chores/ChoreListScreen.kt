@@ -35,6 +35,10 @@ import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.SectionLabel
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.PillShape
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -139,6 +143,10 @@ fun ChoreListScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                PageHeader(
+                    title = if (uiState.zenMode) "zen" else "chores",
+                    accent = LocalTypeAccents.current.onChoreContainer,
+                )
                 // Filter chips + toggles
                 Row(
                     modifier = Modifier
@@ -152,6 +160,7 @@ fun ChoreListScreen(
                             selected = uiState.filter == f,
                             onClick = { viewModel.setFilter(f) },
                             label = { Text(f.label) },
+                            shape = PillShape,
                             // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -244,10 +253,8 @@ fun ChoreListScreen(
                                 val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
                                 grouped.forEach { (category, chores) ->
                                     stickyHeader {
-                                        Text(
-                                            text = category.uppercase(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        SectionLabel(
+                                            text = category,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.background)

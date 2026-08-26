@@ -30,6 +30,11 @@ enum class AppTheme(
     val darkSecondaryArgb: Long,
     val darkTertiaryArgb: Long,
 ) {
+    CREAM(
+        "Cream",
+        lightPrimaryArgb   = 0xFF7A5FA0L, lightSecondaryArgb = 0xFF5F7D52L, lightTertiaryArgb = 0xFFB07F24L,
+        darkPrimaryArgb    = 0xFFC9B8E8L, darkSecondaryArgb  = 0xFFA9C494L, darkTertiaryArgb  = 0xFFDFCF90L,
+    ),
     MIST(
         "Mist",
         lightPrimaryArgb   = 0xFF5B5FA6L, lightSecondaryArgb = 0xFF5D5C72L, lightTertiaryArgb = 0xFF79556CL,
@@ -122,24 +127,43 @@ val md_theme_dark_outlineVariant = Color(0xFF404943)
 val md_theme_dark_scrim = Color(0xFF000000)
 
 // Semantic status colours used on card strips, due badges, and date text.
-// Red   (StatusStale) = overdue / action required
+// Rose  (StatusStale) = overdue / action required
 // Amber (StatusAging) = approaching due / attention needed
-// Green (StatusFresh) = healthy / no action needed
-val StatusStale = Color(0xFFBA1A1A)
-val StatusAging = Color(0xFFF29900)
-val StatusFresh = Color(0xFF4A7C59)
+// Sage  (StatusFresh) = healthy / no action needed
+//
+// Each status has three fixed tones from the Cozy Cream design system:
+//   - the mid tone for accent bars and spines,
+//   - a deep tone for text on light surfaces (the mid amber/sage are too pale
+//     to read as text; in dark mode text falls back to the mid tone),
+//   - a light tint for badge-pill backgrounds on light surfaces (dark surfaces
+//     use a dimmed tint so the pill stays subtle).
+val StatusStale = Color(0xFFB8524E)
+val StatusAging = Color(0xFFD9A648)
+val StatusFresh = Color(0xFF8AA877)
+
+val StatusStaleDeep = Color(0xFFA03E3A)
+val StatusAgingDeep = Color(0xFF9A6E1C)
+val StatusFreshDeep = Color(0xFF57724B)
+
+val StatusStaleTint = Color(0xFFF6E3E1)
+val StatusAgingTint = Color(0xFFF3E8D2)
+val StatusFreshTint = Color(0xFFE7ECDD)
+
+val StatusStaleTintDark = Color(0xFF4A302E)
+val StatusAgingTintDark = Color(0xFF48402A)
+val StatusFreshTintDark = Color(0xFF39422F)
 
 // Content-type accent tones. Fixed across all AppTheme palettes (light or dark)
 // so Chores, Tasks, and Reminders keep a stable colour identity no matter which
 // palette the user has picked — used on the bottom nav indicator and the add-menu
 // FAB. Colour is a secondary cue only: icon shape and text label already
 // distinguish the three types, satisfying the "not colour alone" rule.
-val TypeTaskContainer = Color(0xFFDCE0FA)
-val TypeTaskOnContainer = Color(0xFF262B6B)
-val TypeChoreContainer = Color(0xFFD6E8E1)
-val TypeChoreOnContainer = Color(0xFF1B4438)
-val TypeReminderContainer = Color(0xFFF6E1C6)
-val TypeReminderOnContainer = Color(0xFF6B4718)
+val TypeTaskContainer = Color(0xFFE9E0F2)
+val TypeTaskOnContainer = Color(0xFF4A3866)
+val TypeChoreContainer = Color(0xFFDFE8D3)
+val TypeChoreOnContainer = Color(0xFF33471F)
+val TypeReminderContainer = Color(0xFFF3E8D2)
+val TypeReminderOnContainer = Color(0xFF5C4413)
 
 // Owner avatar palette. A person's handle hashes to one of these six tones via
 // ownerColorFor(), so the same owner shows the same colour on every screen and in
@@ -370,8 +394,8 @@ private val TealDarkColors = darkColorScheme(
 )
 
 // ── Mist palette (seed: #5B5FA6) ──────────────────────────────────────────────
-// Default palette. A light periwinkle primary over blue-violet-grey neutrals,
-// replacing green as the app's default look (green remains available as "Sage").
+// A light periwinkle primary over blue-violet-grey neutrals. Former default,
+// superseded by Cream; kept for users who picked it explicitly.
 
 val MistLightColors = lightColorScheme(
     primary = Color(0xFF5B5FA6),
@@ -437,15 +461,102 @@ val MistDarkColors = darkColorScheme(
     scrim = Color(0xFF000000),
 )
 
+// ── Cream palette ("Cozy Cream" design system) ────────────────────────────────
+// Default palette. Warm cream ground with white cards, a lavender primary
+// (buttons, toggles, selection), a sage secondary (positive accent), and an
+// amber tertiary. The surfaceContainer ramp is declared explicitly so sheets
+// and the nav bar land on the design's warm neutrals rather than the M3
+// baseline's cool ones. Dark mode reuses the design's dark reminder screen:
+// a deep green-brown ground with gold and soft-lavender accents.
+
+val CreamLightColors = lightColorScheme(
+    primary = Color(0xFF7A5FA0),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFE9E0F2),
+    onPrimaryContainer = Color(0xFF43315E),
+    secondary = Color(0xFF5F7D52),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFDFE8D3),
+    onSecondaryContainer = Color(0xFF324528),
+    tertiary = Color(0xFFB07F24),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFF3E8D2),
+    onTertiaryContainer = Color(0xFF5C3F12),
+    error = Color(0xFFBA1A1A),
+    errorContainer = Color(0xFFFFDAD6),
+    onError = Color(0xFFFFFFFF),
+    onErrorContainer = Color(0xFF410002),
+    background = Color(0xFFF2EDE2),
+    onBackground = Color(0xFF33302A),
+    surface = Color(0xFFF7F2E7),
+    onSurface = Color(0xFF33302A),
+    surfaceVariant = Color(0xFFFFFDF9),
+    onSurfaceVariant = Color(0xFF6D6455),
+    surfaceBright = Color(0xFFFFFDF9),
+    surfaceDim = Color(0xFFE8E0CF),
+    surfaceContainerLowest = Color(0xFFFFFDF9),
+    surfaceContainerLow = Color(0xFFFBF7EE),
+    surfaceContainer = Color(0xFFF7F2E7),
+    surfaceContainerHigh = Color(0xFFF2EBDC),
+    surfaceContainerHighest = Color(0xFFEFE8DA),
+    outline = Color(0xFF8F8571),
+    inverseOnSurface = Color(0xFFF5F1E6),
+    inverseSurface = Color(0xFF33302A),
+    inversePrimary = Color(0xFFCDBBE8),
+    surfaceTint = Color(0xFF7A5FA0),
+    outlineVariant = Color(0xFFDDD3C1),
+    scrim = Color(0xFF000000),
+)
+
+val CreamDarkColors = darkColorScheme(
+    primary = Color(0xFFC9B8E8),
+    onPrimary = Color(0xFF3A2A54),
+    primaryContainer = Color(0xFF55407A),
+    onPrimaryContainer = Color(0xFFE9E0F2),
+    secondary = Color(0xFFA9C494),
+    onSecondary = Color(0xFF2A3A22),
+    secondaryContainer = Color(0xFF47583C),
+    onSecondaryContainer = Color(0xFFDFE8D3),
+    tertiary = Color(0xFFDFCF90),
+    onTertiary = Color(0xFF3B3213),
+    tertiaryContainer = Color(0xFF57491D),
+    onTertiaryContainer = Color(0xFFF5EBC9),
+    error = Color(0xFFFFB4AB),
+    errorContainer = Color(0xFF93000A),
+    onError = Color(0xFF690005),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF272E24),
+    onBackground = Color(0xFFF0EAD9),
+    surface = Color(0xFF2C3328),
+    onSurface = Color(0xFFF0EAD9),
+    surfaceVariant = Color(0xFF363E33),
+    onSurfaceVariant = Color(0xFFC2BBA6),
+    surfaceBright = Color(0xFF3A4236),
+    surfaceDim = Color(0xFF1E2419),
+    surfaceContainerLowest = Color(0xFF1C2118),
+    surfaceContainerLow = Color(0xFF262C22),
+    surfaceContainer = Color(0xFF2C3328),
+    surfaceContainerHigh = Color(0xFF333B2F),
+    surfaceContainerHighest = Color(0xFF3A4236),
+    outline = Color(0xFF918A76),
+    inverseOnSurface = Color(0xFF2B3227),
+    inverseSurface = Color(0xFFF0EAD9),
+    inversePrimary = Color(0xFF7A5FA0),
+    surfaceTint = Color(0xFFC9B8E8),
+    outlineVariant = Color(0xFF454D3F),
+    scrim = Color(0xFF000000),
+)
+
 // ── Colour scheme router ──────────────────────────────────────────────────────
 
 fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean, wcag: Boolean = false): ColorScheme {
     val base = when (appTheme) {
+        AppTheme.CREAM  -> if (darkTheme) CreamDarkColors  else CreamLightColors
         AppTheme.MIST   -> if (darkTheme) MistDarkColors   else MistLightColors
         AppTheme.SAGE   -> if (darkTheme) SageDarkColors   else SageLightColors
         AppTheme.CORAL  -> if (darkTheme) CoralDarkColors  else CoralLightColors
         AppTheme.TEAL   -> if (darkTheme) TealDarkColors   else TealLightColors
-        AppTheme.CUSTOM -> MistLightColors // placeholder; caller must use buildCustomColorScheme
+        AppTheme.CUSTOM -> CreamLightColors // placeholder; caller must use buildCustomColorScheme
     }
     return if (wcag) base.withWcagContrast(darkTheme) else base
 }

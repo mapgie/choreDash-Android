@@ -13,10 +13,11 @@ import androidx.compose.ui.unit.sp
 import com.mapgie.dash.R
 
 val Nunito = FontFamily(
-    Font(R.font.nunito, FontWeight.Normal,   variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-    Font(R.font.nunito, FontWeight.Medium,   variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-    Font(R.font.nunito, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-    Font(R.font.nunito, FontWeight.Bold,     variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    Font(R.font.nunito, FontWeight.Normal,    variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.nunito, FontWeight.Medium,    variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.nunito, FontWeight.SemiBold,  variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.nunito, FontWeight.Bold,      variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    Font(R.font.nunito, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
 )
 
 val Lora = FontFamily(
@@ -68,10 +69,11 @@ val DashTypography = Typography(
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
+    // Card/list-row titles: Cozy Cream sets these heavy (Nunito 700, 17px)
     titleMedium = TextStyle(
         fontFamily = Nunito,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 17.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp
     ),
