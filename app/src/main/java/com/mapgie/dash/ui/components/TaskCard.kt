@@ -35,6 +35,7 @@ import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.ui.components.core.DoneToggleChip
 import com.mapgie.dash.ui.components.core.MetaCaption
+import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
@@ -62,7 +63,8 @@ fun TaskCard(
     showCategory: Boolean = true,
     modifier: Modifier = Modifier,
     showOwner: Boolean = true,
-    zenMode: Boolean = false
+    zenMode: Boolean = false,
+    highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
     val accents = LocalTypeAccents.current
@@ -109,7 +111,7 @@ fun TaskCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = task.title,
+                        text = highlightedText(task.title, highlightQuery),
                         style = MaterialTheme.typography.titleMedium,
                         textDecoration = if (isDone) TextDecoration.LineThrough else null,
                         color = if (isDone)

@@ -3,10 +3,10 @@ package com.mapgie.dash.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,7 +26,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.nfc.NfcWriteResult
-import com.mapgie.dash.ui.components.AddMenuFab
+import com.mapgie.dash.ui.components.AddMenu
+import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
@@ -43,10 +44,10 @@ import com.mapgie.dash.widget.WIDGET_DEST_SETTINGS
 import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Chores : Screen("chores", "Chores", Icons.Filled.CleaningServices)
-    object Tasks : Screen("tasks", "Tasks", Icons.Filled.CheckCircle)
-    object Reminders : Screen("reminders", "Reminders", Icons.Filled.Notifications)
-    object Settings : Screen("settings", "Settings", Icons.Filled.Settings)
+    object Chores : Screen("chores", "Chores", Icons.Outlined.CleaningServices)
+    object Tasks : Screen("tasks", "Tasks", Icons.Outlined.CheckCircle)
+    object Reminders : Screen("reminders", "Reminders", Icons.Outlined.Notifications)
+    object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)
 }
 
 // The full set of tabs, independent of which ones are currently visible in the
@@ -135,12 +136,12 @@ fun DashNavGraph(
         .any { screen -> currentDestination?.hierarchy?.any { it.route == screen.route } == true }
 
     Scaffold(
-        // Centre-docked add button, lifted above the middle of the nav bar as in
-        // the Cozy Cream design.
+        // The quick-add menu floats centred above the bottom bar's add button
+        // while expanded; the button itself lives in the bar's centre slot.
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             if (showFab) {
-                AddMenuFab(
+                AddMenu(
                     expanded = fabExpanded,
                     onExpandedChange = { fabExpanded = it },
                     order = navUiState.fabOrder,
@@ -164,59 +165,44 @@ fun DashNavGraph(
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                val typeAccents = LocalTypeAccents.current
-                navItems.forEach { screen ->
-                    val selected = currentDestination?.hierarchy
-                        ?.any { it.route == screen.route } == true
-                    val accent = screen.accentColors(typeAccents)
-                    val label = if (screen == Screen.Reminders) {
+            val typeAccents = LocalTypeAccents.current
+            val tabs = navItems.map { screen ->
+                val accent = screen.accentColors(typeAccents)
+                DashTab(
+                    label = if (screen == Screen.Reminders) {
                         navUiState.reminderLabel.displayName
                     } else {
                         screen.label
-                    }
-                    NavigationBarItem(
-                        icon = {
-                            Icon(screen.icon, contentDescription = label)
-                        },
-                        label = {
-                            Text(label, style = MaterialTheme.typography.labelMedium)
-                        },
-                        selected = selected,
-                        // Mirror GaMeD LESSONS.md lesson #4: all programmatic tab nav
-                        // must use the same popUpTo + saveState + restoreState pattern
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                    },
+                    icon = screen.icon,
+                    selected = currentDestination?.hierarchy
+                        ?.any { it.route == screen.route } == true,
+                    activeContainer = accent?.first ?: MaterialTheme.colorScheme.primaryContainer,
+                    activeContent = accent?.second ?: MaterialTheme.colorScheme.onPrimaryContainer,
+                    // Mirror GaMeD LESSONS.md lesson #4: all programmatic tab nav
+                    // must use the same popUpTo + saveState + restoreState pattern
+                    onClick = {
+                        navController.navigate(screen.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
-                        },
-                        colors = if (accent != null) {
-                            NavigationBarItemDefaults.colors(
-                                selectedIconColor = accent.second,
-                                selectedTextColor = accent.second,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = accent.first
-                            )
-                        } else {
-                            NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = MaterialTheme.colorScheme.primary
-                            )
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    )
-                }
+                    },
+                )
             }
+            DashBottomBar(
+                tabs = tabs,
+                centerContent = {
+                    if (showFab) {
+                        AddMenuButton(
+                            expanded = fabExpanded,
+                            onExpandedChange = { fabExpanded = it },
+                        )
+                    }
+                }
+            )
         }
     ) { innerPadding ->
         NavHost(

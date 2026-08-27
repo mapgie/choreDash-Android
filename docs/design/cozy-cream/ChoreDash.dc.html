@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-6a1d9901-a715-4d73-87f6-33667100f206/styles.css">
+<script src="_ds/modernist-6a1d9901-a715-4d73-87f6-33667100f206/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#0f1013; -webkit-font-smoothing:antialiased; }
+  a { color:#e8845c; text-underline-offset:3px; }
+  a:hover { color:#f0a281; }
+  .cd-i { display:inline-flex; vertical-align:middle; }
+  .cd-i svg { display:block; }
+</style>
+</helmet>
+
+<div style="min-width:2680px; padding:60px 72px 140px; font-family:var(--font-body); color:#eef0f2;">
+
+  <div style="max-width:900px; margin-bottom:8px;">
+    <div style="font-family:var(--font-heading); font-weight:800; letter-spacing:0.2em; text-transform:uppercase; font-size:13px; color:#e8845c;">ChoreDash · mobile redesign</div>
+    <h1 style="font-family:var(--font-heading); font-weight:800; font-size:46px; line-height:1.05; letter-spacing:-0.02em; margin:12px 0 14px;">Cozy Cream</h1>
+    <p style="font-size:15px; line-height:1.65; color:rgba(238,240,242,0.62); margin:0;">Matched to the soft vibe of your current app — cream ground, sage + rose accents, rounded cards with colored spines, circular icon chips, gentle shadows. Turn <a href="#3a">3a</a>, revised: the app's real <b style="color:#eef0f2;">bottom bar</b> (Tasks · Chores · add in the middle · Memos · Settings), in-list <b style="color:#eef0f2;">search and sort</b>, a chore <b style="color:#eef0f2;">pressure view</b> (days since / days until / overdue), a monotone <b style="color:#eef0f2;">Zen list</b> — everything at once, no pressure colors — and the one-at-a-time screen recast as the <b style="color:#eef0f2;">reminder view</b>. Serif page headers. Turn <a href="#4a">4a</a> adds the <b style="color:#eef0f2;">deeper screens</b> behind the tabs — edit-task &amp; chore-detail sheets, appearance/themes, display &amp; smart-visibility steppers, reminders &amp; alerts, and about.</p>
+  </div>
+
+  <section id="turn3" style="margin-top:40px;">
+    <div id="4a" style="scroll-margin-top:40px;">
+      <div style="display:flex; align-items:baseline; gap:14px; border-bottom:2px solid rgba(238,240,242,0.16); padding-bottom:14px; margin-bottom:30px; width:1860px;">
+        <span style="font-family:var(--font-heading); font-weight:800; font-size:13px; letter-spacing:0.14em; background:#e8845c; color:#191b1f; padding:5px 11px;">4A</span>
+        <span style="font-family:var(--font-heading); font-weight:800; font-size:24px; letter-spacing:-0.01em; color:#eef0f2;">Deeper screens</span>
+        <span style="font-size:13px; color:rgba(238,240,242,0.5);">the surfaces behind the tabs — edit task &amp; chore sheets · appearance/themes · display &amp; smart-visibility · reminders &amp; alerts · about — in the Cozy Cream vocabulary</span>
+      </div>
+      <div id="row-4a" style="display:flex; gap:44px; align-items:flex-start; font-family:'Nunito',sans-serif;">
+
+        <!-- ░░ 4A EDIT TASK ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:16px 20px 2px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em;">edit task<span style="color:#9c8ab8;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:12px 20px 20px; display:flex; flex-direction:column; gap:17px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885;">BABA</div>
+              <div style="display:flex; gap:10px;">
+                <div style="display:flex; align-items:center; gap:8px; background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:14px; padding:10px 16px; font-size:13.5px; font-weight:800; color:#5f7d52;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg> Calendar</div>
+                <div style="display:flex; align-items:center; gap:8px; background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:14px; padding:10px 16px; font-size:13.5px; font-weight:800; color:#5f7d52;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg> Share</div>
+              </div>
+              <div style="background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:11px 16px 13px;">
+                <div style="font-size:11px; font-weight:800; color:#8f8571; margin-bottom:3px;">Title</div>
+                <div style="font-size:16.5px; font-weight:700;">Buy a Bike</div>
+              </div>
+              <div style="position:relative; background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:11px 16px 13px;">
+                <div style="font-size:11px; font-weight:800; color:#8f8571; margin-bottom:3px;">Category</div>
+                <div style="font-size:16.5px; font-weight:700;">Baba</div>
+                <span class="cd-i" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#a29885;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </div>
+              <div>
+                <div style="font-size:12px; font-weight:800; letter-spacing:0.12em; color:#a29885; margin-bottom:10px;">PRIORITY</div>
+                <div style="display:flex; gap:10px;">
+                  <div style="flex:1; text-align:center; border:1.5px solid #ddd3c1; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#6d6455;">Higher</div>
+                  <div style="flex:1; text-align:center; background:#7a5fa0; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#fffdf9;">Normal</div>
+                  <div style="flex:1; text-align:center; border:1.5px solid #ddd3c1; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#6d6455;">Lower</div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px; font-weight:800; letter-spacing:0.12em; color:#a29885; margin-bottom:10px;">DUE</div>
+                <div style="display:flex; gap:10px;">
+                  <div style="flex:1; text-align:center; background:#7a5fa0; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#fffdf9;">None</div>
+                  <div style="flex:1; text-align:center; border:1.5px solid #ddd3c1; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#6d6455;">Date</div>
+                  <div style="flex:1; text-align:center; border:1.5px solid #ddd3c1; border-radius:12px; padding:11px 0; font-size:14px; font-weight:800; color:#6d6455;">Period</div>
+                </div>
+              </div>
+              <div style="position:relative; background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:15px 16px;">
+                <div style="font-size:16px; font-weight:700; color:#8f8571;">Owner</div>
+                <span class="cd-i" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#a29885;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </div>
+              <div style="background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:15px 16px 34px; font-size:16px; font-weight:700; color:#8f8571;">Notes</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:2px 2px 0;">
+                <div style="font-size:15.5px; font-weight:800;">Reminder</div>
+                <div style="width:52px; height:30px; border-radius:999px; background:#ddd3c1; position:relative;"><span style="position:absolute; left:3px; top:3px; width:24px; height:24px; border-radius:50%; background:#fffdf9;"></span></div>
+              </div>
+              <div style="text-align:center; font-size:14.5px; font-weight:800; color:#b8524e; padding:6px 0 2px;">Delete</div>
+            </div>
+            <div style="padding:10px 20px 22px; background:#f2ede2;">
+              <div style="text-align:center; background:#7a5fa0; color:#fffdf9; border-radius:999px; padding:16px 0; font-size:16.5px; font-weight:900; box-shadow:0 8px 20px rgba(122,95,160,0.34);">Save</div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 4A CHORE DETAIL SHEET ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; overflow:hidden; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648);"></div>
+            <div style="padding:16px 20px;">
+              <div style="display:flex; gap:6px;"><div style="background:#7a5fa0; color:#fffdf9; font-size:12px; font-weight:800; padding:6px 11px; border-radius:999px;">All</div><div style="background:#f6e3e1; color:#b8524e; font-size:12px; font-weight:800; padding:6px 11px; border-radius:999px;">Overdue · 2</div><div style="background:#e5ddcd; color:#6d6455; font-size:12px; font-weight:700; padding:6px 11px; border-radius:999px;">Soon</div></div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; margin-top:16px;">HOUSE</div>
+              <div style="background:#fbeeed; border-radius:20px; position:relative; overflow:hidden; padding:16px 18px 16px 24px; display:flex; justify-content:space-between; align-items:center; margin-top:10px;"><div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#b8524e;"></div><span style="font-size:17px; font-weight:800;">Water softener</span><span style="font-size:14px; font-weight:800; color:#b8524e; text-align:right;">28d overdue<div style="font-size:11.5px; font-weight:700; color:#b3a996;">6w ago</div></span></div>
+            </div>
+            <div style="position:absolute; inset:0; background:rgba(51,48,42,0.34);"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; top:132px; background:#fbf7ee; border-radius:28px 28px 0 0; box-shadow:0 -12px 40px rgba(80,70,50,0.3); display:flex; flex-direction:column;">
+              <div style="width:42px; height:4px; border-radius:2px; background:#ddd3c1; margin:14px auto 6px;"></div>
+              <div style="flex:1; overflow:auto; padding:8px 24px 0; display:flex; flex-direction:column; gap:16px;">
+                <div>
+                  <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885;">CAR</div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                    <div style="font-family:'Lora',serif; font-size:30px; font-weight:600; letter-spacing:-0.01em;">Car service</div>
+                    <div style="display:flex; gap:16px; color:#7a5fa0;">
+                      <span class="cd-i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></span>
+                      <span class="cd-i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg></span>
+                    </div>
+                  </div>
+                </div>
+                <div style="background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:11px 16px 13px;">
+                  <div style="font-size:11px; font-weight:800; color:#8f8571; margin-bottom:3px;">Label</div>
+                  <div style="font-size:16.5px; font-weight:700;">Car service</div>
+                </div>
+                <div style="position:relative; background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:15px 16px;">
+                  <div style="font-size:16px; font-weight:700; color:#8f8571;">Owner</div>
+                  <span class="cd-i" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#a29885;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
+                </div>
+                <div style="text-align:center; font-size:14.5px; font-weight:800; color:#5f7d52;">Fewer options</div>
+                <div style="background:#fffdf9; border:1.5px solid #ddd3c1; border-radius:16px; padding:11px 16px 13px;">
+                  <div style="font-size:11px; font-weight:800; color:#8f8571; margin-bottom:3px;">Interval (days, optional)</div>
+                  <div style="font-size:16.5px; font-weight:700;">365</div>
+                </div>
+                <div style="text-align:center; border:1.5px solid #c8bdaf; border-radius:999px; padding:14px 0; font-size:15px; font-weight:800; color:#5f7d52;">Write tag</div>
+              </div>
+              <div style="padding:14px 24px 8px; display:flex; gap:14px;">
+                <div style="flex:1; text-align:center; border:1.5px solid #c8bdaf; border-radius:999px; padding:15px 0; font-size:15.5px; font-weight:800; color:#5f7d52;">Cancel</div>
+                <div style="flex:1; text-align:center; background:#7a5fa0; color:#fffdf9; border-radius:999px; padding:15px 0; font-size:15.5px; font-weight:900; box-shadow:0 8px 20px rgba(122,95,160,0.32);">Save</div>
+              </div>
+              <div style="text-align:center; font-size:14px; font-weight:800; color:#b8524e; padding:6px 0 22px;">Archive</div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 4A APPEARANCE ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:16px 20px 8px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em;">appearance<span style="color:#9c8ab8;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:6px 18px 22px; display:flex; flex-direction:column; gap:14px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:4px 6px 0;">BRIGHTNESS</div>
+              <div style="display:flex; border:1.5px solid #c8bdaf; border-radius:999px; overflow:hidden;">
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:700; color:#6d6455;">System</div>
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:800; background:#e9e0f2; color:#5f4a7a; border-left:1.5px solid #c8bdaf; border-right:1.5px solid #c8bdaf;">✓ Light</div>
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:700; color:#6d6455;">Dark</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:2px 6px;">
+                <span style="width:24px; height:24px; border-radius:6px; border:2px solid #7a5fa0; flex-shrink:0;"></span>
+                <div><div style="font-size:14.5px; font-weight:800;">WCAG accessible colours</div><div style="font-size:12px; font-weight:700; color:#a29885;">Increases contrast for text and interactive elements</div></div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">COLOUR PALETTE</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                <div style="border:2.5px solid #7a5fa0; background:#efeaf5; border-radius:16px; padding:14px 0 11px; text-align:center;"><div style="display:flex; justify-content:center; gap:5px; margin-bottom:8px; position:relative;"><span style="width:20px; height:20px; border-radius:50%; background:#7a6fb0;"></span><span style="width:20px; height:20px; border-radius:50%; background:#8aa877; display:flex; align-items:center; justify-content:center; color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M20 6 9 17l-5-5"/></svg></span><span style="width:20px; height:20px; border-radius:50%; background:#b08a90;"></span></div><span style="font-size:13px; font-weight:800; color:#5f4a7a;">Mist</span></div>
+                <div style="border:1.5px solid #ddd3c1; background:#eae4d7; border-radius:16px; padding:14px 0 11px; text-align:center;"><div style="display:flex; justify-content:center; gap:5px; margin-bottom:8px;"><span style="width:20px; height:20px; border-radius:50%; background:#5f7d52;"></span><span style="width:20px; height:20px; border-radius:50%; background:#3f5e46;"></span><span style="width:20px; height:20px; border-radius:50%; background:#2f6a5f;"></span></div><span style="font-size:13px; font-weight:800; color:#6d6455;">Sage</span></div>
+                <div style="border:1.5px solid #ddd3c1; background:#eae4d7; border-radius:16px; padding:14px 0 11px; text-align:center;"><div style="display:flex; justify-content:center; gap:5px; margin-bottom:8px;"><span style="width:20px; height:20px; border-radius:50%; background:#d0603f;"></span><span style="width:20px; height:20px; border-radius:50%; background:#7a4f42;"></span><span style="width:20px; height:20px; border-radius:50%; background:#a67d1f;"></span></div><span style="font-size:13px; font-weight:800; color:#6d6455;">Coral</span></div>
+                <div style="border:1.5px solid #ddd3c1; background:#eae4d7; border-radius:16px; padding:14px 0 11px; text-align:center;"><div style="display:flex; justify-content:center; gap:5px; margin-bottom:8px;"><span style="width:20px; height:20px; border-radius:50%; background:#2f7d72;"></span><span style="width:20px; height:20px; border-radius:50%; background:#3f5e50;"></span><span style="width:20px; height:20px; border-radius:50%; background:#4a5f6e;"></span></div><span style="font-size:13px; font-weight:800; color:#6d6455;">Teal</span></div>
+                <div style="border:1.5px solid #ddd3c1; background:#eae4d7; border-radius:16px; padding:14px 0 11px; text-align:center;"><div style="display:flex; justify-content:center; gap:5px; margin-bottom:8px;"><span style="width:20px; height:20px; border-radius:50%; background:#e83a8a;"></span><span style="width:20px; height:20px; border-radius:50%; background:#2ee84a;"></span><span style="width:20px; height:20px; border-radius:50%; background:#2a4ae8;"></span></div><span style="font-size:13px; font-weight:800; color:#6d6455;">Custom</span></div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:12px 6px 0;">SAVED THEMES</div>
+              <div style="background:#efeaf5; border-radius:18px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
+                <div style="display:flex; gap:5px;"><span style="width:26px; height:26px; border-radius:50%; background:#e83a8a;"></span><span style="width:26px; height:26px; border-radius:50%; background:#2ee84a;"></span><span style="width:26px; height:26px; border-radius:50%; background:#2a4ae8;"></span></div>
+                <div style="flex:1;"><div style="font-size:15.5px; font-weight:800;">cray</div><div style="font-size:12.5px; font-weight:800; color:#7a5fa0;">Active</div></div>
+                <div style="display:flex; gap:14px; align-items:center;"><span class="cd-i" style="color:#33302a;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span class="cd-i" style="color:#5f4a7a;"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg></span><span class="cd-i" style="color:#b8524e;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></span></div>
+              </div>
+              <div style="background:#eae4d7; border-radius:18px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
+                <div style="display:flex; gap:5px;"><span style="width:26px; height:26px; border-radius:50%; background:#e83a8a;"></span><span style="width:26px; height:26px; border-radius:50%; background:#2ee84a;"></span><span style="width:26px; height:26px; border-radius:50%; background:#2a4ae8;"></span></div>
+                <div style="flex:1;"><div style="font-size:15.5px; font-weight:800;">cray</div></div>
+                <div style="display:flex; gap:14px; align-items:center;"><span class="cd-i" style="color:#6d6455;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span class="cd-i" style="color:#7a5fa0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg></span><span class="cd-i" style="color:#b8524e;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></span></div>
+              </div>
+              <div style="background:#eae4d7; border-radius:18px; padding:14px 16px; display:flex; align-items:center; gap:14px; opacity:0.5;">
+                <div style="display:flex; gap:5px;"><span style="width:26px; height:26px; border-radius:50%; background:#dcefe0;"></span><span style="width:26px; height:26px; border-radius:50%; background:#f4f8f0;"></span><span style="width:26px; height:26px; border-radius:50%; background:#f6e8ec;"></span></div>
+                <div style="flex:1;"><div style="font-size:15.5px; font-weight:800;">theme</div></div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 4A DISPLAY ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:16px 20px 8px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em;">display<span style="color:#9c8ab8;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:6px 18px 22px; display:flex; flex-direction:column; gap:14px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:4px 6px 0;">GROUPING</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:6px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:15px 0; border-bottom:1px solid #efe8da;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Group chores by category</div><div style="font-size:12px; font-weight:700; color:#a29885;">Show sticky category headers in the chores list</div></div>
+                  <div style="width:52px; height:30px; border-radius:999px; background:#7a5fa0; position:relative; flex-shrink:0;"><span style="position:absolute; right:3px; top:3px; width:24px; height:24px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:15px 0;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Group tasks by category</div><div style="font-size:12px; font-weight:700; color:#a29885;">Show sticky category headers in the tasks list</div></div>
+                  <div style="width:52px; height:30px; border-radius:999px; background:#7a5fa0; position:relative; flex-shrink:0;"><span style="position:absolute; right:3px; top:3px; width:24px; height:24px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">VISIBILITY</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Smart chore visibility</div><div style="font-size:12px; font-weight:700; color:#a29885; margin-top:3px;">Hide chores until they're close to due, based on how often each repeats</div></div>
+                  <div style="width:52px; height:30px; border-radius:999px; background:#7a5fa0; position:relative; flex-shrink:0;"><span style="position:absolute; right:3px; top:3px; width:24px; height:24px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+                <div style="font-size:12.5px; font-weight:700; color:#8f8571; margin-top:16px; padding-top:14px; border-top:1px solid #efe8da;">How many days before a chore is due it reappears:</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                  <div><div style="font-size:14px; font-weight:800;">Daily</div><div style="font-size:11.5px; font-weight:700; color:#a29885;">repeats every day</div></div>
+                  <div style="display:flex; align-items:center; gap:12px;"><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #e0d6c5; color:#c9c0ae; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;">−</span><span style="min-width:52px; text-align:center; font-size:14px; font-weight:800;">0 days</span><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#5f7d52; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800;">+</span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                  <div><div style="font-size:14px; font-weight:800;">Every few days</div><div style="font-size:11.5px; font-weight:700; color:#a29885;">repeats every 2 to 4 days</div></div>
+                  <div style="display:flex; align-items:center; gap:12px;"><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#b8524e; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;">−</span><span style="min-width:52px; text-align:center; font-size:14px; font-weight:800;">1 day</span><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#5f7d52; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800;">+</span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                  <div><div style="font-size:14px; font-weight:800;">Weekly</div><div style="font-size:11.5px; font-weight:700; color:#a29885;">repeats every 5 to 10 days</div></div>
+                  <div style="display:flex; align-items:center; gap:12px;"><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#b8524e; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;">−</span><span style="min-width:52px; text-align:center; font-size:14px; font-weight:800;">3 days</span><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#5f7d52; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800;">+</span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                  <div><div style="font-size:14px; font-weight:800;">Fortnightly</div><div style="font-size:11.5px; font-weight:700; color:#a29885;">repeats every 11 to 20 days</div></div>
+                  <div style="display:flex; align-items:center; gap:12px;"><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#b8524e; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;">−</span><span style="min-width:52px; text-align:center; font-size:14px; font-weight:800;">3 days</span><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#5f7d52; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800;">+</span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                  <div><div style="font-size:14px; font-weight:800;">Monthly and longer</div><div style="font-size:11.5px; font-weight:700; color:#a29885;">repeats every 3+ weeks</div></div>
+                  <div style="display:flex; align-items:center; gap:12px;"><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#b8524e; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;">−</span><span style="min-width:52px; text-align:center; font-size:14px; font-weight:800;">5 days</span><span style="width:32px; height:32px; border-radius:50%; border:1.5px solid #ddd3c1; color:#5f7d52; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800;">+</span></div>
+                </div>
+              </div>
+              <div style="text-align:center; border:1.5px solid #c8bdaf; border-radius:999px; padding:14px 0; font-size:14.5px; font-weight:800; color:#7a5fa0; margin-top:2px;">Reset to defaults</div>
+            </div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 4A REMINDERS & ALERTS ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:16px 20px 8px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em;">reminders &amp; alerts<span style="color:#9c8ab8;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:6px 18px 22px; display:flex; flex-direction:column; gap:14px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:4px 6px 0;">NOTIFICATION STYLE</div>
+              <div style="display:flex; border:1.5px solid #c8bdaf; border-radius:999px; overflow:hidden;">
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:800; background:#e9e0f2; color:#5f4a7a;">✓ Alarm</div>
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:700; color:#6d6455; border-left:1.5px solid #c8bdaf; border-right:1.5px solid #c8bdaf;">Notification</div>
+                <div style="flex:1; text-align:center; padding:13px 0; font-size:14px; font-weight:700; color:#6d6455;">Silent</div>
+              </div>
+              <div style="font-size:13px; font-weight:700; color:#8f8571; padding:0 6px;">Plays alarm sound, bypasses Do Not Disturb</div>
+              <div style="height:1px; background:#e0d6c5; margin:6px 0;"></div>
+              <div style="font-size:14px; font-weight:700; color:#6d6455; padding:0 6px;">If reminders stop arriving, check these permissions.</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:6px 18px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:14px; padding:16px 0; border-bottom:1px solid #efe8da;">
+                  <span class="cd-i" style="color:#7a5fa0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+                  <div style="flex:1; font-size:15.5px; font-weight:800;">Notifications</div>
+                  <span style="display:flex; align-items:center; gap:7px; color:#5f7d52; font-size:13.5px; font-weight:800;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Allowed</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:14px; padding:16px 0; border-bottom:1px solid #efe8da;">
+                  <span class="cd-i" style="color:#7a5fa0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M5 3 2 6M19 3l3 3"/></svg></span>
+                  <div style="flex:1; font-size:15.5px; font-weight:800;">Exact alarms</div>
+                  <span style="display:flex; align-items:center; gap:7px; color:#5f7d52; font-size:13.5px; font-weight:800;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Allowed</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:14px; padding:16px 0;">
+                  <span class="cd-i" style="color:#7a5fa0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span>
+                  <div style="flex:1;"><div style="font-size:15.5px; font-weight:800;">Do Not Disturb access</div><div style="font-size:12px; font-weight:700; color:#a29885;">Lets alarms sound when Do Not Disturb is on</div></div>
+                  <span style="display:flex; align-items:center; gap:7px; color:#5f7d52; font-size:13.5px; font-weight:800;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Allowed</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:9px; padding:6px 6px 0; font-size:14px; font-weight:800; color:#5f7d52;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Reminders are fully enabled.</div>
+            </div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 4A ABOUT ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:16px 20px 8px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em;">about<span style="color:#9c8ab8;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 22px 22px; display:flex; flex-direction:column;">
+              <div style="display:flex; flex-direction:column; align-items:center; text-align:center; margin-top:14px;">
+                <div style="width:74px; height:74px; border-radius:22px; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(95,125,82,0.32);"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div>
+                <div style="font-family:'Lora',serif; font-size:27px; font-weight:600; margin-top:16px;">choreDash</div>
+              </div>
+              <div style="font-size:15px; font-weight:600; line-height:1.6; color:#6d6455; text-align:center; margin-top:14px;">choreDash helps your household share chores and tasks, synced through your own Supabase project.</div>
+              <div style="height:1px; background:#e0d6c5; margin:22px 0;"></div>
+              <div style="text-align:center; background:#e9e0f2; color:#5f4a7a; border-radius:999px; padding:16px 0; font-size:15.5px; font-weight:800;">What's New</div>
+              <div style="text-align:center; border:1.5px solid #c8bdaf; border-radius:999px; padding:15px 0; font-size:15px; font-weight:800; color:#7a5fa0; margin-top:12px;">Open-source licenses</div>
+              <div style="text-align:center; font-size:13.5px; font-weight:700; color:#a29885; margin-top:22px;">Version 0.23.2</div>
+            </div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="turn2" style="margin-top:40px;">
+    <div id="3a" style="scroll-margin-top:40px;">
+      <div style="display:flex; align-items:baseline; gap:14px; border-bottom:2px solid rgba(238,240,242,0.16); padding-bottom:14px; margin-bottom:30px; width:1860px;">
+        <span style="font-family:var(--font-heading); font-weight:800; font-size:13px; letter-spacing:0.14em; background:#8aa877; color:#191b1f; padding:5px 11px;">3A</span>
+        <span style="font-family:var(--font-heading); font-weight:800; font-size:24px; letter-spacing:-0.01em; color:#eef0f2;">Cozy Cream</span>
+        <span style="font-size:13px; color:rgba(238,240,242,0.5);">real bottom tabs (Tasks · Chores · Memos · Settings) · search &amp; sort · chore pressure view · monotone Zen · serif headers</span>
+      </div>
+      <div id="row-3a" style="display:flex; gap:44px; align-items:flex-start; font-family:'Nunito',sans-serif;">
+
+        <!-- ░░ 3A TASKS ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:20px 20px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:'Lora',serif; font-size:27px; font-weight:600; letter-spacing:-0.01em;">tasks<span style="color:#9c8ab8;">.</span></div>
+                <div style="display:flex; align-items:center; gap:18px; color:#a29885;">
+                  <span class="cd-i" title="Mine / mine+unassigned / all" style="color:#7a5fa0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></span>
+                  <span class="cd-i" title="Zen view"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+                  <span class="cd-i" title="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg></span>
+                  <span class="cd-i" title="Group / flat list"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-bottom:2px;">
+                <div style="display:flex; gap:6px;">
+                  <div style="white-space:nowrap; background:#7a5fa0; color:#fffdf9; font-size:12.5px; font-weight:800; padding:6px 11px; border-radius:999px;">All</div>
+                  <div style="white-space:nowrap; background:#e5ddcd; color:#6d6455; font-size:12.5px; font-weight:700; padding:6px 11px; border-radius:999px;">Active</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px; border:1.5px solid #ddd3c1; border-radius:999px; padding:5px 13px; color:#8f8571; font-size:12.5px; font-weight:800;">due <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v18M5 10l7-7 7 7"/></svg></div>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 18px 18px; display:flex; flex-direction:column; gap:9px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#b8524e; padding:2px 6px 0;">OVERDUE</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#b8524e;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#f6e3e1; color:#b8524e; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Renew car insurance</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">CAR · HIGH</div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;"><span style="font-size:12px; font-weight:800; color:#b8524e; background:#f6e3e1; padding:3px 9px; border-radius:8px;">2d late</span><div style="width:26px; height:26px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">M</div></div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">TODAY</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#d9a648;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#f3e8d2; color:#b07f24; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Pay electricity bill</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">TASK · ADMIN · HIGH</div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;"><span style="font-size:12.5px; font-weight:800; color:#8f8571;">6:00pm</span><div style="width:26px; height:26px; border-radius:50%; background:#e9e0f2; color:#7a5fa0; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">A</div></div>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#8aa877;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Buy printer toner</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">GENERAL</div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;"><span style="font-size:11px; font-weight:900; letter-spacing:0.08em; color:#5f7d52; background:#e7ecdd; padding:3px 9px; border-radius:8px;">LOW</span><div style="width:26px; height:26px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">M</div></div>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#9c8ab8;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#e9e0f2; color:#7a5fa0; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Pick up prescription</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">ERRAND · TODAY</div></div>
+                <span style="font-size:12.5px; font-weight:800; color:#8f8571;">4:30pm</span>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">THIS WEEK</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#8aa877;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Plan weekend trip</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">HOLIDAY</div></div>
+                <span style="font-size:12.5px; font-weight:800; color:#8f8571;">Thu</span>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#d9a648;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#f3e8d2; color:#b07f24; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="3"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Book dentist</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">TASK · ADMIN · MEDIUM</div></div>
+                <span style="font-size:12.5px; font-weight:800; color:#8f8571;">Fri</span>
+              </div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 20px; font-size:13px; font-weight:700; color:#a29885; border-top:1px solid #e5ddcd;"><span>5 tasks</span><span style="display:flex; align-items:center; gap:3px; color:#b3a996;">Done <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#e9e0f2; color:#7a5fa0; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#7a5fa0;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 3A SEARCH + SORT ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:18px 20px 0;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="flex:1; display:flex; align-items:center; gap:10px; background:#fffdf9; border-radius:999px; padding:12px 18px; box-shadow:0 4px 14px rgba(128,110,85,0.12);">
+                  <span class="cd-i" style="color:#a29885;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg></span>
+                  <span style="font-size:15px; font-weight:700;">kitch</span><span style="width:2px; height:18px; background:#8aa877; display:inline-block;"></span>
+                </div>
+                <span style="font-size:14.5px; font-weight:800; color:#5f7d52;">Cancel</span>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; margin-top:18px; padding:0 6px;">IN CHORES · 2</div>
+            </div>
+            <div style="padding:12px 18px 0; display:flex; flex-direction:column; gap:9px;">
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#b8524e;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#f6e3e1; color:#b8524e; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 19H4.8a1 1 0 0 1-.9-1.4L6 13"/><path d="m14 5-3-2-3 5 3 2"/><path d="M17 19H9.5"/><path d="m16 11 2.5-1 2.2 4.4a1 1 0 0 1-.9 1.6H17"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Take out recycling</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">CHORE · <span style="color:#5f7d52;">KITCH</span>EN</div></div>
+                <span style="font-size:12px; font-weight:800; color:#b8524e; background:#f6e3e1; padding:3px 9px; border-radius:8px;">2d late</span>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:14px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#8aa877;"></div>
+                <div style="width:46px; height:46px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11 12 4l9 7"/><path d="M5 10v9h14v-9"/></svg></div>
+                <div style="flex:1;"><div style="font-size:17.5px; font-weight:800;">Wipe <span style="background:#e7ecdd; border-radius:5px; padding:0 2px;">kitch</span>en counters</div><div style="font-size:12px; font-weight:700; letter-spacing:0.1em; color:#b3a996; margin-top:3px;">CHORE · <span style="color:#5f7d52;">KITCH</span>EN</div></div>
+                <span style="font-size:11px; font-weight:900; letter-spacing:0.08em; color:#5f7d52; background:#e7ecdd; padding:3px 9px; border-radius:8px;">FRESH</span>
+              </div>
+            </div>
+            <div style="position:absolute; inset:0; background:rgba(51,48,42,0.22);"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; background:#fffdf9; border-radius:26px 26px 0 0; padding:16px 24px 32px; box-shadow:0 -10px 32px rgba(80,70,50,0.22);">
+              <div style="width:42px; height:4px; border-radius:2px; background:#ddd3c1; margin:0 auto 16px;"></div>
+              <div style="font-family:'Lora',serif; font-size:20px; font-weight:600;">Sort by</div>
+              <div style="margin-top:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #efe8da;"><span style="font-size:15.5px; font-weight:800; color:#5f7d52;">Due first</span><span class="cd-i" style="color:#5f7d52;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #efe8da;"><span style="font-size:15.5px; font-weight:700; color:#6d6455;">Room</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #efe8da;"><span style="font-size:15.5px; font-weight:700; color:#6d6455;">Person</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #efe8da;"><span style="font-size:15.5px; font-weight:700; color:#6d6455;">Pressure</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0 4px;"><span style="font-size:15.5px; font-weight:700; color:#6d6455;">Recently added</span></div>
+              </div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 3A CHORES ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:20px 20px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:'Lora',serif; font-size:27px; font-weight:600; letter-spacing:-0.01em;">chores<span style="color:#8aa877;">.</span></div>
+                <div style="display:flex; align-items:center; gap:18px; color:#a29885;">
+                  <span class="cd-i" title="Mine / mine+unassigned / all" style="color:#5f7d52;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></span>
+                  <span class="cd-i" title="Zen view"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+                  <span class="cd-i" title="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg></span>
+                  <span class="cd-i" title="Group / flat list"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:16px;">
+                <div style="white-space:nowrap; background:#5f7d52; color:#fffdf9; font-size:12.5px; font-weight:800; padding:6px 11px; border-radius:999px;">All</div>
+                <div style="white-space:nowrap; background:#f6e3e1; color:#b8524e; font-size:12.5px; font-weight:800; padding:6px 11px; border-radius:999px;">Overdue · 2</div>
+                <div style="white-space:nowrap; background:#f3e8d2; color:#b07f24; font-size:12.5px; font-weight:800; padding:6px 11px; border-radius:999px;">Soon</div>
+                <div style="flex:1;"></div>
+                <div style="white-space:nowrap; display:flex; align-items:center; gap:4px; border:1.5px solid #ddd3c1; border-radius:999px; padding:5px 10px; color:#8f8571; font-size:11.5px; font-weight:800; flex-shrink:0;">pressure <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v18M19 14l-7 7-7-7"/></svg></div>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 18px 18px; display:flex; flex-direction:column; gap:9px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; padding:2px 6px 0;"><span style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885;">KITCHEN</span><span style="font-size:11.5px; font-weight:800; color:#c9c0ae;">2</span></div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:13px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#8aa877;"></div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; font-weight:900;">✳</div>
+                <div style="flex:1;"><div style="font-size:17px; font-weight:800;">Wipe counters</div><div style="font-size:12.5px; font-weight:700; color:#b3a996; margin-top:2px;">every 1d · done 4h ago</div><div style="height:5px; border-radius:3px; background:#efe8da; margin-top:9px; overflow:hidden;"><div style="width:18%; height:100%; border-radius:3px; background:#8aa877;"></div></div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;"><span style="font-size:11.5px; font-weight:800; color:#5f7d52; background:#e7ecdd; padding:2px 8px; border-radius:7px;">20h left</span><div style="width:26px; height:26px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">M</div></div>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:13px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#b8524e;"></div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#f6e3e1; color:#b8524e; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; font-weight:900;">◆</div>
+                <div style="flex:1;"><div style="font-size:17px; font-weight:800;">Take out recycling</div><div style="font-size:12.5px; font-weight:700; color:#b3a996; margin-top:2px;">every 3d · done 5d ago</div><div style="height:5px; border-radius:3px; background:#efe8da; margin-top:9px; overflow:hidden;"><div style="width:100%; height:100%; border-radius:3px; background:#b8524e;"></div></div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;"><span style="font-size:11.5px; font-weight:800; color:#b8524e; background:#f6e3e1; padding:2px 8px; border-radius:7px;">2d over</span><div style="width:26px; height:26px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">M</div></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:baseline; padding:8px 6px 0;"><span style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885;">BATHROOM</span><span style="font-size:11.5px; font-weight:800; color:#c9c0ae;">2</span></div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:13px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#d9a648;"></div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#f3e8d2; color:#b07f24; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; font-weight:900;">◆</div>
+                <div style="flex:1;"><div style="font-size:17px; font-weight:800;">Clean sink</div><div style="font-size:12.5px; font-weight:700; color:#b3a996; margin-top:2px;">every 5d · done 4d ago</div><div style="height:5px; border-radius:3px; background:#efe8da; margin-top:9px; overflow:hidden;"><div style="width:80%; height:100%; border-radius:3px; background:#d9a648;"></div></div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;"><span style="font-size:11.5px; font-weight:800; color:#b07f24; background:#f3e8d2; padding:2px 8px; border-radius:7px;">1d left</span><div style="width:26px; height:26px; border-radius:50%; background:#e9e0f2; color:#7a5fa0; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">A</div></div>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:13px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#b8524e;"></div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#f6e3e1; color:#b8524e; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; font-weight:900;">✳</div>
+                <div style="flex:1;"><div style="font-size:17px; font-weight:800;">Scrub shower</div><div style="font-size:12.5px; font-weight:700; color:#b3a996; margin-top:2px;">every 7d · done 10d ago</div><div style="height:5px; border-radius:3px; background:#efe8da; margin-top:9px; overflow:hidden;"><div style="width:100%; height:100%; border-radius:3px; background:#b8524e;"></div></div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;"><span style="font-size:11.5px; font-weight:800; color:#b8524e; background:#f6e3e1; padding:2px 8px; border-radius:7px;">3d over</span><div style="width:26px; height:26px; border-radius:50%; background:#e9e0f2; color:#7a5fa0; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">A</div></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:baseline; padding:8px 6px 0;"><span style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885;">OUTDOOR</span><span style="font-size:11.5px; font-weight:800; color:#c9c0ae;">1</span></div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); position:relative; overflow:hidden; padding:13px 16px 13px 24px; display:flex; align-items:center; gap:13px;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:7px; background:#8aa877;"></div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; font-weight:900;">❋</div>
+                <div style="flex:1;"><div style="font-size:17px; font-weight:800;">Water plants</div><div style="font-size:12.5px; font-weight:700; color:#b3a996; margin-top:2px;">every 2d · done 2d ago</div><div style="height:5px; border-radius:3px; background:#efe8da; margin-top:9px; overflow:hidden;"><div style="width:92%; height:100%; border-radius:3px; background:#8aa877;"></div></div></div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;"><span style="font-size:11.5px; font-weight:800; color:#5f7d52; background:#e7ecdd; padding:2px 8px; border-radius:7px;">due today</span><div style="width:26px; height:26px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">M</div></div>
+              </div>
+              <div style="background:#ece5d6; border-radius:20px; padding:15px 18px; display:flex; align-items:center; gap:13px; margin-top:6px;">
+                <div style="color:#5f7d52;" class="cd-i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg></div>
+                <div><div style="font-size:14.5px; font-weight:800;">Tap a tag to log</div><div style="font-size:12px; font-weight:700; color:#a29885;">Hold your phone to a chore's NFC sticker</div></div>
+              </div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 20px; font-size:13px; font-weight:700; color:#a29885; border-top:1px solid #e5ddcd;"><span>5 chores · 1 hidden</span><span style="display:flex; align-items:center; gap:3px; color:#b3a996;">Done <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 3A ZEN LIST ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#ecebe2; font-family:'Nunito',sans-serif; color:#4c4b41;">
+            <div style="padding:18px 22px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:'Lora',serif; font-size:28px; font-weight:600; letter-spacing:-0.01em;">zen<span style="color:#9a988a;">.</span></div>
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <span style="background:#dddbd0; color:#6e6c5f; font-size:11.5px; font-weight:800; padding:4px 12px; border-radius:999px;">mine</span>
+                    <span style="color:#9a988a; font-size:11.5px; font-weight:700; padding:4px 8px;">all</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:6px; color:#9a988a;"><span style="font-size:12px; font-weight:800; letter-spacing:0.08em;">LEAVE</span><span class="cd-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 20px 16px; display:flex; flex-direction:column; gap:8px;">
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Take out recycling</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">kitchen · when you're up</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Pay electricity bill</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">admin · this evening</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Pick up prescription</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">errand · this afternoon</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px; opacity:0.62;">
+                <span style="width:24px; height:24px; border-radius:50%; background:#b5b3a4; color:#f4f3ec; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700; color:#9a988a; text-decoration:line-through; text-decoration-thickness:1px;">Water plants</div><div style="font-size:12.5px; font-weight:600; color:#b5b3a4; margin-top:2px;">outdoor · done, nice</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Wipe kitchen counters</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">kitchen · anytime</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Change bed sheets</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">bedroom · this week</div></div>
+              </div>
+              <div style="background:#f4f3ec; border-radius:18px; box-shadow:0 3px 10px rgba(110,105,85,0.08); padding:12px 18px; display:flex; align-items:center; gap:14px;">
+                <span style="width:24px; height:24px; border-radius:50%; border:1.7px solid #b5b3a4; flex-shrink:0;"></span>
+                <div style="flex:1;"><div style="font-size:16.5px; font-weight:700;">Book dentist</div><div style="font-size:12.5px; font-weight:600; color:#9a988a; margin-top:2px;">admin · whenever</div></div>
+              </div>
+            </div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 3A REMINDER VIEW ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ true }}" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#272e24; font-family:'Nunito',sans-serif; color:#f0ead9;">
+            <div style="padding:20px 22px 0; display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-family:'Lora',serif; font-size:24px; font-weight:600;">reminder<span style="color:#dfcf90;">.</span></div>
+              <span style="font-size:12px; font-weight:800; letter-spacing:0.08em; color:#8a9a7c;">6:00 PM</span>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 34px; text-align:center;">
+              <div style="width:120px; height:120px; border-radius:50%; background:#323b2e; display:flex; align-items:center; justify-content:center; margin-bottom:30px; box-shadow:0 0 0 18px rgba(223,207,144,0.06), 0 0 0 36px rgba(223,207,144,0.03);">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#dfcf90" stroke-width="1.5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              </div>
+              <div style="font-size:13px; font-weight:800; letter-spacing:0.16em; color:#8a9a7c;">YOU ASKED FOR A NUDGE</div>
+              <div style="font-family:'Lora',serif; font-size:29px; font-weight:600; line-height:1.25; margin-top:14px;">Pay electricity bill</div>
+              <div style="font-size:14px; font-weight:700; color:#8a9a7c; margin-top:10px;">due today · about 5 minutes</div>
+              <div style="display:flex; align-items:center; gap:14px; margin-top:44px;">
+                <div style="padding:15px 34px; border-radius:999px; background:#dfcf90; color:#272e24; font-size:16px; font-weight:900;">Done ✓</div>
+                <div style="padding:15px 26px; border-radius:999px; border:1.5px solid #4a5544; color:#c5cdb5; font-size:15px; font-weight:800;">Snooze 1h</div>
+              </div>
+            </div>
+            <div style="padding:0 22px 34px; text-align:center; font-size:13px; font-weight:700; color:#8a9a7c;">next: Pick up prescription · 4:30pm</div>
+          </div>
+        </x-import>
+
+        <!-- ░░ 3A SETTINGS ░░ -->
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div style="height:100%; position:relative; display:flex; flex-direction:column; background:#f2ede2; font-family:'Nunito',sans-serif; color:#33302a;">
+            <div style="height:5px; background:linear-gradient(90deg,#8aa877,#e8d9b0,#d9a648); flex-shrink:0;"></div>
+            <div style="padding:20px 20px 12px; display:flex; align-items:center; gap:12px;">
+              <span class="cd-i" style="color:#a29885;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></span>
+              <div style="font-family:'Lora',serif; font-size:25px; font-weight:600; letter-spacing:-0.01em;">settings<span style="color:#8aa877;">.</span></div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:6px 18px 24px; display:flex; flex-direction:column; gap:12px;">
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:4px 6px 0;">APPEARANCE</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:18px;">
+                <div style="font-size:15.5px; font-weight:800;">Theme</div>
+                <div style="display:flex; gap:10px; margin-top:12px;">
+                  <div style="flex:1; border-radius:14px; border:2.5px solid #8aa877; background:#f2ede2; padding:12px 0; text-align:center; font-size:13px; font-weight:800; color:#5f7d52;">Cozy Cream</div>
+                  <div style="flex:1; border-radius:14px; border:1.5px solid #ddd3c1; background:#272e24; padding:12px 0; text-align:center; font-size:13px; font-weight:800; color:#c5cdb5;">Zen Dark</div>
+                </div>
+                <div style="margin-top:16px; padding-top:14px; border-top:1px solid #efe8da;">
+                  <div style="font-size:14.5px; font-weight:800;">List density</div>
+                  <div style="display:flex; background:#efe8da; border-radius:999px; padding:3px; margin-top:10px;">
+                    <span style="flex:1; text-align:center; font-size:11.5px; font-weight:800; padding:5px 0; border-radius:999px; background:#fffdf9; color:#5f7d52; box-shadow:0 1px 4px rgba(128,110,85,0.18);">Compact</span>
+                    <span style="flex:1; text-align:center; font-size:11.5px; font-weight:700; padding:5px 0; color:#8f8571;">Standard</span>
+                    <span style="flex:1; text-align:center; font-size:11.5px; font-weight:700; padding:5px 0; color:#8f8571;">Spacious</span>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:14px; border-top:1px solid #efe8da;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Follow system theme</div><div style="font-size:12px; font-weight:700; color:#a29885;">Matches your phone's light &amp; dark setting</div></div>
+                  <div style="width:46px; height:27px; border-radius:999px; background:#8aa877; position:relative;"><span style="position:absolute; right:3px; top:3px; width:21px; height:21px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">ZEN MODE</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:6px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #efe8da;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Hide overdue counts</div><div style="font-size:12px; font-weight:700; color:#a29885;">No red badges, no guilt</div></div>
+                  <div style="width:46px; height:27px; border-radius:999px; background:#8aa877; position:relative;"><span style="position:absolute; right:3px; top:3px; width:21px; height:21px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Gentle reminders</div><div style="font-size:12px; font-weight:700; color:#a29885;">One quiet nudge, never repeated</div></div>
+                  <div style="width:46px; height:27px; border-radius:999px; background:#ddd3c1; position:relative;"><span style="position:absolute; left:3px; top:3px; width:21px; height:21px; border-radius:50%; background:#fffdf9;"></span></div>
+                </div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">PERSONALISATION</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:6px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #efe8da;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Display</div><div style="font-size:12px; font-weight:700; color:#a29885;">Grouping and visibility for chores &amp; tasks</div></div>
+                  <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #efe8da;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Quick add button</div><div style="font-size:12px; font-weight:700; color:#a29885;">Reorder the + menu, rename reminders</div></div>
+                  <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0;">
+                  <div><div style="font-size:14.5px; font-weight:800;">Widget customisation</div><div style="font-size:12px; font-weight:700; color:#a29885;">Choose what your home-screen widget shows</div></div>
+                  <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+                </div>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">REMINDERS</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div><div style="font-size:14.5px; font-weight:800;">Reminders &amp; alerts</div><div style="font-size:12px; font-weight:700; color:#a29885;">Notifications, exact alarms, Do Not Disturb</div></div>
+                <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">HOUSEHOLD</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px; display:flex; align-items:center; gap:12px;">
+                <div style="display:flex;"><div style="width:38px; height:38px; border-radius:50%; background:#e9e0f2; color:#7a5fa0; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2.5px solid #fffdf9;">A</div><div style="width:38px; height:38px; border-radius:50%; background:#e5ddcd; color:#6d6455; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2.5px solid #fffdf9; margin-left:-10px;">M</div></div>
+                <div style="flex:1;"><div style="font-size:15px; font-weight:800;">A &amp; M</div><div style="font-size:12px; font-weight:700; color:#a29885;">Shared home · 12 chores · 5 tasks</div></div>
+                <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+              </div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px; display:flex; align-items:center; gap:12px;">
+                <div style="width:38px; height:38px; border-radius:50%; background:#e7ecdd; color:#5f7d52; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg></div>
+                <div style="flex:1;"><div style="font-size:15px; font-weight:800;">NFC tags</div><div style="font-size:12px; font-weight:700; color:#a29885;">8 stickers paired</div></div>
+                <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">ACCOUNT</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div><div style="font-size:14.5px; font-weight:800;">Supabase connection</div><div style="font-size:12px; font-weight:700; color:#a29885;">Project URL, anon key, and your owner handle</div></div>
+                <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+              </div>
+              <div style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:#a29885; padding:8px 6px 0;">ABOUT</div>
+              <div style="background:#fffdf9; border-radius:20px; box-shadow:0 5px 16px rgba(128,110,85,0.13); padding:16px 18px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div><div style="font-size:14.5px; font-weight:800;">About choreDash</div><div style="font-size:12px; font-weight:700; color:#a29885;">Version, what's new, and licenses</div></div>
+                <span class="cd-i" style="color:#c9c0ae;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:flex-end; background:#f7f2e7; border-top:1px solid #e5ddcd; padding:8px 8px 12px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Tasks</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="5" rx="2.5"/><path d="M7 10v5M10.5 10v6.5M13.5 10v6.5M17 10v5"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Chores</span></div>
+              <div style="flex:1; display:flex; justify-content:center;"><div style="width:52px; height:52px; border-radius:50%; background:#8aa877; color:#fffdf9; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px rgba(95,125,82,0.38); margin-bottom:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="padding:4px 17px; color:#a29885; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><span style="font-size:11.5px; font-weight:700; color:#a29885;">Memos</span></div>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;"><div style="background:#dfe8d3; color:#5f7d52; border-radius:999px; padding:4px 17px; display:flex;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="font-size:11.5px; font-weight:800; color:#5f7d52;">Settings</span></div>
+            </div>
+          </div>
+        </x-import>
+
+      </div>
+    </div>
+  </section>
+
+  
+
+</div>
+</x-dc>
+</body>
+</html>
