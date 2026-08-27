@@ -31,6 +31,13 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.24.1] - 2026-08-27
+
+### Fixed
+- Restoring a task marked done in error works again (it used to fail with a "list is empty" error)
+- Clearing a task's owner, notes, category, due date or reminder in the edit sheet now actually clears it
+
+---
 ## [0.24.0] - 2026-08-26
 
 ### Added
