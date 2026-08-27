@@ -738,3 +738,35 @@ For follow-up work on an already-merged PR, always add a fresh
 `changelog/unreleased/<new-slug>.json` and leave the merged fragment
 untouched; the release consolidation merges all fragments anyway, so
 splitting them costs nothing.
+
+---
+
+## 33. Partial-update DTOs with all-null defaults cannot clear a column via Supabase
+
+The Supabase client serializes with `encodeDefaults = false`, so any DTO
+property equal to its default is omitted from the request body. A
+partial-update DTO where every field defaults to null (like `TaskUpdate`)
+therefore cannot express "set this column to null": `TaskUpdate(completedAt
+= null)` encodes as `{}`, an empty PATCH that matches nothing, and
+`decodeSingle()` on the empty response surfaces as a "List is empty" error.
+Clearing a single field alongside set fields fails more quietly: the null is
+just dropped and the old value stays.
+
+Build such PATCH bodies as `Map<String, String?>` (or a `JsonObject`)
+instead: map entries have no defaults, so null values are sent as explicit
+JSON nulls. `ChoreRepository.archiveTag` and `TaskRepository`'s payload
+builders are the pattern; `TaskPayloadTest` pins the behaviour.
+
+---
+
+## 34. "Could not find or load main class" with a BLANK name means an empty argv word
+
+`gradlew` failed with `Error: Could not find or load main class ` (empty
+class name). The launch line evaluated `'"$JAVA_OPTS"'` and
+`'"$GRADLE_OPTS"'` as quoted expansions, so when those variables are unset
+they become empty-string arguments; java takes the first non-option
+argument as the main class, and that argument was `""`. Expand optional
+option variables unquoted in the wrapper (`$JAVA_OPTS`), so unset means
+zero words, or filter empties the way the upstream Gradle script does with
+xargs. The blank class name in the error is the tell: some argv word
+before the real main class evaluated to an empty string.
