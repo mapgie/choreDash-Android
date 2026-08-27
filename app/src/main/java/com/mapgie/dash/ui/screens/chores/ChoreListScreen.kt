@@ -9,16 +9,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -36,6 +39,7 @@ import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
 import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.PillShape
@@ -70,6 +74,8 @@ fun ChoreListScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     var showArchivedSection by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var addSheetTagId by remember { mutableStateOf("") }
     var reminderTargetChore by remember { mutableStateOf<Chore?>(null) }
 
@@ -146,171 +152,193 @@ fun ChoreListScreen(
                 PageHeader(
                     title = if (uiState.zenMode) "zen" else "chores",
                     accent = LocalTypeAccents.current.onChoreContainer,
-                )
-                // Filter chips + toggles
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ChoreFilter.entries.forEach { f ->
-                        FilterChip(
-                            selected = uiState.filter == f,
-                            onClick = { viewModel.setFilter(f) },
-                            label = { Text(f.label) },
-                            shape = PillShape,
-                            // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (!uiState.zenMode) {
-                        IconButton(
-                            onClick = {
-                                viewModel.setOwnerFilter(
-                                    if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
-                                    else OwnerFilter.ME
+                    actions = {
+                        if (!uiState.zenMode) {
+                            IconButton(
+                                onClick = {
+                                    searchActive = !searchActive
+                                    if (!searchActive) searchQuery = ""
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Search,
+                                    contentDescription = if (searchActive) "Close search" else "Search chores",
+                                    tint = if (searchActive)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Person,
-                                contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
-                                    "Show all owners" else "Show my chores",
-                                tint = if (uiState.ownerFilter == OwnerFilter.ME)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(
-                            onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Bolt,
-                                contentDescription = if (uiState.showDueCountdown)
-                                    "Hide due countdown" else "Show due countdown",
-                                tint = if (uiState.showDueCountdown)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most overdue first" else "Sorted: recently done first",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Spa,
-                            contentDescription = if (uiState.zenMode)
-                                "Exit zen mode" else "Enter zen mode",
-                            tint = if (uiState.zenMode)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                when {
-                    uiState.error != null -> ErrorState(
-                        message = uiState.error!!,
-                        onRetry = { viewModel.load() }
-                    )
-
-                    !uiState.loading && uiState.active.isEmpty() -> EmptyState(
-                        message = if (uiState.owners.isEmpty())
-                            "Configure Supabase credentials in Settings to get started"
-                        else "No chores found. Tap + to add one, or scan an NFC tag."
-                    )
-
-                    else -> {
-                        val displayed = uiState.displayed
-                        val hiddenChores = uiState.hiddenChores
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 88.dp)
-                        ) {
-                            if (uiState.groupByCategory && !uiState.zenMode) {
-                                val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
-                                grouped.forEach { (category, chores) ->
-                                    stickyHeader {
-                                        SectionLabel(
-                                            text = category,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(MaterialTheme.colorScheme.background)
-                                                .padding(horizontal = 16.dp, vertical = 6.dp)
-                                        )
-                                    }
-                                    items(chores, key = { it.id }) { chore ->
-                                        SwipeToLogCard(
-                                            chore = chore,
-                                            showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                            zenMode = uiState.zenMode,
-                                            showDueCountdown = uiState.showDueCountdown,
-                                            showCategory = !uiState.groupByCategory,
-                                            onTap = { logTargetChore = it; showLogSheet = true },
-                                            onLongPress = { editTargetChore = it; showEditSheet = true },
-                                            onSwipeLog = { viewModel.logChore(it.tagId) }
-                                        )
-                                    }
-                                }
-                            } else {
-                                items(displayed, key = { it.id }) { chore ->
-                                    SwipeToLogCard(
-                                        chore = chore,
-                                        showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                        zenMode = uiState.zenMode,
-                                        showDueCountdown = uiState.showDueCountdown,
-                                        showCategory = !uiState.groupByCategory,
-                                        onTap = { logTargetChore = it; showLogSheet = true },
-                                        onLongPress = { editTargetChore = it; showEditSheet = true },
-                                        onSwipeLog = { viewModel.logChore(it.tagId) }
+                            }
+                            IconButton(
+                                onClick = {
+                                    viewModel.setOwnerFilter(
+                                        if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
+                                        else OwnerFilter.ME
                                     )
-                                }
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Person,
+                                    contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
+                                        "Show all owners" else "Show my chores",
+                                    tint = if (uiState.ownerFilter == OwnerFilter.ME)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+                            IconButton(
+                                onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Bolt,
+                                    contentDescription = if (uiState.showDueCountdown)
+                                        "Hide due countdown" else "Show due countdown",
+                                    tint = if (uiState.showDueCountdown)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                    contentDescription = if (uiState.zenSortAscending)
+                                        "Sorted: most overdue first" else "Sorted: recently done first",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Spa,
+                                contentDescription = if (uiState.zenMode)
+                                    "Exit zen mode" else "Enter zen mode",
+                                tint = if (uiState.zenMode)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                )
+                if (searchActive && !uiState.zenMode) {
+                    SearchRow(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onCancel = { searchActive = false; searchQuery = "" },
+                        placeholder = "Search chores",
+                    )
+                    val query = searchQuery.trim()
+                    val results = if (query.isEmpty()) emptyList() else
+                        uiState.active.filter { c ->
+                            c.label.contains(query, ignoreCase = true) ||
+                                c.category?.contains(query, ignoreCase = true) == true ||
+                                c.owner?.contains(query, ignoreCase = true) == true
+                        }
+                    LazyColumn(
+                        contentPadding = PaddingValues(bottom = 88.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item(key = "search_count") {
+                            SectionLabel(
+                                text = "in chores · ${results.size}",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                        items(results, key = { it.id }) { chore ->
+                            SwipeToLogCard(
+                                chore = chore,
+                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                zenMode = false,
+                                showDueCountdown = uiState.showDueCountdown,
+                                showCategory = true,
+                                onTap = { logTargetChore = it; showLogSheet = true },
+                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                onSwipeLog = { viewModel.logChore(it.tagId) },
+                                highlightQuery = query
+                            )
+                        }
+                    }
+                } else {
+                    // Filter chips
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ChoreFilter.entries.forEach { f ->
+                            FilterChip(
+                                selected = uiState.filter == f,
+                                onClick = { viewModel.setFilter(f) },
+                                label = { Text(f.label) },
+                                shape = PillShape,
+                                // High-contrast fill so selected state reads in 100ms (GoFlo LESSONS.md)
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
+                        }
+                    }
 
-                            if (hiddenChores.isNotEmpty()) {
-                                item {
-                                    TextButton(
-                                        onClick = { viewModel.toggleShowHidden() },
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                                    ) {
-                                        Text(
-                                            when {
-                                                uiState.showHidden ->
-                                                    "Collapse hidden chores (${hiddenChores.size})"
-                                                uiState.smartVisibility ->
-                                                    "${hiddenChores.size} hidden until closer to due"
-                                                else ->
-                                                    "${hiddenChores.size} not due for 60+ days"
-                                            },
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                    when {
+                        uiState.error != null -> ErrorState(
+                            message = uiState.error!!,
+                            onRetry = { viewModel.load() }
+                        )
+
+                        !uiState.loading && uiState.active.isEmpty() -> EmptyState(
+                            message = if (uiState.owners.isEmpty())
+                                "Configure Supabase credentials in Settings to get started"
+                            else "No chores found. Tap + to add one, or scan an NFC tag."
+                        )
+
+                        else -> {
+                            val displayed = uiState.displayed
+                            val hiddenChores = uiState.hiddenChores
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 88.dp)
+                            ) {
+                                if (uiState.groupByCategory && !uiState.zenMode) {
+                                    val grouped = displayed.groupBy { it.category ?: "Uncategorised" }
+                                    grouped.forEach { (category, chores) ->
+                                        stickyHeader {
+                                            SectionLabel(
+                                                text = category,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(MaterialTheme.colorScheme.background)
+                                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                            )
+                                        }
+                                        items(chores, key = { it.id }) { chore ->
+                                            SwipeToLogCard(
+                                                chore = chore,
+                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                zenMode = uiState.zenMode,
+                                                showDueCountdown = uiState.showDueCountdown,
+                                                showCategory = !uiState.groupByCategory,
+                                                onTap = { logTargetChore = it; showLogSheet = true },
+                                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                                onSwipeLog = { viewModel.logChore(it.tagId) }
+                                            )
+                                        }
                                     }
-                                }
-                                if (uiState.showHidden) {
-                                    items(hiddenChores, key = { "hidden_${it.id}" }) { chore ->
+                                } else {
+                                    items(displayed, key = { it.id }) { chore ->
                                         SwipeToLogCard(
                                             chore = chore,
                                             showOwner = uiState.ownerFilter == OwnerFilter.ALL,
@@ -323,45 +351,81 @@ fun ChoreListScreen(
                                         )
                                     }
                                 }
-                            }
 
-                            if (uiState.archived.isNotEmpty()) {
-                                item {
-                                    TextButton(
-                                        onClick = { showArchivedSection = !showArchivedSection },
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                                    ) {
-                                        Text(
-                                            if (showArchivedSection)
-                                                "Hide archived (${uiState.archived.size})"
-                                            else
-                                                "Show archived (${uiState.archived.size})",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                if (hiddenChores.isNotEmpty()) {
+                                    item {
+                                        TextButton(
+                                            onClick = { viewModel.toggleShowHidden() },
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                                        ) {
+                                            Text(
+                                                when {
+                                                    uiState.showHidden ->
+                                                        "Collapse hidden chores (${hiddenChores.size})"
+                                                    uiState.smartVisibility ->
+                                                        "${hiddenChores.size} hidden until closer to due"
+                                                    else ->
+                                                        "${hiddenChores.size} not due for 60+ days"
+                                                },
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    if (uiState.showHidden) {
+                                        items(hiddenChores, key = { "hidden_${it.id}" }) { chore ->
+                                            SwipeToLogCard(
+                                                chore = chore,
+                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                zenMode = uiState.zenMode,
+                                                showDueCountdown = uiState.showDueCountdown,
+                                                showCategory = !uiState.groupByCategory,
+                                                onTap = { logTargetChore = it; showLogSheet = true },
+                                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                                onSwipeLog = { viewModel.logChore(it.tagId) }
+                                            )
+                                        }
                                     }
                                 }
-                                if (showArchivedSection) {
-                                    items(
-                                        uiState.archived,
-                                        key = { "archived_${it.id}" }
-                                    ) { chore ->
-                                        ChoreCard(
-                                            chore = chore,
-                                            showOwner = uiState.ownerFilter == OwnerFilter.ALL,
-                                            zenMode = uiState.zenMode,
-                                            showDueCountdown = uiState.showDueCountdown,
-                                            showCategory = !uiState.groupByCategory,
-                                            modifier = Modifier
-                                                .semantics { role = Role.Button }
-                                                .combinedClickable(
-                                                    onClick = {},
-                                                    onLongClick = {
-                                                        editTargetChore = chore
-                                                        showEditSheet = true
-                                                    }
-                                                )
-                                        )
+
+                                if (uiState.archived.isNotEmpty()) {
+                                    item {
+                                        TextButton(
+                                            onClick = { showArchivedSection = !showArchivedSection },
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                                        ) {
+                                            Text(
+                                                if (showArchivedSection)
+                                                    "Hide archived (${uiState.archived.size})"
+                                                else
+                                                    "Show archived (${uiState.archived.size})",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    if (showArchivedSection) {
+                                        items(
+                                            uiState.archived,
+                                            key = { "archived_${it.id}" }
+                                        ) { chore ->
+                                            ChoreCard(
+                                                chore = chore,
+                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                zenMode = uiState.zenMode,
+                                                showDueCountdown = uiState.showDueCountdown,
+                                                showCategory = !uiState.groupByCategory,
+                                                modifier = Modifier
+                                                    .semantics { role = Role.Button }
+                                                    .combinedClickable(
+                                                        onClick = {},
+                                                        onLongClick = {
+                                                            editTargetChore = chore
+                                                            showEditSheet = true
+                                                        }
+                                                    )
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -501,7 +565,8 @@ private fun SwipeToLogCard(
     showCategory: Boolean,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
-    onSwipeLog: (Chore) -> Unit
+    onSwipeLog: (Chore) -> Unit,
+    highlightQuery: String? = null
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -542,6 +607,7 @@ private fun SwipeToLogCard(
             zenMode = zenMode,
             showDueCountdown = showDueCountdown,
             showCategory = showCategory,
+            highlightQuery = highlightQuery,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(
