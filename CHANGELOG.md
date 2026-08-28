@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.25.0] - 2026-08-28
+
+### Added
+- Search on the Tasks and Chores lists: tap the search icon in the header for a pill search field with live results and highlighted matches
+
+### Changed
+- New bottom utility bar in the Cozy Cream style: flat with a hairline top edge, the round sage add button docked in its centre, and the active tab's icon in a tinted pill
+- Icons across the navigation, headers and cards switch to the design's outline style
+- List screen actions (search, zen, owner filter, countdown) move up into the page header; task sorting is now a small "due" text control beside the filter chips
+- The Cozy Cream design handoff is checked in under docs/design/cozy-cream for future reference
+
+---
 ## [0.24.1] - 2026-08-27
 
 ### Fixed
