@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.screens.tasks
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mapgie.dash.ui.components.core.OwnerFilter
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.DuePeriod
 import com.mapgie.dash.data.model.ReminderDto
@@ -38,7 +39,6 @@ import javax.inject.Inject
 
 enum class TaskFilter { ALL, ACTIVE, DONE }
 enum class TaskSort { PRIORITY, DUE, CREATED }
-enum class OwnerFilter { ALL, MINE }
 
 data class TaskUiState(
     val loading: Boolean = true,
@@ -48,7 +48,7 @@ data class TaskUiState(
     val filter: TaskFilter = TaskFilter.ACTIVE,
     val sort: TaskSort = TaskSort.PRIORITY,
     val groupByCategory: Boolean = true,
-    val ownerFilter: OwnerFilter = OwnerFilter.ALL,
+    val ownerFilter: OwnerFilter = OwnerFilter.EVERYONE,
     val ownerHandle: String = "",
     val pinnedTaskId: String? = null,
     val hideThresholdDays: Int = -1,
@@ -64,10 +64,7 @@ data class TaskUiState(
                     TaskFilter.ACTIVE -> task.completedAt == null && task.archivedAt == null
                     TaskFilter.DONE -> task.completedAt != null && task.archivedAt == null
                 }
-                val matchesOwner = when (ownerFilter) {
-                    OwnerFilter.ALL -> true
-                    OwnerFilter.MINE -> task.owner == null || task.owner == ownerHandle
-                }
+                val matchesOwner = ownerFilter.matches(task.owner, ownerHandle)
                 matchesStatus && matchesOwner
             }
             if (zenMode) {

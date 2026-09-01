@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.*
@@ -39,6 +38,7 @@ import com.mapgie.dash.ui.components.EditChoreSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
 import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.OwnerFilterButton
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.theme.LocalTypeAccents
@@ -169,22 +169,10 @@ fun ChoreListScreen(
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            IconButton(
-                                onClick = {
-                                    viewModel.setOwnerFilter(
-                                        if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
-                                        else OwnerFilter.ME
-                                    )
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Person,
-                                    contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
-                                        "Show all owners" else "Show my chores",
-                                    tint = if (uiState.ownerFilter == OwnerFilter.ME)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                OwnerFilterButton(
+                                    filter = uiState.ownerFilter,
+                                    onFilterChange = viewModel::setOwnerFilter,
                                 )
                             }
                             IconButton(
@@ -258,7 +246,7 @@ fun ChoreListScreen(
                         items(results, key = { it.id }) { chore ->
                             SwipeToLogCard(
                                 chore = chore,
-                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                showOwner = uiState.ownerFilter.showsOwner,
                                 zenMode = false,
                                 showDueCountdown = uiState.showDueCountdown,
                                 showCategory = true,
@@ -327,7 +315,7 @@ fun ChoreListScreen(
                                         items(chores, key = { it.id }) { chore ->
                                             SwipeToLogCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,
@@ -341,7 +329,7 @@ fun ChoreListScreen(
                                     items(displayed, key = { it.id }) { chore ->
                                         SwipeToLogCard(
                                             chore = chore,
-                                            showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
                                             showDueCountdown = uiState.showDueCountdown,
                                             showCategory = !uiState.groupByCategory,
@@ -376,7 +364,7 @@ fun ChoreListScreen(
                                         items(hiddenChores, key = { "hidden_${it.id}" }) { chore ->
                                             SwipeToLogCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,
@@ -411,7 +399,7 @@ fun ChoreListScreen(
                                         ) { chore ->
                                             ChoreCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,

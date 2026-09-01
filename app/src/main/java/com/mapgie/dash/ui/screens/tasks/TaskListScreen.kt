@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +62,7 @@ import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
+import com.mapgie.dash.ui.components.core.OwnerFilterButton
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
@@ -138,24 +138,10 @@ fun TaskListScreen(
                                 )
                             }
                             if (uiState.ownerHandle.isNotBlank()) {
-                                IconButton(
-                                    onClick = {
-                                        viewModel.setOwnerFilter(
-                                            if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
-                                            else OwnerFilter.MINE
-                                        )
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Person,
-                                        contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                            "Show all owners" else "Show my tasks",
-                                        tint = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                            MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                OwnerFilterButton(
+                                    filter = uiState.ownerFilter,
+                                    onFilterChange = viewModel::setOwnerFilter,
+                                )
                             }
                         } else {
                             IconButton(
@@ -300,7 +286,7 @@ fun TaskListScreen(
                                             onToggleDone = { viewModel.markDone(task.id) },
                                             onSwipeToggleDone = { viewModel.markDone(task.id) },
                                             showCategory = false,
-                                            showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
                                         )
                                     }
@@ -314,7 +300,7 @@ fun TaskListScreen(
                                         onToggleDone = { viewModel.markDone(task.id) },
                                         onSwipeToggleDone = { viewModel.markDone(task.id) },
                                         showCategory = !uiState.groupByCategory,
-                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                        showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode
                                     )
                                 }
@@ -351,7 +337,7 @@ fun TaskListScreen(
                                             onToggleDone = { viewModel.markUndone(task.id) },
                                             onSwipeToggleDone = { viewModel.markUndone(task.id) },
                                             showCategory = !uiState.groupByCategory,
-                                            showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
                                         )
                                     }

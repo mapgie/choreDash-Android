@@ -1,0 +1,7 @@
+{
+  "bump": "minor",
+  "changed": [
+    "The owner filter on the Chores and Tasks screens now cycles through three states: just mine (filled person), mine and unassigned (outlined person), and everyone (two people). Previously it toggled between mine-plus-unassigned and everyone.",
+    "The owner filter button on Chores is hidden until an owner handle is set, matching Tasks."
+  ]
+}

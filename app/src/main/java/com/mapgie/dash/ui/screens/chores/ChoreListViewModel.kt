@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.screens.chores
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mapgie.dash.ui.components.core.OwnerFilter
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.Chore
@@ -35,8 +36,6 @@ enum class ChoreFilter(val label: String) {
     OVERDUE("Overdue"),
     SOON("Soon")
 }
-enum class OwnerFilter { ME, ALL }
-
 data class RecentScan(val choreLabel: String, val scanId: String)
 
 data class ChoreUiState(
@@ -47,7 +46,7 @@ data class ChoreUiState(
     val owners: List<String> = emptyList(),
     val filter: ChoreFilter = ChoreFilter.ALL,
     val groupByCategory: Boolean = true,
-    val ownerFilter: OwnerFilter = OwnerFilter.ALL,
+    val ownerFilter: OwnerFilter = OwnerFilter.EVERYONE,
     val ownerHandle: String = "",
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
@@ -63,13 +62,7 @@ data class ChoreUiState(
     val pinChooser: PinChooserState? = null
 ) {
     private val ownerFiltered: List<Chore>
-        get() {
-            var result = active
-            if (ownerFilter == OwnerFilter.ME && ownerHandle.isNotBlank()) {
-                result = result.filter { it.owner == null || it.owner == ownerHandle }
-            }
-            return result
-        }
+        get() = active.filter { ownerFilter.matches(it.owner, ownerHandle) }
 
     /** True if this chore belongs in the main list under its cadence bucket's lead time. */
     private fun withinLeadTime(chore: Chore): Boolean {
@@ -145,7 +138,7 @@ class ChoreListViewModel @Inject constructor(
     val uiState: StateFlow<ChoreUiState> = _uiState.asStateFlow()
 
     init {
-        // Keep ownerHandle in sync so ME filter works correctly across settings changes
+        // Keep ownerHandle in sync so the owner filter works correctly across settings changes
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _uiState.update {
