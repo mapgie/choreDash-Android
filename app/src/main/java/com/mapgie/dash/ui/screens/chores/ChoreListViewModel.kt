@@ -101,11 +101,16 @@ data class ChoreUiState(
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
             if (zenMode) {
-                // Zen sort: ascending = most overdue first (null/oldest lastScanned first)
+                // Zen sort: ascending = most overdue first (never-done, then oldest scan);
+                // descending = recently done first, never-done last. Never-done is
+                // ordered by an explicit first key: reversing a nulls-aware comparator
+                // reverses its null placement too (see LESSONS.md).
                 result = if (zenSortAscending) {
                     result.sortedWith(compareBy(nullsFirst<Instant>()) { it.lastScanned })
                 } else {
-                    result.sortedWith(compareByDescending(nullsLast<Instant>()) { it.lastScanned })
+                    result.sortedWith(
+                        compareBy<Chore> { it.lastScanned == null }.thenByDescending { it.lastScanned }
+                    )
                 }
             } else if (showDueCountdown) {
                 // When showing the due countdown, surface the most urgent chores first

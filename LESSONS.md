@@ -770,3 +770,25 @@ option variables unquoted in the wrapper (`$JAVA_OPTS`), so unset means
 zero words, or filter empties the way the upstream Gradle script does with
 xargs. The blank class name in the error is the tell: some argv word
 before the real main class evaluated to an empty string.
+
+---
+
+## 35. `compareByDescending(nullsLast())` puts nulls FIRST
+
+`compareByDescending(comparator) { selector }` wraps the whole comparator in
+`reversed()`, and that reversal applies to the null placement as well as the
+value order. So `compareByDescending(nullsLast<Instant>()) { it.lastScanned }`
+sorts never-scanned chores to the top, the opposite of what it reads as. The
+Chores zen "recently done first" sort shipped this way until a unit test
+caught it.
+
+Fix: put the null test in its own key so nothing reverses it, then order the
+non-null values:
+
+```kotlin
+// never-done last, then most recent scan first
+list.sortedWith(compareBy<Chore> { it.lastScanned == null }.thenByDescending { it.lastScanned })
+```
+
+The same trap applies to `.reversed()` on any `nullsFirst`/`nullsLast`
+comparator. If a sort has a null bucket, write a test for both directions.
