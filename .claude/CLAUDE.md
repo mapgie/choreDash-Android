@@ -71,6 +71,23 @@ Promoting out of beta (dropping the `-beta.N` suffix) remains a manual edit.
 - This container has no Android SDK and no Gradle wrapper jar, so the app cannot be compiled here. Do not attempt Gradle builds, and do not report build failures caused by the missing toolchain. CI is the build check.
 - Do not include "I couldn't compile, so I verified by inspection instead" style disclaimers in chat replies or PR descriptions. Just make the change and state what it does.
 
+## Regression guards (unit tests)
+
+`app/src/test` holds plain JUnit tests that run on the JVM in CI (`build.yml`, "Unit tests").
+They are the feature list: each test name states one behaviour the app guarantees, in plain
+words. Read `OwnerFilterTest`, `ChoreUiStateTest` and `TaskUiStateTest` as the spec for the
+list screens.
+
+- Keep list-screen behaviour (filtering, scoping, sorting, hiding, section splits) in pure
+  Kotlin: the `*UiState` data classes and `data/model` enums. Never put that logic inside a
+  composable or a ViewModel method where it can only be checked by hand.
+- Any change to that logic adds or updates a test in the same PR, named for the behaviour
+  ("`mine excludes unassigned items`"), not the method.
+- Composable-only files (`ui/components`, `ui/screens/*Screen.kt`) must not be imported by
+  tests; keep icon and colour choices out of the enums the tests exercise.
+- Choose test timestamps mid-window (36h, 180h, 300h) so now-relative arithmetic cannot flip
+  a bucket during the run.
+
 ## Architecture Notes
 
 - **UI layer:** Jetpack Compose + Material 3, MVVM with ViewModels; navigation via Compose Navigation (single Activity, `DashNavGraph.kt`)

@@ -3,7 +3,7 @@ package com.mapgie.dash.ui.screens.chores
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mapgie.dash.ui.components.core.OwnerFilter
+import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.Chore
