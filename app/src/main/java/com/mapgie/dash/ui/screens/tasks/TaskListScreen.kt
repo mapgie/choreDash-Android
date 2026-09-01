@@ -23,8 +23,6 @@ import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -68,7 +66,6 @@ import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
-import com.mapgie.dash.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -211,7 +208,8 @@ fun TaskListScreen(
                         }
                     }
                 } else {
-                    // Filter chips + the "due ↑" sort control
+                    // The "due ↑" sort control. No status chips: done tasks live in
+                    // the collapsible Done section below the list.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -219,18 +217,6 @@ fun TaskListScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TaskFilter.entries.forEach { f ->
-                            FilterChip(
-                                selected = uiState.filter == f,
-                                onClick = { viewModel.setFilter(f) },
-                                label = { Text(f.label) },
-                                shape = PillShape,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            )
-                        }
                         Spacer(Modifier.weight(1f))
                         if (!uiState.zenMode) {
                             TextButton(onClick = { viewModel.setSort(uiState.sort.next()) }) {
@@ -260,7 +246,7 @@ fun TaskListScreen(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            if (uiState.groupByCategory && !uiState.zenMode && uiState.filter != TaskFilter.DONE) {
+                            if (uiState.groupByCategory && !uiState.zenMode) {
                                 val grouped = active.groupBy { it.category?.takeIf(String::isNotBlank) ?: "Other" }
                                 grouped.forEach { (cat, tasks) ->
                                     stickyHeader {
@@ -449,13 +435,6 @@ private fun SwipeToCompleteCard(
         )
     }
 }
-
-private val TaskFilter.label: String
-    get() = when (this) {
-        TaskFilter.ALL -> "All"
-        TaskFilter.ACTIVE -> "Active"
-        TaskFilter.DONE -> "Done"
-    }
 
 private val TaskSort.shortLabel: String
     get() = when (this) {

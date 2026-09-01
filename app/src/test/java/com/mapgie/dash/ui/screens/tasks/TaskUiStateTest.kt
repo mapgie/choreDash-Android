@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * What the Tasks list shows for a given [TaskUiState]: owner scope, the
- * All / Active / Done chips, the active-versus-done split, the far-future
+ * open-versus-done split (archived never shown), the far-future
  * hide threshold, and the priority sort. Pure state logic, no ViewModel or
  * Android involved.
  */
@@ -60,7 +60,7 @@ class TaskUiStateTest {
         assertEquals(listOf("mine", "unassigned"), ids(state.displayed))
     }
 
-    // ── Status chips ──────────────────────────────────────────────────────────
+    // ── Open, done, archived ──────────────────────────────────────────────────
 
     private val open = task("open")
     private val done = task("done", completedAt = "2026-08-01T10:00:00Z")
@@ -69,26 +69,14 @@ class TaskUiStateTest {
     private val byStatus = listOf(open, done, archived, doneAndArchived)
 
     @Test
-    fun `active chip shows open unarchived tasks only`() {
-        val state = TaskUiState(tasks = byStatus, filter = TaskFilter.ACTIVE)
-        assertEquals(listOf("open"), ids(state.displayed))
-    }
-
-    @Test
-    fun `done chip shows completed unarchived tasks only`() {
-        val state = TaskUiState(tasks = byStatus, filter = TaskFilter.DONE)
-        assertEquals(listOf("done"), ids(state.displayed))
-    }
-
-    @Test
-    fun `all chip shows open and done but never archived`() {
-        val state = TaskUiState(tasks = byStatus, filter = TaskFilter.ALL)
+    fun `archived tasks never show, done or not`() {
+        val state = TaskUiState(tasks = byStatus)
         assertEquals(listOf("open", "done"), ids(state.displayed))
     }
 
     @Test
-    fun `active and done sections split the displayed list`() {
-        val state = TaskUiState(tasks = byStatus, filter = TaskFilter.ALL)
+    fun `open tasks go to the main list and done tasks to the done section`() {
+        val state = TaskUiState(tasks = byStatus)
         assertEquals(listOf("open"), ids(state.activeTasks))
         assertEquals(listOf("done"), ids(state.doneTasks))
     }

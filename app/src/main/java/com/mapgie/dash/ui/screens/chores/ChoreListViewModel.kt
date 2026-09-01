@@ -8,9 +8,11 @@ import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.defaultSnoozeDuration
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.preferences.ChoreSnoozeStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -38,6 +40,17 @@ enum class ChoreFilter(val label: String) {
 }
 data class RecentScan(val choreLabel: String, val scanId: String)
 
+/**
+ * The last swipe-to-snooze, for the Undo snackbar. [until] is null when the
+ * swipe woke the chore; [previousUntil] is what Undo restores (null = awake).
+ */
+data class RecentSnooze(
+    val choreLabel: String,
+    val tagId: String,
+    val until: Instant?,
+    val previousUntil: Instant?,
+)
+
 data class ChoreUiState(
     val loading: Boolean = false,
     val error: String? = null,
@@ -57,12 +70,33 @@ data class ChoreUiState(
     val choreLeadDays: Map<CadenceBucket, Int> = emptyMap(),
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
+    /** Tag id to wake time for chores snoozed on this device. */
+    val snoozes: Map<String, Instant> = emptyMap(),
+    val recentSnooze: RecentSnooze? = null,
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList(),
     val pinChooser: PinChooserState? = null
 ) {
     private val ownerFiltered: List<Chore>
         get() = active.filter { ownerFilter.matches(it.owner, ownerHandle) }
+
+    /** When [chore] wakes from a swipe-to-snooze, or null if it is not snoozed. */
+    fun snoozedUntil(chore: Chore): Instant? =
+        snoozes[chore.tagId]?.takeIf { it.isAfter(Instant.now()) }
+
+    /** How long a swipe-to-snooze on [chore] lasts under the current visibility settings. */
+    fun snoozeDurationFor(chore: Chore): Duration =
+        defaultSnoozeDuration(chore.intervalDays, smartVisibility, choreLeadDays)
+
+    private val awake: List<Chore>
+        get() = ownerFiltered.filter { snoozedUntil(it) == null }
+
+    private val snoozed: List<Chore>
+        get() = ownerFiltered.filter { snoozedUntil(it) != null }
+
+    /** How many of [hiddenChores] are there because of a snooze rather than lead time. */
+    val snoozedCount: Int
+        get() = snoozed.size
 
     /** True if this chore belongs in the main list under its cadence bucket's lead time. */
     private fun withinLeadTime(chore: Chore): Boolean {
@@ -77,21 +111,24 @@ data class ChoreUiState(
     /**
      * Chores kept out of the main list but revealable via the collapsed section:
      * everything beyond its lead time when smart visibility is on, otherwise only
-     * the legacy distant (due 60+ days out) chores.
+     * the legacy distant (due 60+ days out) chores, plus anything snoozed.
      */
     val hiddenChores: List<Chore>
-        get() = if (smartVisibility) {
-            ownerFiltered.filterNot(::withinLeadTime)
-        } else {
-            ownerFiltered.filter { it.isDistant() }
+        get() {
+            val beyondLeadTime = if (smartVisibility) {
+                awake.filterNot(::withinLeadTime)
+            } else {
+                awake.filter { it.isDistant() }
+            }
+            return beyondLeadTime + snoozed
         }
 
     val displayed: List<Chore>
         get() {
             var result = if (smartVisibility) {
-                ownerFiltered.filter(::withinLeadTime)
+                awake.filter(::withinLeadTime)
             } else {
-                ownerFiltered.filter { !it.isDistant() }
+                awake.filter { !it.isDistant() }
             }
             result = when (filter) {
                 ChoreFilter.ALL -> result
@@ -136,6 +173,7 @@ class ChoreListViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
+    private val choreSnoozeStore: ChoreSnoozeStore,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -156,6 +194,11 @@ class ChoreListViewModel @Inject constructor(
                         choreLeadDays = settings.choreLeadDays,
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            choreSnoozeStore.snoozes.collect { snoozes ->
+                _uiState.update { it.copy(snoozes = snoozes) }
             }
         }
         viewModelScope.launch {
@@ -225,6 +268,8 @@ class ChoreListViewModel @Inject constructor(
                 .find { it.tagId == tagId }?.label ?: tagId
             runCatching {
                 val scanId = choreRepository.logChore(tagId, at ?: Instant.now())
+                // Doing the chore ends any snooze on it.
+                choreSnoozeStore.clear(tagId)
                 load()
                 _uiState.update { it.copy(recentScan = RecentScan(choreLabel, scanId)) }
                 WidgetUpdater.updateAll(appContext)
@@ -357,5 +402,31 @@ class ChoreListViewModel @Inject constructor(
 
     fun toggleShowHidden() {
         _uiState.update { it.copy(showHidden = !it.showHidden) }
+    }
+
+    /**
+     * Swipe left: snooze an awake chore for its default duration, or wake a
+     * snoozed one. Records the change so the snackbar can offer Undo.
+     */
+    fun toggleSnooze(chore: Chore) {
+        val state = _uiState.value
+        val previous = state.snoozedUntil(chore)
+        val until = if (previous == null) Instant.now().plus(state.snoozeDurationFor(chore)) else null
+        viewModelScope.launch {
+            applySnooze(chore.tagId, until)
+            _uiState.update { it.copy(recentSnooze = RecentSnooze(chore.label, chore.tagId, until, previous)) }
+        }
+    }
+
+    fun undoSnooze(snooze: RecentSnooze) {
+        viewModelScope.launch { applySnooze(snooze.tagId, snooze.previousUntil) }
+    }
+
+    fun clearRecentSnooze() {
+        _uiState.update { it.copy(recentSnooze = null) }
+    }
+
+    private suspend fun applySnooze(tagId: String, until: Instant?) {
+        if (until == null) choreSnoozeStore.clear(tagId) else choreSnoozeStore.snooze(tagId, until)
     }
 }

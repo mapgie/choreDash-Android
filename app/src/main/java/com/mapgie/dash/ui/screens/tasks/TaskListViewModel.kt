@@ -37,7 +37,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-enum class TaskFilter { ALL, ACTIVE, DONE }
 enum class TaskSort { PRIORITY, DUE, CREATED }
 
 data class TaskUiState(
@@ -45,7 +44,6 @@ data class TaskUiState(
     val error: String? = null,
     val tasks: List<TaskDto> = emptyList(),
     val owners: List<String> = emptyList(),
-    val filter: TaskFilter = TaskFilter.ACTIVE,
     val sort: TaskSort = TaskSort.PRIORITY,
     val groupByCategory: Boolean = true,
     val ownerFilter: OwnerFilter = OwnerFilter.EVERYONE,
@@ -58,14 +56,10 @@ data class TaskUiState(
 ) {
     val displayed: List<TaskDto>
         get() {
+            // Archived tasks never show; open and done tasks are split into the
+            // main list and the collapsible Done section by activeTasks/doneTasks.
             val filtered = tasks.filter { task ->
-                val matchesStatus = when (filter) {
-                    TaskFilter.ALL -> task.archivedAt == null
-                    TaskFilter.ACTIVE -> task.completedAt == null && task.archivedAt == null
-                    TaskFilter.DONE -> task.completedAt != null && task.archivedAt == null
-                }
-                val matchesOwner = ownerFilter.matches(task.owner, ownerHandle)
-                matchesStatus && matchesOwner
+                task.archivedAt == null && ownerFilter.matches(task.owner, ownerHandle)
             }
             if (zenMode) {
                 // Zen sort: ascending = most urgent (overdue) first, matching the due sort order
@@ -313,7 +307,6 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    fun setFilter(f: TaskFilter) = _uiState.update { it.copy(filter = f) }
     fun setSort(s: TaskSort) = _uiState.update { it.copy(sort = s) }
     fun setGroupBy(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setGroupTasksByCategory(enabled) }
