@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -33,6 +32,7 @@ import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.TypeAccentColors
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
@@ -44,7 +44,7 @@ import com.mapgie.dash.widget.WIDGET_DEST_SETTINGS
 import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Chores : Screen("chores", "Chores", Icons.Outlined.CleaningServices)
+    object Chores : Screen("chores", "Chores", DashIcons.Brush)
     object Tasks : Screen("tasks", "Tasks", Icons.Outlined.CheckCircle)
     object Reminders : Screen("reminders", "Reminders", Icons.Outlined.Notifications)
     object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)

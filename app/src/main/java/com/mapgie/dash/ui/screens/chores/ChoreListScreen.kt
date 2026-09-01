@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.chores
 
+import android.nfc.NfcAdapter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -9,15 +10,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -35,12 +38,15 @@ import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
+import com.mapgie.dash.ui.components.NfcHintCard
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.OwnerFilterButton
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.PillShape
 import kotlinx.coroutines.launch
@@ -78,6 +84,8 @@ fun ChoreListScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var addSheetTagId by remember { mutableStateOf("") }
     var reminderTargetChore by remember { mutableStateOf<Chore?>(null) }
+    val context = LocalContext.current
+    val hasNfc = remember { NfcAdapter.getDefaultAdapter(context) != null }
 
     // Handle incoming NFC tag from MainActivity
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
@@ -153,65 +161,52 @@ fun ChoreListScreen(
                     title = if (uiState.zenMode) "zen" else "chores",
                     accent = LocalTypeAccents.current.onChoreContainer,
                     actions = {
+                        // Design order: owner filter, due countdown, zen, search, group/flat.
                         if (!uiState.zenMode) {
-                            IconButton(
-                                onClick = {
-                                    searchActive = !searchActive
-                                    if (!searchActive) searchQuery = ""
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Search,
-                                    contentDescription = if (searchActive) "Close search" else "Search chores",
-                                    tint = if (searchActive)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                             if (uiState.ownerHandle.isNotBlank()) {
                                 OwnerFilterButton(
                                     filter = uiState.ownerFilter,
                                     onFilterChange = viewModel::setOwnerFilter,
                                 )
                             }
-                            IconButton(
+                            HeaderIconButton(
+                                icon = Icons.Outlined.Timer,
+                                contentDescription = if (uiState.showDueCountdown)
+                                    "Hide due countdown" else "Show due countdown",
                                 onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Bolt,
-                                    contentDescription = if (uiState.showDueCountdown)
-                                        "Hide due countdown" else "Show due countdown",
-                                    tint = if (uiState.showDueCountdown)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                                active = uiState.showDueCountdown,
+                            )
                         } else {
-                            IconButton(
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
                                 onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                    contentDescription = if (uiState.zenSortAscending)
-                                        "Sorted: most overdue first" else "Sorted: recently done first",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            )
                         }
-                        IconButton(
+                        HeaderIconButton(
+                            icon = DashIcons.Zen,
+                            contentDescription = if (uiState.zenMode)
+                                "Exit zen mode" else "Enter zen mode",
                             onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Spa,
-                                contentDescription = if (uiState.zenMode)
-                                    "Exit zen mode" else "Enter zen mode",
-                                tint = if (uiState.zenMode)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            active = uiState.zenMode,
+                        )
+                        if (!uiState.zenMode) {
+                            HeaderIconButton(
+                                icon = Icons.Outlined.Search,
+                                contentDescription = if (searchActive) "Close search" else "Search chores",
+                                onClick = {
+                                    searchActive = !searchActive
+                                    if (!searchActive) searchQuery = ""
+                                },
+                                active = searchActive,
+                            )
+                            HeaderIconButton(
+                                icon = if (uiState.groupByCategory) Icons.Outlined.GridView
+                                       else Icons.Outlined.ViewAgenda,
+                                contentDescription = if (uiState.groupByCategory)
+                                    "Show as flat list" else "Group by category",
+                                onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
                             )
                         }
                     },
@@ -374,6 +369,10 @@ fun ChoreListScreen(
                                             )
                                         }
                                     }
+                                }
+
+                                if (hasNfc && !uiState.zenMode) {
+                                    item(key = "nfc_hint") { NfcHintCard() }
                                 }
 
                                 if (uiState.archived.isNotEmpty()) {

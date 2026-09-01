@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -30,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.TypeAccentColors
 
@@ -45,7 +45,7 @@ private fun AddMenuOption.spec(reminderLabel: String, accents: TypeAccentColors)
         Icons.Outlined.Notifications, reminderLabel, accents.reminderContainer, accents.onReminderContainer
     )
     AddMenuOption.CHORE -> AddMenuOptionSpec(
-        Icons.Outlined.CleaningServices, "Chore", accents.choreContainer, accents.onChoreContainer
+        DashIcons.Brush, "Chore", accents.choreContainer, accents.onChoreContainer
     )
     AddMenuOption.TASK -> AddMenuOptionSpec(
         Icons.Outlined.CheckCircle, "Task", accents.taskContainer, accents.onTaskContainer

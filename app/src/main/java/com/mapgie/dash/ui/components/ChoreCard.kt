@@ -3,8 +3,6 @@ package com.mapgie.dash.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +17,7 @@ import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.StatusTone
@@ -78,7 +77,7 @@ fun ChoreCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     CardIconChip(
-                        icon = Icons.Outlined.CleaningServices,
+                        icon = DashIcons.Brush,
                         containerColor = if (zenMode) Color.Transparent
                                          else tone.badgeContainerColor() ?: accents.choreContainer,
                         contentColor = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant

@@ -1,19 +1,14 @@
 package com.mapgie.dash.ui.components.core
 
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.OwnerFilter
 
 /**
@@ -31,7 +26,7 @@ val OwnerFilter.icon: ImageVector
  * Header icon button that cycles the owner scope. The icon shows the current
  * state; the accessible description names it and the state a tap moves to.
  * Narrowed states (mine, mine and unassigned) take the primary tint, the
- * unfiltered state stays neutral, matching the other header toggles.
+ * unfiltered state stays faint, matching the other header toggles.
  */
 @Composable
 fun OwnerFilterButton(
@@ -39,18 +34,11 @@ fun OwnerFilterButton(
     onFilterChange: (OwnerFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(
+    HeaderIconButton(
+        icon = filter.icon,
+        contentDescription = "Owner filter. Tap to show: ${filter.next.label.lowercase()}",
         onClick = { onFilterChange(filter.next) },
-        modifier = modifier
-            .size(48.dp)
-            .semantics { stateDescription = "Showing: ${filter.label.lowercase()}" }
-    ) {
-        Icon(
-            imageVector = filter.icon,
-            contentDescription = "Owner filter. Tap to show: ${filter.next.label.lowercase()}",
-            tint = if (filter == OwnerFilter.EVERYONE)
-                MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.primary
-        )
-    }
+        active = filter != OwnerFilter.EVERYONE,
+        modifier = modifier.semantics { stateDescription = "Showing: ${filter.label.lowercase()}" },
+    )
 }
