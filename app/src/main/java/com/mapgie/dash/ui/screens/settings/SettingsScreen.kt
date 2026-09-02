@@ -116,7 +116,7 @@ import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
 private enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT
+    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -141,6 +141,14 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.APPEARANCE -> AppearanceSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.COLOURS -> ColoursSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.CATEGORIES -> CategoriesSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -189,6 +197,18 @@ private fun SettingsMainList(
                 subtitle = "Light, dark, or system theme",
                 icon = Icons.Filled.Palette,
                 onClick = { onNavigate(SettingsSubScreen.APPEARANCE) }
+            )
+            SettingsNavItem(
+                title = "Colours",
+                subtitle = "Colour chores by severity or category, and pick the severity tints",
+                icon = LucideIcons.Droplet,
+                onClick = { onNavigate(SettingsSubScreen.COLOURS) }
+            )
+            SettingsNavItem(
+                title = "Categories",
+                subtitle = "Reorder, rename, and give each category an icon and colour",
+                icon = LucideIcons.LayoutGrid,
+                onClick = { onNavigate(SettingsSubScreen.CATEGORIES) }
             )
             SettingsNavItem(
                 title = "Display",

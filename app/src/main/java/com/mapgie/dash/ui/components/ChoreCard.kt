@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.Swatch
@@ -71,6 +72,7 @@ fun ChoreCard(
     categorySwatch: Swatch? = null,
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
+    inset: Dp = Dimens.cardInset,
 ) {
     val tone = chore.statusTone()
     val accents = LocalTypeAccents.current
@@ -97,7 +99,7 @@ fun ChoreCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = Dimens.cardInset),
+            .padding(horizontal = inset),
         colors = CardDefaults.cardColors(
             containerColor = if (zenMode) MaterialTheme.colorScheme.surfaceContainerLow
                              else MaterialTheme.colorScheme.surfaceVariant

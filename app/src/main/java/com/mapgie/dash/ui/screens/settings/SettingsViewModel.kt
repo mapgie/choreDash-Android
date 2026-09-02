@@ -6,10 +6,18 @@ import com.mapgie.dash.data.database.dao.CustomColorThemeDao
 import com.mapgie.dash.data.database.entities.CustomColorTheme
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.CategoryStyle
+import com.mapgie.dash.data.model.ColourChoresBy
+import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.preferences.AppSettings
+import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
+import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.ui.theme.AppTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,12 +29,37 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** How many chores and tasks currently carry a category, for Settings › Categories. */
+data class CategoryUsage(val chores: Int = 0, val tasks: Int = 0) {
+    val total: Int get() = chores + tasks
+
+    /** "2 chores · 1 task", or "No chores yet". */
+    val label: String
+        get() {
+            val parts = listOfNotNull(
+                chores.takeIf { it > 0 }?.let { if (it == 1) "1 chore" else "$it chores" },
+                tasks.takeIf { it > 0 }?.let { if (it == 1) "1 task" else "$it tasks" },
+            )
+            return if (parts.isEmpty()) "No chores yet" else parts.joinToString(" · ")
+        }
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val taskRepository: TaskRepository,
+    private val choreRepository: ChoreRepository,
+    private val categoryStyleStore: CategoryStyleStore,
     private val customColorThemeDao: CustomColorThemeDao,
 ) : ViewModel() {
+
+    /** The per-device category catalog (order, icons, colours). */
+    val catalog: StateFlow<CategoryCatalog> = categoryStyleStore.catalog
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryCatalog())
+
+    private val _categoryUsage = MutableStateFlow<Map<String, CategoryUsage>>(emptyMap())
+    /** Category name (as stored) to how many chores and tasks use it. */
+    val categoryUsage: StateFlow<Map<String, CategoryUsage>> = _categoryUsage.asStateFlow()
 
     val settings: StateFlow<AppSettings?> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -198,6 +231,79 @@ class SettingsViewModel @Inject constructor(
                     darkBackgroundArgb  = s.customDarkBackgroundArgb,
                 )
             )
+        }
+    }
+
+    // ── Colours ───────────────────────────────────────────────────────────────
+
+    fun setColourChoresBy(mode: ColourChoresBy) {
+        viewModelScope.launch { settingsRepository.setColourChoresBy(mode) }
+    }
+
+    fun setSeveritySwatch(severity: Severity, swatch: Swatch) {
+        viewModelScope.launch { settingsRepository.setSeveritySwatch(severity, swatch) }
+    }
+
+    // ── Categories ────────────────────────────────────────────────────────────
+
+    /** Counts chores and tasks per category so rows can say "2 chores · 1 task". */
+    fun loadCategoryUsage() {
+        viewModelScope.launch {
+            runCatching {
+                val chores = choreRepository.load().let { it.active + it.archived }
+                val tasks = taskRepository.loadTasks().filter { it.archivedAt == null }
+                val usage = mutableMapOf<String, CategoryUsage>()
+                fun key(name: String) = name.trim().lowercase()
+                val names = mutableMapOf<String, String>()
+                chores.mapNotNull { it.category?.takeIf { c -> c.isNotBlank() } }.forEach { c ->
+                    names.putIfAbsent(key(c), c.trim())
+                    usage[key(c)] = (usage[key(c)] ?: CategoryUsage()).let { u -> u.copy(chores = u.chores + 1) }
+                }
+                tasks.mapNotNull { it.category?.takeIf { c -> c.isNotBlank() } }.forEach { c ->
+                    names.putIfAbsent(key(c), c.trim())
+                    usage[key(c)] = (usage[key(c)] ?: CategoryUsage()).let { u -> u.copy(tasks = u.tasks + 1) }
+                }
+                _categoryUsage.value = usage.mapKeys { (k, _) -> names[k] ?: k }
+            }
+        }
+    }
+
+    fun setCategoryOrder(order: List<String>) {
+        viewModelScope.launch { categoryStyleStore.update { it.withOrder(order) } }
+    }
+
+    fun setCategoryStyle(name: String, style: CategoryStyle) {
+        viewModelScope.launch { categoryStyleStore.update { it.withStyle(name, style) } }
+    }
+
+    fun addCategory(name: String) {
+        viewModelScope.launch { categoryStyleStore.update { it.added(name) } }
+    }
+
+    /** Renames the category on every chore and task that carries it, then in the catalog. */
+    fun renameCategory(from: String, to: String) {
+        val target = to.trim()
+        if (target.isBlank() || target.equals(from, ignoreCase = false)) return
+        viewModelScope.launch {
+            runCatching {
+                choreRepository.moveCategory(from, target)
+                taskRepository.moveCategory(from, target)
+                categoryStyleStore.update { it.renamed(from, target) }
+                loadCategoryUsage()
+            }.onFailure { e -> _saveError.value = e.message }
+        }
+    }
+
+    /** Deletes a category: its chores and tasks move to General, then the catalog forgets it. */
+    fun deleteCategory(name: String) {
+        if (name.equals(GENERAL_CATEGORY, ignoreCase = true)) return
+        viewModelScope.launch {
+            runCatching {
+                choreRepository.moveCategory(name, GENERAL_CATEGORY)
+                taskRepository.moveCategory(name, GENERAL_CATEGORY)
+                categoryStyleStore.update { it.without(name) }
+                loadCategoryUsage()
+            }.onFailure { e -> _saveError.value = e.message }
         }
     }
 
