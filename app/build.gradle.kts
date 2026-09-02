@@ -55,6 +55,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        // The JVM tests exercise Compose colour maths (ColorScheme, Color); any
+        // android.* stub they brush against returns a default instead of throwing.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 tasks.register("copyChangelogToAssets", Copy::class) {

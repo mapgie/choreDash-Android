@@ -13,6 +13,11 @@ import androidx.core.app.NotificationManagerCompat
 import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
 import com.mapgie.dash.alarm.AlarmActionReceiver
+import com.mapgie.dash.alarm.AlarmActivity
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_ID
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_KIND
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_SUBJECT
+import com.mapgie.dash.ui.screens.reminder.ReminderViewKind
 
 // What kind of alert is being delivered. Every kind gets the same Alarm/Notification/Silent
 // channel trio (see ChannelStyle) so DND-bypass behaviour is identical across chores, tasks,
@@ -162,8 +167,52 @@ object NotificationHelper {
         }
     }
 
+    /** True for the delivery mode that rings: full-screen alarm, alarm category. */
+    fun isAlarmStyle(deliveryMode: String): Boolean =
+        styleForDeliveryMode(deliveryMode) == ChannelStyle.ALARM
+
+    // The Alarm style's full-screen intent: AlarmActivity turns the screen on over
+    // the lock screen and rings (AlarmRinger) until answered. Android only launches
+    // it when the device is locked or asleep; awake and unlocked it shows the
+    // heads-up notification instead, and the channel's alarm sound carries that.
+    // CLEAR_TASK replaces a still-ringing alarm with the newer one rather than
+    // stacking two ringing screens.
+    private fun fullScreenIntent(
+        context: Context,
+        kind: ReminderViewKind,
+        id: String,
+        subject: String,
+        requestCode: Int,
+    ): PendingIntent = PendingIntent.getActivity(
+        context, requestCode,
+        Intent(context, AlarmActivity::class.java).apply {
+            setPackage(context.packageName)
+            putExtra(REMINDER_VIEW_ARG_KIND, kind.routeArg)
+            putExtra(REMINDER_VIEW_ARG_ID, id)
+            putExtra(REMINDER_VIEW_ARG_SUBJECT, subject)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    /**
+     * Applies the per-style presentation: the Alarm style is an alarm to the
+     * system (full-screen intent, CATEGORY_ALARM); the others are plain
+     * reminders on their channel. [fullScreen] is only built for the Alarm style.
+     */
+    private fun NotificationCompat.Builder.styledFor(
+        deliveryMode: String,
+        fullScreen: () -> PendingIntent,
+    ): NotificationCompat.Builder = if (isAlarmStyle(deliveryMode)) {
+        setCategory(NotificationCompat.CATEGORY_ALARM)
+        setFullScreenIntent(fullScreen(), true)
+    } else {
+        setCategory(NotificationCompat.CATEGORY_REMINDER)
+    }
+
     @SuppressLint("MissingPermission")
-    fun showTaskReminder(context: Context, taskId: String, taskTitle: String, channelId: String = channelId(ReminderKind.TASK_REMINDER, "NOTIFICATION")) {
+    fun showTaskReminder(context: Context, taskId: String, taskTitle: String, deliveryMode: String = "NOTIFICATION") {
+        val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
             Intent(context, MainActivity::class.java).apply {
@@ -200,7 +249,9 @@ object NotificationHelper {
             .setContentIntent(openIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .styledFor(deliveryMode) {
+                fullScreenIntent(context, ReminderViewKind.TASK, taskId, taskTitle, "fullscreen_$taskId".hashCode())
+            }
             .addAction(0, "Snooze 15 min", snoozePI)
             .addAction(0, "Done", donePI)
             .build()
@@ -209,7 +260,8 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showReminderAlert(context: Context, reminderId: String, subject: String, channelId: String = channelId(ReminderKind.TASK_REMINDER, "NOTIFICATION"), taskId: String? = null) {
+    fun showReminderAlert(context: Context, reminderId: String, subject: String, deliveryMode: String = "NOTIFICATION", taskId: String? = null) {
+        val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val notifyId = ("reminder_$reminderId").hashCode()
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
@@ -248,7 +300,9 @@ object NotificationHelper {
             .setContentIntent(openIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .styledFor(deliveryMode) {
+                fullScreenIntent(context, ReminderViewKind.REMINDER, reminderId, subject, "fullscreen_reminder_$reminderId".hashCode())
+            }
             .addAction(0, "Snooze 15 min", snoozePI)
             .addAction(0, "Done", donePI)
             .build()

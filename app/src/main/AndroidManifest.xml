@@ -13,6 +13,12 @@
          .setBypassDnd() to have any effect. Without it the "Do Not Disturb access"
          permission row in Settings can never be granted. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- The "Alarm" notification style attaches a full-screen intent so a reminder
+         can turn the screen on and show AlarmActivity over the lock screen, ringing
+         like a clock alarm, instead of only posting a notification. On Android 14+
+         the user can revoke this per app; Settings > Reminders & alerts shows the
+         state and deep-links to the toggle. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <application
         android:name=".DashApplication"
@@ -30,6 +36,14 @@
             <intent-filter><action android:name="android.nfc.action.NDEF_DISCOVERED" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
             <intent-filter><action android:name="android.nfc.action.TAG_DISCOVERED" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
         </activity>
+        <!-- Full-screen alarm shown by the Alarm notification style. Its own task,
+             kept out of Recents, so it never drags the main app task on top of the
+             lock screen; CLEAR_TASK on the launching intent replaces a still-ringing
+             alarm with the newer one. -->
+        <activity android:name=".alarm.AlarmActivity" android:exported="false"
+            android:excludeFromRecents="true" android:taskAffinity=""
+            android:showWhenLocked="true" android:turnScreenOn="true"
+            android:theme="@style/Theme.Dash" />
         <receiver android:name=".alarm.AlarmReceiver" android:exported="false" />
         <receiver android:name=".alarm.AlarmActionReceiver" android:exported="false" />
         <receiver android:name=".alarm.BootReceiver" android:exported="true">

@@ -5,8 +5,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
-import androidx.core.graphics.ColorUtils
 
 // ── AppTheme catalogue ────────────────────────────────────────────────────────
 //
@@ -574,52 +572,49 @@ fun colorSchemeFor(appTheme: AppTheme, darkTheme: Boolean, wcag: Boolean = false
 }
 
 // ── WCAG high-contrast transform ──────────────────────────────────────────────
+// (contrastRatio / adjustedForContrast / worstGround live in Contrast.kt.)
 
-private fun contrastRatio(a: Color, b: Color): Float {
-    val la = a.luminance() + 0.05f
-    val lb = b.luminance() + 0.05f
-    return if (la > lb) la / lb else lb / la
-}
+/** WCAG AAA for normal text. Every text role is lifted to this with the toggle on. */
+const val WCAG_TEXT_RATIO = 7f
 
-/**
- * Steps a colour's HSL lightness away from [against] until the WCAG contrast
- * ratio reaches [target]. [darken] chooses the direction (darken on light
- * backgrounds, lighten on dark ones).
- */
-private fun Color.adjustedForContrast(against: Color, target: Float, darken: Boolean): Color {
-    val hsl = FloatArray(3)
-    ColorUtils.colorToHSL(toArgb(), hsl)
-    var current = this
-    var steps = 0
-    while (contrastRatio(current, against) < target && steps < 20) {
-        hsl[2] = (hsl[2] + if (darken) -0.05f else 0.05f).coerceIn(0f, 1f)
-        current = Color.hsl(hsl[0], hsl[1], hsl[2])
-        steps++
-    }
-    return current
-}
+/** WCAG 1.4.11 minimum for non-text UI: outlines, borders, drag handles. */
+const val WCAG_UI_RATIO = 3f
+
+/** Every ground a text role can sit on: the page, the sheet, the cards and the chip ramp. */
+fun ColorScheme.grounds(): List<Color> = listOf(
+    background, surface, surfaceVariant,
+    surfaceContainerLowest, surfaceContainerLow, surfaceContainer,
+    surfaceContainerHigh, surfaceContainerHighest,
+)
 
 /**
- * Derives a WCAG high-contrast variant of a palette programmatically: accent
- * roles are pushed to at least 7:1 against the background (AAA for normal
- * text), supporting text to 7:1, and outlines to 4.5:1. Backgrounds and
- * surfaces are left untouched so the palette keeps its identity.
+ * Derives a WCAG high-contrast variant of a palette programmatically. Every
+ * text role (ink, muted ink, the three accents, error) is pushed to at least
+ * 7:1 (AAA) against the palette's hardest ground, so it reads on the page, the
+ * cards and every chip tone alike; on-container text is pushed to 7:1 on its
+ * container; outlines to 4.5:1. Backgrounds and surfaces are left untouched
+ * so the palette keeps its identity.
  */
 fun ColorScheme.withWcagContrast(darkTheme: Boolean): ColorScheme {
     val darken = !darkTheme
-    val fixedPrimary   = primary.adjustedForContrast(background, 7f, darken)
-    val fixedSecondary = secondary.adjustedForContrast(background, 7f, darken)
-    val fixedTertiary  = tertiary.adjustedForContrast(background, 7f, darken)
+    val ground = worstGround(grounds(), darkTheme)
+    val fixedPrimary   = primary.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken)
+    val fixedSecondary = secondary.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken)
+    val fixedTertiary  = tertiary.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken)
     return copy(
         primary          = fixedPrimary,
         secondary        = fixedSecondary,
         tertiary         = fixedTertiary,
+        error            = error.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken),
         surfaceTint      = fixedPrimary,
-        onSurfaceVariant = onSurfaceVariant.adjustedForContrast(surfaceVariant, 7f, darken),
-        outline          = outline.adjustedForContrast(background, 4.5f, darken),
-        onPrimaryContainer   = onPrimaryContainer.adjustedForContrast(primaryContainer, 7f, darken),
-        onSecondaryContainer = onSecondaryContainer.adjustedForContrast(secondaryContainer, 7f, darken),
-        onTertiaryContainer  = onTertiaryContainer.adjustedForContrast(tertiaryContainer, 7f, darken),
+        onBackground     = onBackground.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken),
+        onSurface        = onSurface.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken),
+        onSurfaceVariant = onSurfaceVariant.adjustedForContrast(ground, WCAG_TEXT_RATIO, darken),
+        outline          = outline.adjustedForContrast(ground, 4.5f, darken),
+        onPrimaryContainer   = onPrimaryContainer.adjustedForContrast(primaryContainer, WCAG_TEXT_RATIO, darken),
+        onSecondaryContainer = onSecondaryContainer.adjustedForContrast(secondaryContainer, WCAG_TEXT_RATIO, darken),
+        onTertiaryContainer  = onTertiaryContainer.adjustedForContrast(tertiaryContainer, WCAG_TEXT_RATIO, darken),
+        onErrorContainer     = onErrorContainer.adjustedForContrast(errorContainer, WCAG_TEXT_RATIO, darken),
     )
 }
 
@@ -660,7 +655,7 @@ fun buildCustomColorScheme(
         darkTheme           -> Color.hsl(primaryH, 0.10f, 0.10f)
         else                -> Color.hsl(primaryH, 0.10f, 0.98f)
     }
-    val bg = FloatArray(3).also { ColorUtils.colorToHSL(background.toArgb(), it) }
+    val bg = background.toHsl()
     val bgIsLight = background.luminance() > 0.35f
 
     // Neutrals are derived from the background's hue only, at a near-zero fixed
