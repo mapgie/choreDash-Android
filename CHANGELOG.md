@@ -31,6 +31,24 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.28.0] - 2026-09-02
+
+### Added
+- Tapping a reminder notification now opens a full-screen reminder view showing what the nudge was for, how far off its time is, Done and Snooze 1h buttons, and the next nudge that is scheduled
+- A first-run welcome sheet explains the difference between chores, tasks and reminders; the same text lives under Settings › Help
+- Unsaved edits in the chore and task sheets survive rotation, and are offered back (never applied silently) when the same item is reopened
+
+### Changed
+- Settings and its Appearance, Display, Reminders & alerts, About, Quick add, Widget and Connection pages now use the Cozy Cream grouped cards, pill segmented controls, tinted toggles, circular steppers and pill buttons from the design handoff
+- Zen mode is now its own calm list: open circles to tick things off, soft cues like "kitchen · when you're up" instead of colours and counts, a mine/all switch and a Leave control in the header
+- The search row is the design's card-coloured pill with a sage caret and a text Cancel action
+- With WCAG colours on, faint captions lift to the muted ink so they clear 4.5:1 with margin
+
+### Fixed
+- Rotating the phone no longer closes an open Edit sheet or loses what was typed in it
+- The tab screens no longer pad for the status and navigation bars twice, which left a dead band under the accent strip and another above the bottom bar
+
+---
 ## [0.27.0] - 2026-09-02
 
 ### Added
