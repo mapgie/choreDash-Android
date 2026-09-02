@@ -12,11 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,161 +33,198 @@ import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.ui.components.core.DoneToggleChip
 import com.mapgie.dash.ui.components.core.MetaCaption
-import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
+import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.StatusTone
+import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
+import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.statusTone
+import com.mapgie.dash.ui.theme.textColor
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 /**
- * Cozy Cream list card for a task: urgency spine, circular done-toggle chip on the
- * task accent, title with an uppercase "category · priority" caption beneath, and a
- * right column carrying the due badge above the owner avatar.
+ * The revised (turn 5a) list card for a task: urgency spine, a circular
+ * done-toggle chip carrying the category's Lucide [icon] on the urgency tint,
+ * title with an uppercase "CATEGORY · HIGH" caption beneath, and a single
+ * right-hand row of owner avatar then due badge.
  *
  * The spine colour means urgency (the app-wide bar meaning, see `StatusTone.kt`);
  * priority is carried by the caption text, never by colour alone.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
     task: TaskDto,
     onToggleDone: () -> Unit,
-    showCategory: Boolean = true,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
+    showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
     val accents = LocalTypeAccents.current
-    val barColor = if (zenMode) Color.Transparent else task.statusTone().barColor()
+    val tone = task.statusTone()
+    val dark = isDarkScheme()
+    val barColor = if (zenMode) Color.Transparent else tone.barColor()
+
+    val chipContainer = when {
+        zenMode -> Color.Transparent
+        isDone -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> tone.badgeContainerColor() ?: accents.taskContainer
+    }
+    val chipContent = when {
+        zenMode || isDone -> MaterialTheme.colorScheme.onSurfaceVariant
+        tone == StatusTone.NEUTRAL || tone == StatusTone.NONE -> accents.onTaskContainer
+        else -> tone.textColor()
+    }
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.cardInset),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                zenMode -> MaterialTheme.colorScheme.surface
-                isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                zenMode -> MaterialTheme.colorScheme.surfaceContainerLow
+                isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 else -> MaterialTheme.colorScheme.surfaceVariant
             }
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Urgency spine
             Box(
                 modifier = Modifier
                     .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
                     .background(barColor)
             )
-            DoneToggleChip(
-                isDone = isDone,
-                onToggle = onToggleDone,
-                containerColor = if (zenMode) Color.Transparent else accents.taskContainer,
-                contentColor = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant
-                               else accents.onTaskContainer,
-                modifier = Modifier
-                    .padding(start = 10.dp, top = 10.dp, bottom = 10.dp)
-                    .align(Alignment.CenterVertically)
-            )
-            // Title + meta caption
-            Column(
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
-                    .align(Alignment.CenterVertically),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                    // The toggle chip's 44dp touch target is 3dp wider than the
+                    // visual chip on each side; trim the inset so the glyph lines
+                    // up with the Chores cards.
+                    .padding(
+                        start = Dimens.cardPadding - 3.dp,
+                        end = Dimens.cardPadding,
+                        top = Dimens.cardVerticalPadding - 3.dp,
+                        bottom = Dimens.cardVerticalPadding - 3.dp,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                DoneToggleChip(
+                    isDone = isDone,
+                    onToggle = onToggleDone,
+                    icon = icon,
+                    containerColor = chipContainer,
+                    contentColor = chipContent,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        text = highlightedText(task.title, highlightQuery),
-                        style = MaterialTheme.typography.titleMedium,
-                        textDecoration = if (isDone) TextDecoration.LineThrough else null,
-                        color = if (isDone)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        else
-                            MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (task.reminderAt != null && task.reminded != true && !isDone) {
-                        val reminderInstant = remember(task.reminderAt) {
-                            runCatching { Instant.parse(task.reminderAt) }.getOrNull()
-                        }
-                        val isReminderPast = reminderInstant != null && reminderInstant.isBefore(Instant.now())
-                        Icon(
-                            Icons.Filled.NotificationsActive,
-                            contentDescription = if (isReminderPast) "Reminder passed" else "Reminder set",
-                            tint = if (isReminderPast)
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = highlightedText(task.title, highlightQuery),
+                            style = MaterialTheme.typography.titleMedium,
+                            textDecoration = if (isDone) TextDecoration.LineThrough else null,
+                            color = if (isDone)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             else
-                                MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                                MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (task.reminderAt != null && task.reminded != true && !isDone) {
+                            val reminderInstant = remember(task.reminderAt) {
+                                runCatching { Instant.parse(task.reminderAt) }.getOrNull()
+                            }
+                            val isReminderPast = reminderInstant != null && reminderInstant.isBefore(Instant.now())
+                            Icon(
+                                imageVector = LucideIcons.Bell,
+                                contentDescription = if (isReminderPast) "Reminder passed" else "Reminder set",
+                                tint = if (isReminderPast)
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                else
+                                    MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    if (zenMode) {
+                        ZenDueLabel(task = task)
+                    } else {
+                        val priorityLabel = when (task.priorityEnum()) {
+                            TaskPriority.HIGHER -> "high"
+                            TaskPriority.NORMAL -> null
+                            TaskPriority.LOWER -> "low"
+                        }
+                        val caption = listOfNotNull(
+                            task.category?.takeIf { showCategory && it.isNotBlank() },
+                            priorityLabel,
+                        ).joinToString(" · ")
+                        if (caption.isNotBlank()) MetaCaption(text = caption)
                     }
                 }
-                if (zenMode) {
-                    ZenDueLabel(task = task)
-                } else {
-                    val priorityLabel = when (task.priorityEnum()) {
-                        TaskPriority.HIGHER -> "higher"
-                        TaskPriority.NORMAL -> "normal"
-                        TaskPriority.LOWER -> "lower"
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.metaSpacing),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
+                        OwnerAvatar(handle = owner)
                     }
-                    val caption = listOfNotNull(
-                        task.category?.takeIf { showCategory && it.isNotBlank() },
-                        priorityLabel,
-                    ).joinToString(" · ")
-                    MetaCaption(text = caption)
-                }
-            }
-            // Right column: due badge above the owner avatar, pinned rightmost so
-            // the same person renders identically here and on the Chores list.
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
-                    .align(Alignment.CenterVertically)
-            ) {
-                if (!zenMode) DueBadge(task = task)
-                task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
-                    OwnerAvatar(handle = owner, modifier = Modifier.align(Alignment.End))
+                    if (!zenMode && !isDone) DueBadge(task = task)
                 }
             }
         }
     }
 }
 
+/**
+ * "2d late" on the rose tint, "today" on amber, then plain "Thu" / "12 Sep" for
+ * anything further out, matching the handoff's right-hand cluster.
+ */
 @Composable
 private fun DueBadge(task: TaskDto) {
-    val text = when (task.urgency()) {
-        TaskUrgency.OVERDUE -> "Overdue"
-        TaskUrgency.TODAY -> "Today"
-        TaskUrgency.THIS_WEEK -> task.dueDate
-            ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("EEE")) }.getOrNull() }
-            ?: "This week"
-        TaskUrgency.LATER -> task.dueDate
-            ?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("MMM d")) }.getOrNull() }
-            ?: "Later"
-        TaskUrgency.NONE -> return
+    val today = LocalDate.now(ZoneId.systemDefault())
+    val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    when (task.urgency()) {
+        TaskUrgency.OVERDUE -> {
+            val late = date?.let { ChronoUnit.DAYS.between(it, today) } ?: 1L
+            StatusBadge(text = "${late}d late", tone = StatusTone.CRITICAL)
+        }
+        TaskUrgency.TODAY -> StatusBadge(text = "today", tone = StatusTone.ATTENTION)
+        TaskUrgency.THIS_WEEK -> StatusBadge(
+            text = date?.format(DateTimeFormatter.ofPattern("EEE")) ?: "this week",
+            tone = StatusTone.NEUTRAL,
+        )
+        TaskUrgency.LATER -> StatusBadge(
+            text = date?.format(DateTimeFormatter.ofPattern("d MMM")) ?: "this month",
+            tone = StatusTone.NEUTRAL,
+        )
+        TaskUrgency.NONE -> Unit
     }
-    StatusBadge(text = text, tone = task.statusTone())
 }
 
 /** Plain, uncoloured due date for zen mode, unlike DueBadge it never signals urgency. */
 @Composable
 private fun ZenDueLabel(task: TaskDto) {
     val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return
-    MetaLabel(text = date.format(DateTimeFormatter.ofPattern("MMM d")))
+    MetaLabel(text = date.format(DateTimeFormatter.ofPattern("d MMM")))
 }

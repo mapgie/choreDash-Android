@@ -28,7 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CheckCircle as FilledCheckCircle
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -110,7 +109,7 @@ import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CompactThemePicker
-import com.mapgie.dash.ui.theme.DashIcons
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.SavedThemesList
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -748,9 +747,9 @@ private fun QuickAddSubScreen(
 }
 
 private fun AddMenuOption.iconFor(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
-    AddMenuOption.TASK -> Icons.Filled.FilledCheckCircle
-    AddMenuOption.CHORE -> DashIcons.Brush
-    AddMenuOption.REMINDER -> Icons.Filled.Notifications
+    AddMenuOption.TASK -> LucideIcons.CircleCheck
+    AddMenuOption.CHORE -> LucideIcons.HouseCheck
+    AddMenuOption.REMINDER -> LucideIcons.Bell
 }
 
 private fun AddMenuOption.labelFor(reminderLabel: String): String = when (this) {

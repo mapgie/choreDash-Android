@@ -1,47 +1,26 @@
 package com.mapgie.dash.ui.components
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,23 +28,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.ui.components.sheet.NotesBlock
+import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
+import com.mapgie.dash.ui.components.sheet.SegmentPill
+import com.mapgie.dash.ui.components.sheet.SettingsRow
+import com.mapgie.dash.ui.components.sheet.SheetBlock
+import com.mapgie.dash.ui.components.sheet.SheetHeader
+import com.mapgie.dash.ui.components.sheet.SheetPadding
+import com.mapgie.dash.ui.components.sheet.SheetPrimaryRow
+import com.mapgie.dash.ui.components.sheet.SheetRowDivider
+import com.mapgie.dash.ui.components.sheet.SheetTimePickerDialog
+import com.mapgie.dash.ui.components.sheet.TertiaryLink
+import com.mapgie.dash.ui.components.sheet.TertiaryLinkRow
+import com.mapgie.dash.ui.components.sheet.TitleField
+import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.util.CalendarShareUtils
-import com.mapgie.dash.util.calendarEventForInstant
 import com.mapgie.dash.util.calendarEventForDate
+import com.mapgie.dash.util.calendarEventForInstant
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -75,10 +65,25 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+private const val DUE_NONE = "none"
+private const val DUE_DATE = "date"
+private const val DUE_PERIOD = "period"
+
+/**
+ * The Edit sheet for tasks (handoff 7a), one grammar with the chore sheet: the
+ * title is the input, then one grouped settings card of compact rows (Category
+ * value chip · Owner avatar row · Priority segments · Due value chip · Remind
+ * value chip), a soft notes block, the Cancel + sage Save footer and a centred
+ * tertiary row (Add to calendar · Share · Delete). With [task] null it is the
+ * New task sheet: eyebrow NEW TASK, empty title focused.
+ *
+ * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTaskSheet(
     task: TaskDto?,
+    icon: ImageVector,
     owners: List<String>,
     categories: List<String>,
     onSave: (TaskInsert) -> Unit,
@@ -89,8 +94,8 @@ fun EditTaskSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val is24Hour = remember { DateFormat.is24HourFormat(context) }
-    var showShareChoice by remember { mutableStateOf(false) }
+    val accents = LocalTypeAccents.current
+    val isNew = task == null
 
     val initialTitle = remember { task?.title ?: "" }
     var title by remember { mutableStateOf(initialTitle) }
@@ -105,9 +110,9 @@ fun EditTaskSheet(
 
     val initialDueType = remember {
         when {
-            task?.dueDate != null -> "date"
-            task?.duePeriod != null -> "period"
-            else -> "none"
+            task?.dueDate != null -> DUE_DATE
+            task?.duePeriod != null -> DUE_PERIOD
+            else -> DUE_NONE
         }
     }
     var dueType by remember { mutableStateOf(initialDueType) }
@@ -148,9 +153,12 @@ fun EditTaskSheet(
         initialSelectedDateMillis = reminderBase.toInstant().toEpochMilli()
     )
 
-    var ownerExpanded by remember { mutableStateOf(false) }
-    var categoryExpanded by remember { mutableStateOf(false) }
+    var categoryMenuOpen by remember { mutableStateOf(false) }
+    var showNewCategory by remember { mutableStateOf(false) }
+    var dueMenuOpen by remember { mutableStateOf(false) }
+    var remindMenuOpen by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showShareChoice by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
 
     fun resolvedReminderInstant(): String? {
@@ -182,21 +190,34 @@ fun EditTaskSheet(
         }
     }
 
+    fun priorityString() = when (priority) {
+        TaskPriority.HIGHER -> "higher"; TaskPriority.LOWER -> "lower"; TaskPriority.NORMAL -> "normal"
+    }
+
     fun buildInsert() = TaskInsert(
         title = title.trim(),
         notes = notes.trim().ifBlank { null },
         category = category.trim().ifBlank { null },
         owner = owner.trim().ifBlank { null },
-        priority = when (priority) {
-            TaskPriority.HIGHER -> "higher"; TaskPriority.LOWER -> "lower"; TaskPriority.NORMAL -> "normal"
-        },
-        dueDate = if (dueType == "date") dueDate?.toString() else null,
-        duePeriod = if (dueType == "period") duePeriod else null,
+        priority = priorityString(),
+        dueDate = if (dueType == DUE_DATE) dueDate?.toString() else null,
+        duePeriod = if (dueType == DUE_PERIOD) duePeriod else null,
+        reminderAt = resolvedReminderInstant()
+    )
+
+    fun buildUpdate() = TaskUpdate(
+        title = title.trim(),
+        notes = notes.trim().ifBlank { null },
+        category = category.trim().ifBlank { null },
+        owner = owner.trim().ifBlank { null },
+        priority = priorityString(),
+        dueDate = if (dueType == DUE_DATE) dueDate?.toString() else null,
+        duePeriod = if (dueType == DUE_PERIOD) duePeriod else null,
         reminderAt = resolvedReminderInstant()
     )
 
     fun calendarInfo() = when {
-        dueType == "date" && dueDate != null ->
+        dueType == DUE_DATE && dueDate != null ->
             calendarEventForDate(title = title.trim(), description = notes.trim().ifBlank { null }, date = dueDate!!)
         reminderEnabled ->
             calendarEventForInstant(
@@ -207,18 +228,19 @@ fun EditTaskSheet(
         else -> calendarEventWithoutTime(title = title.trim(), description = notes.trim().ifBlank { null })
     }
 
-    fun buildUpdate() = TaskUpdate(
-        title = title.trim(),
-        notes = notes.trim().ifBlank { null },
-        category = category.trim().ifBlank { null },
-        owner = owner.trim().ifBlank { null },
-        priority = when (priority) {
-            TaskPriority.HIGHER -> "higher"; TaskPriority.LOWER -> "lower"; TaskPriority.NORMAL -> "normal"
-        },
-        dueDate = if (dueType == "date") dueDate?.toString() else null,
-        duePeriod = if (dueType == "period") duePeriod else null,
-        reminderAt = resolvedReminderInstant()
-    )
+    val dueChipText = when (dueType) {
+        DUE_DATE -> dueDate?.format(DateTimeFormatter.ofPattern("EEE d MMM")) ?: "Pick a date"
+        DUE_PERIOD -> when (duePeriod) {
+            "this_week" -> "This week"
+            "this_month" -> "This month"
+            else -> "Today"
+        }
+        else -> "None"
+    }
+    val remindChipText = if (reminderEnabled) {
+        reminderBase.withHour(reminderHour).withMinute(reminderMinute)
+            .format(DateTimeFormatter.ofPattern("d MMM HH:mm"))
+    } else "Off"
 
     ModalBottomSheet(
         onDismissRequest = { requestDismiss() },
@@ -231,318 +253,154 @@ fun EditTaskSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
+                .navigationBarsPadding()
+                .padding(horizontal = SheetPadding)
+                .padding(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 24dp after drag handle
-            Spacer(Modifier.height(24.dp))
-
-            if (task == null) {
-                // New task: no eyebrow, just headline
-                Text(
-                    text = "New Task",
-                    style = MaterialTheme.typography.headlineLarge
-                )
-            } else {
-                // Existing task: category eyebrow + headline + action chips
-                val categoryLabel = task.category?.takeIf { it.isNotBlank() }
-                if (categoryLabel != null) {
-                    Text(
-                        text = categoryLabel.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    // 4dp between eyebrow and title
-                    Spacer(Modifier.height(4.dp))
-                }
-                Text(
-                    text = "Edit Task",
-                    style = MaterialTheme.typography.headlineLarge
-                )
-                // 8dp between title and action chips
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SuggestionChip(
-                        onClick = {
-                            context.startActivity(
-                                CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())
-                            )
-                        },
-                        label = { Text("Calendar") },
-                        icon = {
-                            Icon(
-                                Icons.Filled.CalendarMonth,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Add to calendar"
-                            role = Role.Button
-                        }
-                    )
-                    SuggestionChip(
-                        onClick = { showShareChoice = true },
-                        label = { Text("Share") },
-                        icon = {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Share"
-                            role = Role.Button
-                        }
-                    )
-                }
-            }
-
-            // 8dp between header and first field
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = categoryExpanded,
-                onExpandedChange = { categoryExpanded = it }
+            SheetHeader(
+                icon = icon,
+                chipContainer = accents.taskContainer,
+                chipContent = accents.onTaskContainer,
+                eyebrow = if (isNew) "New task" else "Edit task",
             ) {
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it; if (it.isNotBlank()) categoryExpanded = true },
-                    label = { Text("Category") },
-                    singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryEditable)
+                TitleField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = "Task title",
+                    autoFocus = isNew,
                 )
-                val filtered = categories.filter { it.contains(category, ignoreCase = true) }
-                if (filtered.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        filtered.forEach { cat ->
+            }
+
+            SheetBlock {
+                SettingsRow(icon = LucideIcons.LayoutGrid, label = "Category") {
+                    Box {
+                        ValueChip(
+                            text = category.ifBlank { "None" },
+                            onClick = { categoryMenuOpen = true },
+                            contentDescription = "Category: ${category.ifBlank { "none" }}. Change category",
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        CategoryMenu(
+                            expanded = categoryMenuOpen,
+                            categories = categories,
+                            onPick = { category = it; categoryMenuOpen = false },
+                            onNew = { categoryMenuOpen = false; showNewCategory = true },
+                            onDismiss = { categoryMenuOpen = false },
+                        )
+                    }
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.User, label = "Owner") {
+                    OwnerAvatarRow(
+                        owners = owners,
+                        selected = owner.ifBlank { null },
+                        onSelect = { owner = it ?: "" },
+                    )
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Zap, label = "Priority") {
+                    SegmentPill(
+                        options = listOf(TaskPriority.LOWER, TaskPriority.NORMAL, TaskPriority.HIGHER),
+                        selected = priority,
+                        label = { p ->
+                            when (p) {
+                                TaskPriority.LOWER -> "Low"
+                                TaskPriority.NORMAL -> "Normal"
+                                TaskPriority.HIGHER -> "High"
+                            }
+                        },
+                        onSelect = { priority = it },
+                    )
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Calendar, label = "Due") {
+                    Box {
+                        ValueChip(
+                            text = dueChipText,
+                            onClick = { dueMenuOpen = true },
+                            contentDescription = "Due: $dueChipText. Change due",
+                        )
+                        DropdownMenu(expanded = dueMenuOpen, onDismissRequest = { dueMenuOpen = false }) {
+                            DropdownMenuItem(text = { Text("None") }, onClick = { dueType = DUE_NONE; dueMenuOpen = false })
                             DropdownMenuItem(
-                                text = { Text(cat) },
-                                onClick = { category = cat; categoryExpanded = false }
+                                text = { Text("Pick a date…") },
+                                onClick = { dueMenuOpen = false; showDueDatePicker = true },
                             )
+                            listOf("today" to "Today", "this_week" to "This week", "this_month" to "This month")
+                                .forEach { (key, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = { dueType = DUE_PERIOD; duePeriod = key; dueMenuOpen = false },
+                                    )
+                                }
                         }
                     }
                 }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Column {
-                Text(
-                    "Priority",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        TaskPriority.HIGHER to "Higher",
-                        TaskPriority.NORMAL to "Normal",
-                        TaskPriority.LOWER to "Lower"
-                    ).forEach { (p, label) ->
-                        FilterChip(
-                            selected = priority == p,
-                            onClick = { priority = p },
-                            label = { Text(label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Bell, label = "Remind") {
+                    Box {
+                        ValueChip(
+                            text = remindChipText,
+                            onClick = { remindMenuOpen = true },
+                            contentDescription = "Reminder: $remindChipText. Change reminder",
+                            content = if (reminderEnabled) MaterialTheme.colorScheme.onSurface
+                                      else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Column {
-                Text(
-                    "Due",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("none" to "None", "date" to "Date", "period" to "Period").forEach { (key, label) ->
-                        FilterChip(
-                            selected = dueType == key,
-                            onClick = { dueType = key },
-                            label = { Text(label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                }
-                if (dueType == "date") {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showDueDatePicker = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            dueDate?.format(DateTimeFormatter.ofPattern("MMM d, yyyy")) ?: "Pick a date"
-                        )
-                    }
-                }
-                if (dueType == "period") {
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            "today" to "Today",
-                            "this_week" to "This week",
-                            "this_month" to "This month"
-                        ).forEach { (key, label) ->
-                            FilterChip(
-                                selected = duePeriod == key,
-                                onClick = { duePeriod = key },
-                                label = { Text(label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = ownerExpanded,
-                onExpandedChange = { ownerExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = owner,
-                    onValueChange = { owner = it },
-                    label = { Text("Owner") },
-                    singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ownerExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryEditable)
-                )
-                if (owners.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = ownerExpanded,
-                        onDismissRequest = { ownerExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("(unassigned)") },
-                            onClick = { owner = ""; ownerExpanded = false }
-                        )
-                        owners.forEach { o ->
+                        DropdownMenu(expanded = remindMenuOpen, onDismissRequest = { remindMenuOpen = false }) {
                             DropdownMenuItem(
-                                text = { Text(o) },
-                                onClick = { owner = o; ownerExpanded = false }
+                                text = { Text("Off") },
+                                onClick = { reminderEnabled = false; remindMenuOpen = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pick date and time…") },
+                                onClick = { remindMenuOpen = false; showReminderDatePicker = true },
                             )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedTextField(
+            NotesBlock(
                 value = notes,
                 onValueChange = { notes = it },
-                label = { Text("Notes") },
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.fillMaxWidth()
+                placeholder = "Notes",
             )
 
-            Spacer(Modifier.height(16.dp))
-
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Reminder",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
-                }
-                if (reminderEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showReminderDatePicker = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(reminderBase.format(DateTimeFormatter.ofPattern("MMM d, yyyy")))
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showReminderTimePicker = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("%02d:%02d".format(reminderHour, reminderMinute))
-                    }
-                }
-            }
-
-            // 32dp before destructive action
-            if (task != null && onDelete != null) {
-                Spacer(Modifier.height(32.dp))
-                TextButton(
-                    onClick = {
-                        if (showDeleteConfirm) {
-                            onDelete()
-                            sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-                        } else {
-                            showDeleteConfirm = true
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (showDeleteConfirm) "Confirm delete" else "Delete")
-                }
-                // 8dp between destructive and primary action
-                Spacer(Modifier.height(8.dp))
-            } else {
-                // 24dp between body and actions when no destructive action
-                Spacer(Modifier.height(24.dp))
-            }
-
-            Button(
-                enabled = title.isNotBlank(),
-                onClick = {
+            SheetPrimaryRow(
+                actionLabel = "Save",
+                actionEnabled = title.isNotBlank(),
+                onCancel = { requestDismiss() },
+                onAction = {
                     if (task == null) onSave(buildInsert())
                     else onUpdate(buildUpdate())
                     sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (task == null) "Add" else "Save")
-            }
+            )
+
+            TertiaryLinkRow(
+                links = listOfNotNull(
+                    TertiaryLink(
+                        icon = LucideIcons.Calendar, label = "Add to calendar",
+                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
+                    ),
+                    TertiaryLink(icon = LucideIcons.Share, label = "Share", onClick = { showShareChoice = true }),
+                    if (task != null && onDelete != null) TertiaryLink(
+                        icon = LucideIcons.Trash, label = "Delete",
+                        onClick = { showDeleteConfirm = true },
+                        destructive = true,
+                    ) else null,
+                ),
+            )
         }
+    }
+
+    if (showNewCategory) {
+        NewCategoryDialog(
+            onCreate = { category = it; showNewCategory = false },
+            onDismiss = { showNewCategory = false },
+        )
     }
 
     if (showDueDatePicker) {
@@ -552,6 +410,7 @@ fun EditTaskSheet(
                 TextButton(onClick = {
                     dueDatePickerState.selectedDateMillis?.let { millis ->
                         dueDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        dueType = DUE_DATE
                     }
                     showDueDatePicker = false
                 }) { Text("OK") }
@@ -573,7 +432,8 @@ fun EditTaskSheet(
                             .withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0)
                     }
                     showReminderDatePicker = false
-                }) { Text("OK") }
+                    showReminderTimePicker = true
+                }) { Text("Next") }
             },
             dismissButton = {
                 TextButton(onClick = { showReminderDatePicker = false }) { Text("Cancel") }
@@ -581,11 +441,25 @@ fun EditTaskSheet(
         ) { DatePicker(state = reminderPickerState) }
     }
 
+    if (showReminderTimePicker) {
+        SheetTimePickerDialog(
+            initialHour = reminderHour,
+            initialMinute = reminderMinute,
+            onConfirm = { h, m ->
+                reminderHour = h
+                reminderMinute = m
+                reminderEnabled = true
+                showReminderTimePicker = false
+            },
+            onDismiss = { showReminderTimePicker = false }
+        )
+    }
+
     if (showShareChoice) {
         AlertDialog(
             onDismissRequest = { showShareChoice = false },
             title = { Text("Share task") },
-            text = { Text("Choose how to share \"${title.trim()}\".") },
+            text = { Text("Choose how to share “${title.trim()}”.") },
             confirmButton = {
                 TextButton(onClick = {
                     showShareChoice = false
@@ -601,22 +475,27 @@ fun EditTaskSheet(
         )
     }
 
-    if (showReminderTimePicker) {
-        TimePickerDialog(
-            initialHour = reminderHour,
-            initialMinute = reminderMinute,
-            is24Hour = is24Hour,
-            onConfirm = { h, m ->
-                reminderHour = h
-                reminderMinute = m
-                showReminderTimePicker = false
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete task?") },
+            text = { Text("“${title.trim()}” and its reminders will be removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete()
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
-            onDismiss = { showReminderTimePicker = false }
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
         )
     }
 
     if (showDiscardConfirm) {
         DiscardChangesDialog(
+            itemName = task?.title ?: title.trim().ifBlank { null },
             onKeepEditing = { showDiscardConfirm = false },
             onDiscard = {
                 showDiscardConfirm = false
@@ -624,30 +503,4 @@ fun EditTaskSheet(
             }
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    initialHour: Int,
-    initialMinute: Int,
-    is24Hour: Boolean,
-    onConfirm: (hour: Int, minute: Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val state = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-        is24Hour = is24Hour
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-        text = { TimePicker(state = state) }
-    )
 }

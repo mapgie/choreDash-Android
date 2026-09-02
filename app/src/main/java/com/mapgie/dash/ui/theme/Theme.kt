@@ -10,6 +10,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.Swatch
 
 /**
  * Carries all nine HSL values for the custom colour theme, plus the optional
@@ -46,7 +48,7 @@ private val LightTypeAccents = TypeAccentColors(
     reminderContainer = TypeReminderContainer, onReminderContainer = TypeReminderOnContainer,
 )
 
-/** The dark set: same hues, deep containers with pale on-colours for dark surfaces. */
+/** The Zen Dark set: same hues, dim containers with pale on-colours for dark surfaces. */
 private val DarkTypeAccents = TypeAccentColors(
     taskContainer     = TypeTaskContainerDark,     onTaskContainer     = TypeTaskOnContainerDark,
     choreContainer    = TypeChoreContainerDark,    onChoreContainer    = TypeChoreOnContainerDark,
@@ -62,6 +64,7 @@ fun DashTheme(
     darkTheme: Boolean  = isSystemInDarkTheme(),
     wcag:      Boolean  = false,
     customHSL: CustomHSL? = null,
+    severitySwatches: Map<Severity, Swatch> = Severity.defaults,
     content:   @Composable () -> Unit,
 ) {
     val colorScheme = if (appTheme == AppTheme.CUSTOM && customHSL != null) {
@@ -108,7 +111,19 @@ fun DashTheme(
         LightTypeAccents
     }
 
-    CompositionLocalProvider(LocalTypeAccents provides typeAccents) {
+    // Cream gets the handoff's exact non-M3 tokens; every other palette derives
+    // them from its own scheme so the same components stay on-palette.
+    val tokens = when {
+        appTheme == AppTheme.CREAM && darkTheme -> ZenDarkTokens
+        appTheme == AppTheme.CREAM -> CreamLightTokens
+        else -> derivedTokens(colorScheme, darkTheme)
+    }
+
+    CompositionLocalProvider(
+        LocalTypeAccents provides typeAccents,
+        LocalDashTokens provides tokens,
+        LocalSeverityColors provides SeverityColors.from(severitySwatches),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography  = DashTypography,

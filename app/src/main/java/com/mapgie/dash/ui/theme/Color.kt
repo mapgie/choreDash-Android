@@ -126,42 +126,23 @@ val md_theme_dark_surfaceTint = Color(0xFF9ED1AC)
 val md_theme_dark_outlineVariant = Color(0xFF404943)
 val md_theme_dark_scrim = Color(0xFF000000)
 
-// Semantic status colours used on card strips, due badges, and date text.
-// Rose  (StatusStale) = overdue / action required
-// Amber (StatusAging) = approaching due / attention needed
-// Sage  (StatusFresh) = healthy / no action needed
-//
-// Each status has three fixed tones from the Cozy Cream design system:
-//   - the mid tone for accent bars and spines,
-//   - a deep tone for text on light surfaces (the mid amber/sage are too pale
-//     to read as text; in dark mode text falls back to the mid tone),
-//   - a light tint for badge-pill backgrounds on light surfaces (dark surfaces
-//     use a dimmed tint so the pill stays subtle).
+// Semantic status colours. The mid tones of the design's rose / amber / sage,
+// kept for the Glance widgets, which render outside the Compose theme. Inside
+// the app every status colour resolves through `StatusTone.kt`, which reads the
+// user's severity swatches (`data/model/Swatch.kt`) so the tones follow both the
+// Settings › Colours picks and the current brightness.
 val StatusStale = Color(0xFFB8524E)
 val StatusAging = Color(0xFFD9A648)
 val StatusFresh = Color(0xFF8AA877)
 
-val StatusStaleDeep = Color(0xFFA03E3A)
-val StatusAgingDeep = Color(0xFF9A6E1C)
-val StatusFreshDeep = Color(0xFF57724B)
-
-val StatusStaleTint = Color(0xFFF6E3E1)
-val StatusAgingTint = Color(0xFFF3E8D2)
-val StatusFreshTint = Color(0xFFE7ECDD)
-
-val StatusStaleTintDark = Color(0xFF4A302E)
-val StatusAgingTintDark = Color(0xFF48402A)
-val StatusFreshTintDark = Color(0xFF39422F)
-
 // Content-type accent tones. Fixed across all AppTheme palettes so Chores, Tasks,
 // and Reminders keep a stable colour identity no matter which palette the user has
 // picked — used on the bottom nav indicator, the page-header dot and the add-menu
-// FAB. Each hue has a light set (pastel container, deep on-colour) and a dark set
-// (desaturated deep container, pale on-colour); DashTheme picks the set for the
-// current brightness so the on-colour keeps at least 4.5:1 against both its
-// container and the dark surfaces. Colour is a secondary cue only: icon shape and
-// text label already distinguish the three types, satisfying the "not colour
-// alone" rule.
+// FAB. Each hue has a light set (pastel container, deep on-colour) and a Zen Dark
+// set (dim container, pale on-colour); DashTheme picks the set for the current
+// brightness so the on-colour keeps at least 4.5:1 against both its container and
+// the dark surfaces. Colour is a secondary cue only: icon shape and text label
+// already distinguish the three types, satisfying the "not colour alone" rule.
 val TypeTaskContainer = Color(0xFFE9E0F2)
 val TypeTaskOnContainer = Color(0xFF4A3866)
 val TypeChoreContainer = Color(0xFFDFE8D3)
@@ -169,19 +150,20 @@ val TypeChoreOnContainer = Color(0xFF33471F)
 val TypeReminderContainer = Color(0xFFF3E8D2)
 val TypeReminderOnContainer = Color(0xFF5C4413)
 
-val TypeTaskContainerDark = Color(0xFF4A3A66)
-val TypeTaskOnContainerDark = Color(0xFFDCCEF2)
-val TypeChoreContainerDark = Color(0xFF3B4A31)
-val TypeChoreOnContainerDark = Color(0xFFC9DDB4)
-val TypeReminderContainerDark = Color(0xFF54471F)
-val TypeReminderOnContainerDark = Color(0xFFEEDFAE)
+val TypeTaskContainerDark = Color(0xFF3B3448)
+val TypeTaskOnContainerDark = Color(0xFFD4C6EE)
+val TypeChoreContainerDark = Color(0xFF3A4634)
+val TypeChoreOnContainerDark = Color(0xFFC6E0B3)
+val TypeReminderContainerDark = Color(0xFF3D3624)
+val TypeReminderOnContainerDark = Color(0xFFDCB85F)
 
-// Owner avatar palette. A person's handle hashes to one of these six tones via
+// Owner avatar palette. A person's handle hashes to one of six hues via
 // ownerColorFor(), so the same owner shows the same colour on every screen and in
-// the overview sheets. Containers are pastel with dark on-colours and are
-// deliberately fixed across light and dark palettes so a person's identity colour
-// stays stable. The initial letter is always drawn and the
-// avatar carries a "Owner: <handle>" description, so colour is never the only signal.
+// the sheets. Each hue has a light set (pastel container, deep initial) and a Zen
+// Dark set (dim container, pale initial) so the avatar never becomes a bright blob
+// on a dark card; the hue itself stays stable across brightness. The initial
+// letter is always drawn and the avatar carries an "Owner: <handle>" description,
+// so colour is never the only signal.
 data class AvatarTone(val container: Color, val onContainer: Color)
 
 val AvatarTones: List<AvatarTone> = listOf(
@@ -193,17 +175,27 @@ val AvatarTones: List<AvatarTone> = listOf(
     AvatarTone(Color(0xFFE7D9F7), Color(0xFF432B63)), // violet
 )
 
+val AvatarTonesDark: List<AvatarTone> = listOf(
+    AvatarTone(Color(0xFF4A3236), Color(0xFFF0C4CC)), // rose
+    AvatarTone(Color(0xFF4D4A3A), Color(0xFFE8DFB8)), // amber
+    AvatarTone(Color(0xFF3F4A3A), Color(0xFFCFE0C2)), // green
+    AvatarTone(Color(0xFF33474A), Color(0xFFBFE0DC)), // teal
+    AvatarTone(Color(0xFF363F4F), Color(0xFFC8D6F0)), // blue
+    AvatarTone(Color(0xFF433A52), Color(0xFFDCCDF2)), // violet
+)
+
 /**
- * Stable mapping from an owner handle to one of [AvatarTones]. Plain Kotlin (no
- * Compose) so the Glance widgets can share it. Case- and whitespace-insensitive, so
- * "Alice", "alice", and " Alice " all resolve to the same tone.
+ * Stable mapping from an owner handle to one of six avatar hues, in the light or
+ * [dark] set. Plain Kotlin (no Compose) so the Glance widgets can share it. Case-
+ * and whitespace-insensitive, so "Alice", "alice", and " Alice " all resolve to the
+ * same tone.
  */
-fun ownerColorFor(handle: String): AvatarTone {
+fun ownerColorFor(handle: String, dark: Boolean = false): AvatarTone {
     val key = handle.trim().lowercase()
     var hash = 0
     for (ch in key) hash = hash * 31 + ch.code
     val index = ((hash % AvatarTones.size) + AvatarTones.size) % AvatarTones.size
-    return AvatarTones[index]
+    return (if (dark) AvatarTonesDark else AvatarTones)[index]
 }
 
 // ── Sage colour schemes ───────────────────────────────────────────────────────
@@ -477,8 +469,10 @@ val MistDarkColors = darkColorScheme(
 // (buttons, toggles, selection), a sage secondary (positive accent), and an
 // amber tertiary. The surfaceContainer ramp is declared explicitly so sheets
 // and the nav bar land on the design's warm neutrals rather than the M3
-// baseline's cool ones. Dark mode reuses the design's dark reminder screen:
-// a deep green-brown ground with gold and soft-lavender accents.
+// baseline's cool ones. Dark mode is the handoff's "Zen Dark" column: a warm
+// charcoal-green ground, one-step-lighter cards, and the same sage / rose /
+// amber / lavender hues lifted for dark surfaces. Every value below is taken
+// from that token table; nothing is derived automatically.
 
 val CreamLightColors = lightColorScheme(
     primary = Color(0xFF7A5FA0),
@@ -520,42 +514,49 @@ val CreamLightColors = lightColorScheme(
 )
 
 val CreamDarkColors = darkColorScheme(
-    primary = Color(0xFFC9B8E8),
-    onPrimary = Color(0xFF3A2A54),
-    primaryContainer = Color(0xFF55407A),
-    onPrimaryContainer = Color(0xFFE9E0F2),
-    secondary = Color(0xFFA9C494),
-    onSecondary = Color(0xFF2A3A22),
-    secondaryContainer = Color(0xFF47583C),
-    onSecondaryContainer = Color(0xFFDFE8D3),
-    tertiary = Color(0xFFDFCF90),
+    // Lavender accent: chips and toggles; chip text is near-black on the pale fill.
+    primary = Color(0xFFB6A3D6),
+    onPrimary = Color(0xFF221A2E),
+    primaryContainer = Color(0xFF3B3448),
+    onPrimaryContainer = Color(0xFFC9B8E6),
+    // Sage accent: the FAB and the primary sheet action, with an ink-on-sage glyph.
+    secondary = Color(0xFF8AA877),
+    onSecondary = Color(0xFF1C2118),
+    secondaryContainer = Color(0xFF3A4634),
+    onSecondaryContainer = Color(0xFFC6E0B3),
+    // Amber accent.
+    tertiary = Color(0xFFDCB85F),
     onTertiary = Color(0xFF3B3213),
-    tertiaryContainer = Color(0xFF57491D),
-    onTertiaryContainer = Color(0xFFF5EBC9),
+    tertiaryContainer = Color(0xFF3D3624),
+    onTertiaryContainer = Color(0xFFDCB85F),
     error = Color(0xFFFFB4AB),
     errorContainer = Color(0xFF93000A),
     onError = Color(0xFF690005),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF272E24),
-    onBackground = Color(0xFFF0EAD9),
-    surface = Color(0xFF2C3328),
-    onSurface = Color(0xFFF0EAD9),
-    surfaceVariant = Color(0xFF363E33),
-    onSurfaceVariant = Color(0xFFC2BBA6),
-    surfaceBright = Color(0xFF3A4236),
-    surfaceDim = Color(0xFF1E2419),
-    surfaceContainerLowest = Color(0xFF1C2118),
-    surfaceContainerLow = Color(0xFF262C22),
-    surfaceContainer = Color(0xFF2C3328),
-    surfaceContainerHigh = Color(0xFF333B2F),
-    surfaceContainerHighest = Color(0xFF3A4236),
-    outline = Color(0xFF918A76),
-    inverseOnSurface = Color(0xFF2B3227),
-    inverseSurface = Color(0xFFF0EAD9),
+    // Ground and ink.
+    background = Color(0xFF22281F),
+    onBackground = Color(0xFFECE6D6),
+    surface = Color(0xFF22281F),
+    onSurface = Color(0xFFECE6D6),
+    // Card ground and the muted ink used for captions and header icons.
+    surfaceVariant = Color(0xFF2F372B),
+    onSurfaceVariant = Color(0xFFA7AD98),
+    surfaceBright = Color(0xFF3F4A3A),
+    surfaceDim = Color(0xFF1B2019),
+    // Ramp: nav bar / sheet inner blocks, sheet surface, card, chips, raised chips.
+    surfaceContainerLowest = Color(0xFF1B2019),
+    surfaceContainerLow = Color(0xFF2A3127),
+    surfaceContainer = Color(0xFF2F372B),
+    surfaceContainerHigh = Color(0xFF343D30),
+    surfaceContainerHighest = Color(0xFF3F4A3A),
+    // Faint ink (card meta) and the hairline.
+    outline = Color(0xFF9AA295),
+    outlineVariant = Color(0xFF343D30),
+    inverseOnSurface = Color(0xFF22281F),
+    inverseSurface = Color(0xFFECE6D6),
     inversePrimary = Color(0xFF7A5FA0),
-    surfaceTint = Color(0xFFC9B8E8),
-    outlineVariant = Color(0xFF454D3F),
-    scrim = Color(0xFF000000),
+    surfaceTint = Color(0xFFB6A3D6),
+    scrim = Color(0xFF0F120D),
 )
 
 // ── Colour scheme router ──────────────────────────────────────────────────────

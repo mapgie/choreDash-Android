@@ -1,167 +1,175 @@
 package com.mapgie.dash.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Snooze
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
-import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
-import com.mapgie.dash.ui.theme.StatusTone
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
+import com.mapgie.dash.ui.theme.isDarkScheme
+import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.formatAbsoluteDate
 import com.mapgie.dash.util.relativeTime
 import java.time.Instant
 
 /**
- * Cozy Cream list card for a chore: status spine, circular brush chip tinted by
- * the chore's status, title with an uppercase "every Nd · done Xd ago" caption,
- * a right column with the countdown badge above the owner avatar, and a slim
- * cadence-pressure bar along the bottom (track fills as the chore approaches
- * due; full = overdue). The bar restates the spine/badge status, so colour is
- * never the only signal.
+ * The revised (turn 5a) list card for a chore: a 5dp status spine, a 38dp
+ * circular chip carrying the category's Lucide [icon], the title with its
+ * "every Nd · done Xw ago" meta line directly beneath, and a single right-hand
+ * row of owner avatar then due badge, so dates line up for scanning. No progress
+ * bar. Light cards keep a soft shadow; dark cards have none.
  *
- * A snoozed chore ([snoozedUntil] set) swaps the brush chip for a snooze glyph
- * on a neutral tint and replaces the countdown with "Snoozed until <date>";
- * the spine and bar keep telling the truth about its status underneath.
+ * Colour is driven by severity (spine, chip and badge take the status tone) or,
+ * when [categorySwatch] is given, by the category's own colour with the badge
+ * text kept neutral. Either way the badge words and the meta line restate the
+ * state, so colour is never the only signal.
+ *
+ * A snoozed chore ([snoozedUntil] set) swaps the chip glyph for a muted bell on
+ * a neutral tint and replaces the badge with "Snoozed until <date>"; the spine
+ * keeps telling the truth about its status underneath.
  */
 @Composable
 fun ChoreCard(
     chore: Chore,
     showOwner: Boolean,
-    zenMode: Boolean = false,
-    showDueCountdown: Boolean = false,
-    showCategory: Boolean = true,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
+    zenMode: Boolean = false,
+    showCategory: Boolean = true,
+    categorySwatch: Swatch? = null,
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
 ) {
     val tone = chore.statusTone()
     val accents = LocalTypeAccents.current
-    val barColor = if (zenMode) Color.Transparent else tone.barColor()
+    val dark = isDarkScheme()
+    val snoozed = snoozedUntil != null
+
+    val spine: Color = when {
+        zenMode -> Color.Transparent
+        categorySwatch != null -> categorySwatch.spineColor()
+        else -> tone.barColor()
+    }
+    val chipContainer: Color = when {
+        zenMode -> Color.Transparent
+        snoozed -> MaterialTheme.colorScheme.surfaceContainerHigh
+        categorySwatch != null -> categorySwatch.tintColor()
+        else -> tone.badgeContainerColor() ?: accents.choreContainer
+    }
+    val chipContent: Color = when {
+        zenMode || snoozed -> MaterialTheme.colorScheme.onSurfaceVariant
+        categorySwatch != null -> categorySwatch.textColor()
+        else -> tone.textColor()
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = Dimens.cardInset),
         colors = CardDefaults.cardColors(
-            // Same card ground as the Tasks list; status is carried by the spine,
-            // the chip tint, the badge, and the pressure bar.
-            containerColor = if (zenMode) MaterialTheme.colorScheme.surface
+            containerColor = if (zenMode) MaterialTheme.colorScheme.surfaceContainerLow
                              else MaterialTheme.colorScheme.surfaceVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Left status accent bar
             Box(
                 modifier = Modifier
                     .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
-                    .background(barColor)
+                    .background(spine)
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = Dimens.cardPadding,
+                        end = Dimens.cardPadding,
+                        top = Dimens.cardVerticalPadding,
+                        bottom = Dimens.cardVerticalPadding,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CardIconChip(
+                    icon = if (snoozed) LucideIcons.BellOff else icon,
+                    containerColor = chipContainer,
+                    contentColor = chipContent,
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val snoozed = snoozedUntil != null
-                    CardIconChip(
-                        icon = if (snoozed) Icons.Outlined.Snooze else DashIcons.Brush,
-                        containerColor = when {
-                            zenMode -> Color.Transparent
-                            snoozed -> MaterialTheme.colorScheme.surfaceContainerHighest
-                            else -> tone.badgeContainerColor() ?: accents.choreContainer
-                        },
-                        contentColor = if (zenMode || snoozed) MaterialTheme.colorScheme.onSurfaceVariant
-                                       else tone.textColor(),
+                    Text(
+                        highlightedText(chore.label, highlightQuery),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-
-                    // Title + cadence caption
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            highlightedText(chore.label, highlightQuery),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        if (zenMode) {
-                            chore.lastScanned?.let {
-                                MetaLabel(text = formatAbsoluteDate(it), style = MaterialTheme.typography.bodySmall)
-                            }
-                        } else {
-                            MetaCaption(text = choreCaption(chore, showCategory))
+                    if (zenMode) {
+                        chore.lastScanned?.let {
+                            MetaLabel(text = formatAbsoluteDate(it), style = MaterialTheme.typography.bodySmall)
                         }
-                    }
-
-                    // Right column: status badge above the owner avatar, pinned
-                    // rightmost so the same person renders identically here and
-                    // on the Tasks list.
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (!zenMode) {
-                            when {
-                                snoozedUntil != null ->
-                                    MetaLabel(text = "Snoozed until ${formatAbsoluteDate(snoozedUntil)}")
-                                chore.lastScanned == null ->
-                                    StatusBadge(text = "Never", tone = tone)
-                                showDueCountdown && chore.nextDueText() != null ->
-                                    StatusBadge(text = chore.nextDueText()!!, tone = tone)
-                                else ->
-                                    MetaLabel(
-                                        text = formatAbsoluteDate(chore.lastScanned),
-                                        color = if (tone == StatusTone.OK)
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        else tone.textColor()
-                                    )
-                            }
-                        }
-                        if (showOwner && chore.owner != null) {
-                            OwnerAvatar(handle = chore.owner, modifier = Modifier.align(Alignment.End))
-                        }
+                    } else {
+                        MetaCaption(text = choreCaption(chore, showCategory), uppercase = false)
                     }
                 }
 
-                // Cadence-pressure bar: fills as the chore approaches due.
-                val pressure = if (zenMode) null else chore.pressureFraction()
-                if (pressure != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 10.dp, end = 12.dp, bottom = 10.dp)
-                            .fillMaxWidth()
-                            .height(5.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                // Right cluster: avatar first, then the due badge, so dates line up.
+                if (!zenMode || (showOwner && chore.owner != null)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.metaSpacing),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(pressure)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(percent = 50))
-                                .background(tone.barColor())
-                        )
+                        if (showOwner && chore.owner != null) {
+                            OwnerAvatar(handle = chore.owner)
+                        }
+                        if (!zenMode) {
+                            if (snoozedUntil != null) {
+                                MetaLabel(text = "Snoozed until ${formatAbsoluteDate(snoozedUntil)}")
+                            } else {
+                                StatusBadge(
+                                    text = chore.dueBadgeText(),
+                                    tone = tone,
+                                    containerOverride = categorySwatch?.tintColor(),
+                                    textOverride = if (categorySwatch != null)
+                                        MaterialTheme.colorScheme.onSurfaceVariant else null,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -172,7 +180,7 @@ fun ChoreCard(
 /** "kitchen · every 3d · done 5d ago" caption line; "never done" before the first log. */
 private fun choreCaption(chore: Chore, showCategory: Boolean): String {
     val parts = mutableListOf<String>()
-    if (showCategory && !chore.category.isNullOrBlank()) parts += chore.category
+    if (showCategory && !chore.category.isNullOrBlank()) parts += chore.category.lowercase()
     chore.intervalDays?.let { parts += "every ${it.toInt()}d" }
     parts += chore.lastScanned?.let { "done ${relativeTime(it)}" } ?: "never done"
     return parts.joinToString(" · ")

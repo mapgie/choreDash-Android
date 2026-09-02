@@ -32,16 +32,18 @@ import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.barColor
+import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.statusTone
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Cozy Cream list card for a reminder/memo: same shell as the Task card, with the
- * circular done-toggle chip on the reminder accent and an "Overdue" badge (rose
- * on tint, per the shared status scale) instead of the reserved error colours.
+ * List card for a reminder/memo: same shell as the Task card, with the circular
+ * done-toggle chip (bell glyph) on the reminder accent and an "Overdue" badge
+ * (rose on tint, per the shared status scale) instead of the reserved error colours.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,9 +58,10 @@ fun ReminderCard(
     val isOverdue = reminder.isPast() && !isDone
     val tone = reminder.statusTone()
     val accents = LocalTypeAccents.current
+    val dark = isDarkScheme()
 
     val formatter = remember(reminder.remindAt) {
-        DateTimeFormatter.ofPattern("MMM d, yyyy 'at' HH:mm")
+        DateTimeFormatter.ofPattern("d MMM yyyy 'at' HH:mm")
     }
     val whenLabel = reminder.remindAtInstant()
         ?.atZone(ZoneId.systemDefault())
@@ -69,10 +72,11 @@ fun ReminderCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isDone)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             else
                 MaterialTheme.colorScheme.surfaceVariant
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Spine signals only overdue; quiet states stay quiet.
@@ -84,25 +88,35 @@ fun ReminderCard(
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = Dimens.cardPadding - 3.dp,
+                        end = Dimens.cardPadding,
+                        top = Dimens.cardVerticalPadding - 3.dp,
+                        bottom = Dimens.cardVerticalPadding - 3.dp,
+                    )
             ) {
                 DoneToggleChip(
                     isDone = isDone,
                     onToggle = onToggleDone,
-                    containerColor = accents.reminderContainer,
-                    contentColor = accents.onReminderContainer,
+                    icon = LucideIcons.Bell,
+                    containerColor = if (isDone) MaterialTheme.colorScheme.surfaceContainerHigh
+                                     else accents.reminderContainer,
+                    contentColor = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                                   else accents.onReminderContainer,
                 )
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = reminder.subject,
                         style = MaterialTheme.typography.titleMedium,
                         textDecoration = if (isDone) TextDecoration.LineThrough else null,
                         color = if (isDone)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         else
                             MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
@@ -116,7 +130,7 @@ fun ReminderCard(
                             MetaLabel(
                                 text = it,
                                 color = if (isDone)
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelMedium
@@ -128,7 +142,7 @@ fun ReminderCard(
                     }
                 }
                 if (isOverdue) {
-                    StatusBadge(text = "Overdue", tone = StatusTone.CRITICAL)
+                    StatusBadge(text = "overdue", tone = StatusTone.CRITICAL)
                 }
             }
         }

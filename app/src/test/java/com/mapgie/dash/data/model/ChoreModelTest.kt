@@ -132,6 +132,36 @@ class ChoreModelTest {
         )
     }
 
+    // ── Due badge ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `badge reads never before the first log`() {
+        assertEquals("never", chore(intervalDays = 10.0).dueBadgeText())
+    }
+
+    @Test
+    fun `badge counts days left against the full interval`() {
+        // 10d interval, 36h in: 204h (8.5d) remain.
+        assertEquals("8d left", chore(intervalDays = 10.0, lastScannedAgo = Duration.ofHours(36)).dueBadgeText())
+    }
+
+    @Test
+    fun `badge counts days over once past the full interval`() {
+        // 10d interval, 300h in: 60h (2.5d) over.
+        assertEquals("2d over", chore(intervalDays = 10.0, lastScannedAgo = Duration.ofHours(300)).dueBadgeText())
+    }
+
+    @Test
+    fun `badge falls back to hours inside the last day`() {
+        assertEquals("12h left", chore(intervalDays = 1.0, lastScannedAgo = Duration.ofHours(12)).dueBadgeText())
+    }
+
+    @Test
+    fun `category chores fall due at the aging window`() {
+        // Kitchen ages out at 5 days; 36h in leaves 84h (3.5d).
+        assertEquals("3d left", chore(category = "Kitchen", lastScannedAgo = Duration.ofHours(36)).dueBadgeText())
+    }
+
     // ── Distant ───────────────────────────────────────────────────────────────
 
     @Test

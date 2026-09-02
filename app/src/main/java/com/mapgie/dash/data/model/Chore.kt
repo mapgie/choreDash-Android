@@ -94,6 +94,42 @@ data class Chore(
     }
 
     /**
+     * When this chore falls due: the last log plus the full repeat window (the
+     * interval, or the category aging threshold), the same point at which
+     * [computeStatus] turns it stale. Null before the first log.
+     */
+    fun dueInstant(): Instant? {
+        val last = lastScanned ?: return null
+        val windowHours = if (intervalDays != null) {
+            (intervalDays * 24).toLong()
+        } else {
+            (CATEGORY_AGING_DAYS[category] ?: 5L) * 24
+        }
+        return last.plus(windowHours, ChronoUnit.HOURS)
+    }
+
+    /**
+     * The card badge: "35d over", "1d left", "6h left", "due now", or "never"
+     * before the first log. Counted against [dueInstant], so the words agree with
+     * the spine colour and the Overdue filter.
+     */
+    fun dueBadgeText(): String {
+        val due = dueInstant() ?: return "never"
+        val diff = Duration.between(Instant.now(), due)
+        val overdue = diff.isNegative
+        val hours = diff.abs().toHours()
+        val days = hours / 24
+        return when {
+            overdue && days >= 1 -> "${days}d over"
+            overdue && hours >= 1 -> "${hours}h over"
+            overdue -> "due now"
+            days >= 1 -> "${days}d left"
+            hours >= 1 -> "${hours}h left"
+            else -> "due now"
+        }
+    }
+
+    /**
      * Countdown text matching choreDash web's nextDueText(), e.g. "in 2d", "in 5h",
      * "1d overdue", "3h overdue". Returns null if never scanned.
      */

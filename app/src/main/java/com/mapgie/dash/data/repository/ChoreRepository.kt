@@ -8,6 +8,8 @@ import com.mapgie.dash.data.model.TagInsert
 import com.mapgie.dash.data.supabase.SupabaseClientProvider
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -97,12 +99,36 @@ class ChoreRepository @Inject constructor(
         client.from("scans").delete { filter { eq("id", scanId) } }
     }
 
-    suspend fun updateTag(tagId: String, label: String, owner: String?, intervalDays: Double?) {
+    suspend fun updateTag(
+        tagId: String,
+        label: String,
+        category: String?,
+        owner: String?,
+        intervalDays: Double?
+    ) {
         val client = requireClient()
+        // Explicit JSON payload so a null clears the column instead of being dropped
+        // (LESSONS.md #33) while interval_days stays numeric.
         client.from("tags").update(
-            TagUpdateDto(label = label, owner = owner, intervalDays = intervalDays)
+            buildJsonObject {
+                put("label", label)
+                put("category", category)
+                put("owner", owner)
+                put("interval_days", intervalDays)
+            }
         ) {
             filter { eq("tag_id", tagId) }
+        }
+    }
+
+    /**
+     * Moves every chore in category [from] to [to] (null clears the column).
+     * Used by Settings › Categories for rename and delete.
+     */
+    suspend fun moveCategory(from: String, to: String?) {
+        val client = requireClient()
+        client.from("tags").update(mapOf("category" to to)) {
+            filter { eq("category", from) }
         }
     }
 
@@ -140,10 +166,3 @@ class ChoreRepository @Inject constructor(
 
 @kotlinx.serialization.Serializable
 private data class OwnerDto(@kotlinx.serialization.SerialName("handle") val handle: String)
-
-@kotlinx.serialization.Serializable
-private data class TagUpdateDto(
-    @kotlinx.serialization.SerialName("label") val label: String,
-    @kotlinx.serialization.SerialName("owner") val owner: String?,
-    @kotlinx.serialization.SerialName("interval_days") val intervalDays: Double?
-)

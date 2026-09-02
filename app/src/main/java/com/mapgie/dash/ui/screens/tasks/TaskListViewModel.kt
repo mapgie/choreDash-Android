@@ -3,20 +3,22 @@ package com.mapgie.dash.ui.screens.tasks
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.alarm.AlarmScheduler
-import com.mapgie.dash.data.model.DuePeriod
-import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
+import com.mapgie.dash.data.model.TaskSortKey
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
 import com.mapgie.dash.data.model.urgency
+import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
@@ -37,14 +39,15 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-enum class TaskSort { PRIORITY, DUE, CREATED }
+/** Label shown on a group header for tasks with no category. */
+const val OTHER_CATEGORY_LABEL = "Other"
 
 data class TaskUiState(
     val loading: Boolean = true,
     val error: String? = null,
     val tasks: List<TaskDto> = emptyList(),
     val owners: List<String> = emptyList(),
-    val sort: TaskSort = TaskSort.PRIORITY,
+    val sort: SortOrder<TaskSortKey> = SortOrder(TaskSortKey.PRIORITY),
     val groupByCategory: Boolean = true,
     val ownerFilter: OwnerFilter = OwnerFilter.EVERYONE,
     val ownerHandle: String = "",
@@ -52,6 +55,7 @@ data class TaskUiState(
     val hideThresholdDays: Int = -1,
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
+    val catalog: CategoryCatalog = CategoryCatalog(),
     val pinChooser: PinChooserState? = null,
 ) {
     val displayed: List<TaskDto>
@@ -66,41 +70,85 @@ data class TaskUiState(
                 val byUrgency = filtered.sortedWith(compareBy({ it.urgency().ordinal }, { it.dueDate ?: "" }))
                 return if (zenSortAscending) byUrgency else byUrgency.reversed()
             }
-            return when (sort) {
-                TaskSort.PRIORITY -> filtered.sortedWith(
-                    compareBy(
-                        { when (it.priorityEnum()) { TaskPriority.HIGHER -> 0; TaskPriority.NORMAL -> 1; TaskPriority.LOWER -> 2 } },
-                        { it.urgency().ordinal }
-                    )
-                )
-                TaskSort.DUE -> filtered.sortedWith(
-                    compareBy(
-                        { it.urgency().ordinal },
-                        { when (it.priorityEnum()) { TaskPriority.HIGHER -> 0; TaskPriority.NORMAL -> 1; TaskPriority.LOWER -> 2 } }
-                    )
-                )
-                TaskSort.CREATED -> filtered.sortedByDescending { it.createdAt }
-            }
+            return filtered.sortedForPill(sort)
         }
 
+    /** Open tasks in the main list, minus anything due beyond the hide threshold. */
     val activeTasks: List<TaskDto>
-        get() {
-            val active = displayed.filter { it.completedAt == null }
-            if (hideThresholdDays < 0) return active
-            val today = LocalDate.now(ZoneId.systemDefault())
-            val cutoff = today.plusDays(hideThresholdDays.toLong())
-            return active.filter { task ->
-                if (task.dueDate == null) return@filter true
-                val date = runCatching { LocalDate.parse(task.dueDate) }.getOrNull() ?: return@filter true
-                !date.isAfter(cutoff)
-            }
-        }
+        get() = openTasks.filterNot(::hiddenByThreshold)
+
+    private val openTasks: List<TaskDto>
+        get() = displayed.filter { it.completedAt == null }
+
+    private fun hiddenByThreshold(task: TaskDto): Boolean {
+        if (hideThresholdDays < 0) return false
+        val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
+        val cutoff = LocalDate.now(ZoneId.systemDefault()).plusDays(hideThresholdDays.toLong())
+        return date.isAfter(cutoff)
+    }
+
+    /** Open tasks kept out of the list by the far-future hide threshold. */
+    val hiddenCount: Int
+        get() = openTasks.count(::hiddenByThreshold)
 
     val doneTasks: List<TaskDto>
         get() = displayed.filter { it.completedAt != null }
 
+    /**
+     * [activeTasks] split into category groups in catalog order (user order,
+     * then unlisted names alphabetically, General last); tasks with no category
+     * land in an "Other" group at the end.
+     */
+    val grouped: List<Pair<String, List<TaskDto>>>
+        get() {
+            val groups = activeTasks.groupBy { it.category?.takeIf { c -> c.isNotBlank() } }
+            return groups.entries
+                .sortedWith(
+                    compareBy<Map.Entry<String?, List<TaskDto>>> { it.key == null }
+                        .thenBy { catalog.rankOf(it.key) }
+                        .thenBy { it.key?.lowercase() ?: "" }
+                )
+                .map { (category, tasks) -> (category ?: OTHER_CATEGORY_LABEL) to tasks }
+        }
+
+    /** "6 tasks · 2 hidden" for the summary bar; the hidden part is omitted at zero. */
+    val summaryLabel: String
+        get() {
+            val shown = activeTasks.size
+            val base = if (shown == 1) "1 task" else "$shown tasks"
+            val hidden = hiddenCount
+            return if (hidden > 0) "$base · $hidden hidden" else base
+        }
+
     val categories: List<String>
-        get() = tasks.mapNotNull { it.category }.filter { it.isNotBlank() }.distinct().sorted()
+        get() = catalog.sorted(tasks.mapNotNull { it.category }.filter { it.isNotBlank() })
+}
+
+private fun TaskDto.priorityRank(): Int = when (priorityEnum()) {
+    TaskPriority.HIGHER -> 0
+    TaskPriority.NORMAL -> 1
+    TaskPriority.LOWER -> 2
+}
+
+/**
+ * Orders tasks for the sort pill. Undated tasks always trail dated ones on the
+ * due key, in both directions, so reversing never floats "no date" to the top.
+ */
+fun List<TaskDto>.sortedForPill(order: SortOrder<TaskSortKey>): List<TaskDto> = when (order.key) {
+    TaskSortKey.PRIORITY ->
+        if (!order.reversed) sortedWith(compareBy({ it.priorityRank() }, { it.urgency().ordinal }))
+        else sortedWith(compareByDescending<TaskDto> { it.priorityRank() }.thenBy { it.urgency().ordinal })
+    TaskSortKey.DUE -> {
+        val (dated, undated) = partition { it.urgency() != TaskUrgency.NONE }
+        val soonest = dated.sortedWith(
+            compareBy({ it.urgency().ordinal }, { it.dueDate ?: "" }, { it.priorityRank() })
+        )
+        (if (order.reversed) soonest.reversed() else soonest) + undated.sortedBy { it.priorityRank() }
+    }
+    TaskSortKey.CREATED ->
+        if (!order.reversed) sortedByDescending { it.createdAt } else sortedBy { it.createdAt }
+    TaskSortKey.NAME ->
+        if (!order.reversed) sortedBy { it.title.lowercase() } else sortedByDescending { it.title.lowercase() }
 }
 
 @HiltViewModel
@@ -110,6 +158,7 @@ class TaskListViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
+    private val categoryStyleStore: CategoryStyleStore,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -125,8 +174,14 @@ class TaskListViewModel @Inject constructor(
                         groupByCategory = s.groupTasksByCategory,
                         hideThresholdDays = s.taskHideThresholdDays,
                         zenMode = s.taskZenMode,
+                        sort = s.taskSort,
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            categoryStyleStore.catalog.collect { catalog ->
+                _uiState.update { it.copy(catalog = catalog) }
             }
         }
         viewModelScope.launch {
@@ -232,7 +287,22 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    fun markDone(id: String) {
+    /** A standalone reminder linked to a task, from the sheet's Remind action. */
+    fun addReminderForTask(insert: ReminderInsert) {
+        viewModelScope.launch {
+            runCatching {
+                val reminder = reminderRepository.addReminder(insert)
+                reminder.remindAtInstant()?.let { at ->
+                    alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, insert.taskId)
+                }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    /** Marks a task done, at [at] when the sheet's DONE control picked an earlier time. */
+    fun markDone(id: String, at: Instant? = null) {
         viewModelScope.launch {
             runCatching {
                 alarmScheduler.cancelTask(id)
@@ -242,7 +312,7 @@ class TaskListViewModel @Inject constructor(
                         alarmScheduler.cancelReminder(reminder.id)
                         reminderRepository.archiveReminder(reminder.id, true)
                     }
-                taskRepository.markDone(id)
+                taskRepository.markDone(id, at ?: Instant.now())
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
@@ -307,7 +377,12 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    fun setSort(s: TaskSort) = _uiState.update { it.copy(sort = s) }
+    /** Sort pill choice; applied immediately and persisted. */
+    fun setSort(order: SortOrder<TaskSortKey>) {
+        _uiState.update { it.copy(sort = order) }
+        viewModelScope.launch { settingsRepository.setTaskSort(order) }
+    }
+
     fun setGroupBy(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setGroupTasksByCategory(enabled) }
     }

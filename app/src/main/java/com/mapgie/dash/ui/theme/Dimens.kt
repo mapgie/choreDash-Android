@@ -3,7 +3,9 @@ package com.mapgie.dash.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Shared spacing and sizing tokens for the list surfaces (Chores, Tasks, Memos).
+ * Shared spacing and sizing tokens for the list surfaces (Chores, Tasks, Memos),
+ * per the revised (turn 5a) list card: tighter rows, a 5dp spine, a 38dp icon
+ * chip and a 24dp avatar in a single right-hand row.
  *
  * These are the Compose analogue of design tokens / SCSS variables: one place that
  * owns the card inset, inter-card gap, accent-bar width, owner-avatar size, and the
@@ -13,26 +15,39 @@ import androidx.compose.ui.unit.dp
  */
 object Dimens {
     /** Horizontal inset around a list card. */
-    val cardInset = 16.dp
+    val cardInset = 18.dp
 
     /** Vertical gap between consecutive list cards. */
-    val cardGap = 8.dp
+    val cardGap = 7.dp
 
     /** Inner content padding inside a card, between the accent bar and the edge. */
-    val cardPadding = 12.dp
+    val cardPadding = 14.dp
+
+    /** Vertical padding inside a card. */
+    val cardVerticalPadding = 10.dp
 
     /** Width of the leading status accent bar (the card "spine"). */
-    val accentBarWidth = 7.dp
+    val accentBarWidth = 5.dp
 
-    /** Diameter of the owner avatar on every surface. */
-    val avatarSize = 26.dp
+    /** Diameter of the owner avatar on list cards. */
+    val avatarSize = 24.dp
+
+    /** Diameter of the owner avatar in sheet headers. */
+    val sheetAvatarSize = 30.dp
 
     /**
-     * Diameter of the circular icon chip at the left of every list card. Also
-     * the card's done-toggle where the item can be completed in place, so it
-     * clears the 44dp minimum tap target.
+     * Diameter of the circular icon chip at the left of every list card. Where the
+     * chip doubles as the done toggle it is wrapped in a 44dp minimum touch target
+     * (`minimumInteractiveComponentSize`), so the visual stays at 38dp without
+     * shrinking the tap area below the `CLAUDE.md` floor.
      */
-    val iconChipSize = 46.dp
+    val iconChipSize = 38.dp
+
+    /** Glyph size inside [iconChipSize]. */
+    val iconChipGlyph = 18.dp
+
+    /** Icon chip in a sheet header. */
+    val sheetIconChipSize = 44.dp
 
     /**
      * Minimum height of a tappable list row. 56dp comfortably clears the 44dp
@@ -42,4 +57,7 @@ object Dimens {
 
     /** Gap between inline meta elements (badges, labels) in a row. */
     val metaSpacing = 8.dp
+
+    /** Horizontal page padding for the header and sheet content. */
+    val pagePadding = 20.dp
 }

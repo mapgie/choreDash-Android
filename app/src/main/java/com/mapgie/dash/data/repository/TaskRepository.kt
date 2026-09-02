@@ -37,8 +37,8 @@ class TaskRepository @Inject constructor(
     suspend fun updateTask(taskId: String, update: TaskUpdate): TaskDto =
         patchTask(taskId, editTaskPayload(update))
 
-    suspend fun markDone(taskId: String): TaskDto =
-        patchTask(taskId, completedAtPayload(Instant.now().toString()))
+    suspend fun markDone(taskId: String, completedAt: Instant = Instant.now()): TaskDto =
+        patchTask(taskId, completedAtPayload(completedAt.toString()))
 
     suspend fun markUndone(taskId: String): TaskDto =
         patchTask(taskId, completedAtPayload(null))
@@ -58,6 +58,17 @@ class TaskRepository @Inject constructor(
         client.from("todos").update(
             TaskUpdate(reminded = true)
         ) { filter { eq("id", taskId) } }
+    }
+
+    /**
+     * Moves every task in category [from] to [to] (null clears the column).
+     * Used by Settings › Categories for rename and delete.
+     */
+    suspend fun moveCategory(from: String, to: String?) {
+        val client = requireClient()
+        client.from("todos").update(mapOf("category" to to)) {
+            filter { eq("category", from) }
+        }
     }
 
     suspend fun deleteTask(taskId: String) {

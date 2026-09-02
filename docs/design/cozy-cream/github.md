@@ -3,9 +3,14 @@ branch: main
 path: app/src/main/java/com/mapgie/dash
 
 ## Last sync
-date: 2026-08-26T00:00:00Z
+date: 2026-09-02T12:00:00Z
 
 ### Updated in this project
+- Handoff package finalised: implementation rule (no silent feature drops), turn index, Chores icon = Lucide house-check
+- Turn 7a: unified Edit sheet for chores and tasks (grouped settings card, inline compact controls)
+- Turn 6a: unified Log / Mark-done bottom sheet for chores and tasks (ChoreLogSheet.kt, TaskDoneSheet.kt → one component)
+- Turn 5a (cont.): Settings › Colours and Settings › Categories screens; avatar moved left of due badge; sort pill + summary bar made mandatory in README
+- Turn 5a: Zen Dark theme (Chores + Tasks), revised compact cards without progress bars, Lucide per-category icons, NFC scan header action, readable bottom nav; handoff README revision 2
 - Redesigned mobile UI in two dark directions (Editorial Dark, Warm Dusk) plus a light "Cozy Cream" direction (turn 3a) on the Modernist design system
 - Turn 4a adds deeper screens from new reference shots: Edit Task sheet, Chore-detail sheet, Appearance/themes, Display + smart-visibility steppers, Reminders & alerts, About
 - Grounded in real model: NFC chore logging, Fresh/Aging/Stale status, task urgency + priority, A/M assignees, Supabase-per-device sync
@@ -14,6 +19,7 @@ date: 2026-08-26T00:00:00Z
 | Project screen | Built from repo files |
 | --- | --- |
 | Home — My Stuff | TaskListScreen.kt, TaskCard.kt, ChoreCard.kt, DashNavGraph.kt |
+| Chores / Tasks — Zen Dark + revised cards (5a) | ChoreListScreen.kt, TaskListScreen.kt, ChoreCard.kt, TaskCard.kt, ThemePalette.kt, DashNavGraph.kt |
 | Chores list | ChoreListScreen.kt, ChoreCard.kt, Chore.kt, CadenceBucket.kt, StatusTone.kt |
 | Task detail | TaskOverviewSheet.kt, EditTaskSheet.kt, Task.kt |
 | Bottom navigation | DashNavGraph.kt (Tasks / Chores / Reminders / Settings), AddMenuFab.kt |
