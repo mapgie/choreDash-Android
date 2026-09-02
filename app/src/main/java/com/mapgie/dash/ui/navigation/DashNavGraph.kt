@@ -18,16 +18,25 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
+import com.mapgie.dash.ui.components.WelcomeSheet
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_ID
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_KIND
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ROUTE
+import com.mapgie.dash.ui.screens.reminder.ReminderViewKind
+import com.mapgie.dash.ui.screens.reminder.ReminderViewScreen
+import com.mapgie.dash.ui.screens.reminder.reminderViewRoute
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
@@ -80,6 +89,8 @@ fun DashNavGraph(
     onNfcConsumed: () -> Unit,
     pendingWidgetDestination: String? = null,
     onWidgetDestinationConsumed: () -> Unit = {},
+    pendingReminderView: Pair<String, String>? = null,
+    onReminderViewConsumed: () -> Unit = {},
     nfcWriteRequest: String?,
     nfcWriteResult: NfcWriteResult?,
     onStartNfcWrite: (String) -> Unit,
@@ -134,6 +145,18 @@ fun DashNavGraph(
             navigateTo(targetRoute)
             onWidgetDestinationConsumed()
         }
+    }
+
+    // Opened from a reminder notification: (kind, id) per the "reminder/{kind}/{id}"
+    // route. A plain navigate (not the tab helper) so it stacks on top of whatever
+    // tab is showing and Done / Snooze / back simply pop it away.
+    LaunchedEffect(pendingReminderView) {
+        val (kindArg, id) = pendingReminderView ?: return@LaunchedEffect
+        val kind = ReminderViewKind.fromRouteArg(kindArg)
+        if (kind != null && id.isNotBlank()) {
+            navController.navigate(reminderViewRoute(kind, id)) { launchSingleTop = true }
+        }
+        onReminderViewConsumed()
     }
 
     val activeScreen = allNavItems.firstOrNull { screen ->
@@ -212,7 +235,24 @@ fun DashNavGraph(
                 composable("licenses") {
                     LicensesScreen(onBack = { navController.popBackStack() })
                 }
+                composable(
+                    route = REMINDER_VIEW_ROUTE,
+                    arguments = listOf(
+                        navArgument(REMINDER_VIEW_ARG_KIND) { type = NavType.StringType },
+                        navArgument(REMINDER_VIEW_ARG_ID) { type = NavType.StringType },
+                    ),
+                ) {
+                    ReminderViewScreen(onBack = { navController.popBackStack() })
+                }
             }
+        }
+
+        // First run: the chores / tasks / memos explanation, shown once.
+        if (navUiState.showWelcome) {
+            WelcomeSheet(
+                reminderLabel = navUiState.reminderLabel.displayName,
+                onDismiss = { navViewModel.markWelcomeSeen() },
+            )
         }
 
         // The speed dial covers the whole screen, bar included, so it sits

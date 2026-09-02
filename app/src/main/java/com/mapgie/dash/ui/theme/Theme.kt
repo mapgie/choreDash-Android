@@ -113,11 +113,17 @@ fun DashTheme(
 
     // Cream gets the handoff's exact non-M3 tokens; every other palette derives
     // them from its own scheme so the same components stay on-palette.
-    val tokens = when {
+    val baseTokens = when {
         appTheme == AppTheme.CREAM && darkTheme -> ZenDarkTokens
         appTheme == AppTheme.CREAM -> CreamLightTokens
         else -> derivedTokens(colorScheme, darkTheme)
     }
+    // Handoff contrast rule: with the WCAG toggle on, ink faint lifts to ink
+    // muted so card meta lines and captions clear 4.5:1 with margin.
+    val tokens = if (wcag) baseTokens.copy(
+        inkFaint = colorScheme.onSurfaceVariant,
+        sectionCount = colorScheme.onSurfaceVariant,
+    ) else baseTokens
 
     CompositionLocalProvider(
         LocalTypeAccents provides typeAccents,

@@ -328,6 +328,10 @@ object LucideIcons {
     }
 
     val ArrowUp: ImageVector by lazy { lucide("ArrowUp", listOf("M12 19V5", "m5 12 7-7 7 7")) }
+    val Play: ImageVector by lazy { lucide("Play", listOf("M6 3 20 12 6 21z")) }
+    val CircleHelp: ImageVector by lazy {
+        lucide("CircleHelp", listOf(circle(12f, 12f, 9f), "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.2"))
+    }
     val ArrowDown: ImageVector by lazy { lucide("ArrowDown", listOf("M12 5v14", "m19 12-7 7-7-7")) }
 
     /** Bell with a slash: an alarm that is muted or snoozed. */

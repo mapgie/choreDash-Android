@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,7 +37,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.database.entities.CustomColorTheme
 
 /**
@@ -143,12 +141,14 @@ private fun SavedThemeRow(
     val secondaryColor = Color.hsl(theme.secondaryHue, theme.secondarySaturation, theme.secondaryLightness)
     val tertiaryColor  = Color.hsl(theme.tertiaryHue,  theme.tertiarySaturation,  theme.tertiaryLightness)
 
+    // 4a-3 saved-theme row: 18dp radius, accent tint when active, three 26dp
+    // dots, the name, "Active" in the accent, then pencil / play / trash.
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(18.dp),
         color = if (isActive)
             MaterialTheme.colorScheme.primaryContainer
         else
-            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
             .semantics { role = Role.Button }
@@ -162,81 +162,73 @@ private fun SavedThemeRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Three colour swatches
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 listOf(primaryColor, secondaryColor, tertiaryColor).forEach { colour ->
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(26.dp)
                             .clip(CircleShape)
                             .background(colour)
                     )
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
-            // Theme name + active indicator
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = theme.name,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold),
                     color = if (isActive)
                         MaterialTheme.colorScheme.onPrimaryContainer
                     else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme.colorScheme.onSurface,
                 )
                 if (isActive) {
                     Text(
                         "Active",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold),
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
 
-            // Rename icon button
             IconButton(
                 onClick = onLongPress,
                 modifier = Modifier.semantics { contentDescription = "Rename ${theme.name}" },
             ) {
                 Icon(
-                    Icons.Filled.Edit,
+                    LucideIcons.Pencil,
                     contentDescription = null,
-                    tint = if (isActive)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
                 )
             }
 
-            // Load icon button
             IconButton(
                 onClick = onLoad,
                 modifier = Modifier.semantics { contentDescription = "Load ${theme.name}" },
             ) {
                 Icon(
-                    Icons.Filled.PlayArrow,
+                    LucideIcons.Play,
                     contentDescription = null,
-                    tint = if (isActive)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
 
-            // Delete icon button
             IconButton(
                 onClick = onDeleteRequest,
                 modifier = Modifier.semantics { contentDescription = "Delete ${theme.name}" },
             ) {
                 Icon(
-                    Icons.Filled.Delete,
+                    LucideIcons.Trash,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }

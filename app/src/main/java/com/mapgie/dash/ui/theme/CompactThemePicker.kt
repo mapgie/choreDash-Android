@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +37,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 
 /**
@@ -79,8 +80,8 @@ fun CompactThemePicker(
     val palettes = remember { AppTheme.entries.toList() }
     val totalItems = palettes.size
     val rowCount = (totalItems + 2) / 3 // 3 columns
-    // Each card is ~80dp tall, 8dp gap between rows
-    val gridHeight = (rowCount * 80 + (rowCount - 1) * 8).dp
+    // Each tile is 78dp tall (4a-3: dots row, name), 10dp gap between rows
+    val gridHeight = (rowCount * 78 + (rowCount - 1) * 10).dp
 
     // Compute live custom preview colours from current HSL values
     val customPrimaryColor   = Color.hsl(customPrimaryHue,   customPrimarySaturation,   customPrimaryLightness)
@@ -88,16 +89,10 @@ fun CompactThemePicker(
     val customTertiaryColor  = Color.hsl(customTertiaryHue,  customTertiarySaturation,  customTertiaryLightness)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            "Colour palette",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             // Grid height is fixed so the outer scroll container handles scrolling.
             modifier = Modifier
                 .fillMaxWidth()
@@ -171,69 +166,66 @@ private fun PaletteCard(
         else      -> Color(theme.lightTertiaryArgb.toInt())
     }
 
+    // 4a-3 palette tile: 16dp radius, 2.5dp accent ring + accent tint when
+    // selected, a 1.5dp outline otherwise; three 20dp dots with a check on the
+    // middle one for the selected tile, then the name.
+    val shape = RoundedCornerShape(16.dp)
+    val tokens = LocalDashTokens.current
     val borderModifier = if (isSelected) {
-        Modifier.border(
-            width = 2.dp,
-            color = MaterialTheme.colorScheme.primary,
-            shape = RoundedCornerShape(12.dp),
-        )
+        Modifier.border(width = 2.5.dp, color = MaterialTheme.colorScheme.primary, shape = shape)
     } else {
-        Modifier.border(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant,
-            shape = RoundedCornerShape(12.dp),
-        )
+        Modifier.border(width = 1.5.dp, color = tokens.pillOutline, shape = shape)
     }
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = shape,
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else
-            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
+            .height(78.dp)
             .then(borderModifier)
             .semantics { role = Role.RadioButton }
             .clickable(onClick = onClick),
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(top = 14.dp, bottom = 11.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                // Three small colour circles: primary, secondary, tertiary
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    listOf(primaryColor, secondaryColor, tertiaryColor).forEach { colour ->
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape)
-                                .background(colour)
-                        )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                listOf(primaryColor, secondaryColor, tertiaryColor).forEachIndexed { index, colour ->
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(colour)
+                    ) {
+                        if (isSelected && index == 1) {
+                            Icon(
+                                LucideIcons.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp),
+                            )
+                        }
                     }
-                }
-                if (isSelected) {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp),
-                    )
                 }
             }
             Text(
                 text = theme.displayName,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.ExtraBold),
                 color = if (isSelected)
                     MaterialTheme.colorScheme.onPrimaryContainer
                 else
                     MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = 1,
             )
         }
     }
