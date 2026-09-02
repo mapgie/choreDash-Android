@@ -43,7 +43,7 @@ enum class Swatch(
     ),
     SAGE(
         "Sage",
-        light = SwatchTones(spineArgb = 0xFF8AA877L, textArgb = 0xFF57724BL, tintArgb = 0xFFE7ECDDL),
+        light = SwatchTones(spineArgb = 0xFF8AA877L, textArgb = 0xFF526E46L, tintArgb = 0xFFE7ECDDL),
         dark = SwatchTones(spineArgb = 0xFF8AA877L, textArgb = 0xFFA6C391L, tintArgb = 0xFF3A4634L),
     ),
     BLUE(

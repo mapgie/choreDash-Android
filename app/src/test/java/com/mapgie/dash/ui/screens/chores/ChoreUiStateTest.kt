@@ -90,14 +90,15 @@ class ChoreUiStateTest {
 
     @Test
     fun `all chip shows every status`() {
+        // Default sort is pressure, worst first: never-done, then the most overdue.
         val state = ChoreUiState(active = byStatus, filter = ChoreFilter.ALL)
-        assertEquals(listOf("fresh", "aging", "stale", "never"), ids(state.displayed))
+        assertEquals(listOf("never", "stale", "aging", "fresh"), ids(state.displayed))
     }
 
     @Test
     fun `overdue chip shows stale and never-done chores only`() {
         val state = ChoreUiState(active = byStatus, filter = ChoreFilter.OVERDUE)
-        assertEquals(listOf("stale", "never"), ids(state.displayed))
+        assertEquals(listOf("never", "stale"), ids(state.displayed))
         assertTrue(state.displayed.all { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER })
     }
 

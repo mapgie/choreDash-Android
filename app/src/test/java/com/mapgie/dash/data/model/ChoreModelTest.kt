@@ -153,7 +153,8 @@ class ChoreModelTest {
 
     @Test
     fun `badge falls back to hours inside the last day`() {
-        assertEquals("12h left", chore(intervalDays = 1.0, lastScannedAgo = Duration.ofHours(12)).dueBadgeText())
+        // 1d interval, 12h30 in: 11h30 left, truncated to whole hours.
+        assertEquals("11h left", chore(intervalDays = 1.0, lastScannedAgo = Duration.ofMinutes(12 * 60 + 30)).dueBadgeText())
     }
 
     @Test
