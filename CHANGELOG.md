@@ -31,6 +31,23 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.26.0] - 2026-09-02
+
+### Added
+- Swipe a chore to the left to snooze it. It moves to the hidden section for its smart visibility lead time, or one day when smart visibility is off, and swiping again wakes it. Logging a chore ends its snooze. Snoozes are per device.
+
+### Changed
+- The Tasks screen no longer shows All, Active and Done filter chips. Done tasks always live in the collapsible Done section below the list.
+- Chores now use the Cozy Cream scrub-brush icon in the bottom bar, list cards and add menu
+- The Chores and Tasks header icons (owner filter, zen, search) now match the Cozy Cream design, with a new group/flat list toggle
+- The Chores list now ends with a card reminding you that a chore can be logged by tapping its NFC tag
+- The owner filter on the Chores and Tasks screens now cycles through three states: just mine (filled person), mine and unassigned (outlined person), and everyone (two people). Previously it toggled between mine-plus-unassigned and everyone.
+- The owner filter button on Chores is hidden until an owner handle is set, matching Tasks.
+
+### Fixed
+- Bottom bar tab labels and page header accents are now readable in dark mode
+
+---
 ## [0.25.0] - 2026-08-28
 
 ### Added
