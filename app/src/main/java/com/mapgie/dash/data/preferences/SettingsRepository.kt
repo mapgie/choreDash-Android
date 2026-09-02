@@ -6,7 +6,13 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.ChoreSortKey
+import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.TaskSortKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -25,13 +31,19 @@ data class AppSettings(
     val supabaseUrl: String = "",
     val supabaseKey: String = "",
     val ownerHandle: String = "",
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    // Zen Dark ships as the default (handoff 8a); Cozy Cream is the light alternate
+    val themeMode: ThemeMode = ThemeMode.DARK,
     // High-contrast (WCAG) variants of the built-in palettes
     val wcagMode: Boolean = false,
     val zenMode: Boolean = false,
     val taskZenMode: Boolean = false,
-    val showDueCountdown: Boolean = false,
     val deliveryMode: String = "NOTIFICATION",
+    // Sort pill state for each list, persisted so it survives restarts
+    val choreSort: SortOrder<ChoreSortKey> = SortOrder(ChoreSortKey.PRESSURE),
+    val taskSort: SortOrder<TaskSortKey> = SortOrder(TaskSortKey.PRIORITY),
+    // Settings › Colours: what tints a chore card, and which swatch each severity wears
+    val colourChoresBy: ColourChoresBy = ColourChoresBy.SEVERITY,
+    val severitySwatches: Map<Severity, Swatch> = Severity.defaults,
     // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
     val appTheme: String = "CREAM",
     // Custom HSL values for AppTheme.CUSTOM
@@ -81,8 +93,12 @@ class SettingsRepository @Inject constructor(
         val WCAG_MODE                      = booleanPreferencesKey("wcag_mode")
         val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
         val TASK_ZEN_MODE                  = booleanPreferencesKey("task_zen_mode")
-        val SHOW_DUE_COUNTDOWN             = booleanPreferencesKey("show_due_countdown")
         val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
+        val CHORE_SORT_KEY                 = stringPreferencesKey("chore_sort_key")
+        val CHORE_SORT_REVERSED            = booleanPreferencesKey("chore_sort_reversed")
+        val TASK_SORT_KEY                  = stringPreferencesKey("task_sort_key")
+        val TASK_SORT_REVERSED             = booleanPreferencesKey("task_sort_reversed")
+        val COLOUR_CHORES_BY               = stringPreferencesKey("colour_chores_by")
         val APP_THEME                      = stringPreferencesKey("app_theme")
         val CUSTOM_PRIMARY_HUE             = floatPreferencesKey("custom_primary_hue")
         val CUSTOM_PRIMARY_SATURATION      = floatPreferencesKey("custom_primary_saturation")
@@ -110,6 +126,9 @@ class SettingsRepository @Inject constructor(
 
         fun choreLeadDays(bucket: CadenceBucket) =
             intPreferencesKey("chore_lead_days_${bucket.name.lowercase()}")
+
+        fun severitySwatch(severity: Severity) =
+            stringPreferencesKey("severity_swatch_${severity.name.lowercase()}")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -125,12 +144,23 @@ class SettingsRepository @Inject constructor(
                 ownerHandle                 = prefs[Keys.OWNER_HANDLE] ?: "",
                 themeMode                   = prefs[Keys.THEME_MODE]
                     ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
-                    ?: ThemeMode.SYSTEM,
+                    ?: ThemeMode.DARK,
                 wcagMode                    = prefs[Keys.WCAG_MODE] ?: false,
                 zenMode                     = prefs[Keys.ZEN_MODE] ?: false,
                 taskZenMode                 = prefs[Keys.TASK_ZEN_MODE] ?: false,
-                showDueCountdown            = prefs[Keys.SHOW_DUE_COUNTDOWN] ?: false,
                 deliveryMode                = prefs[Keys.DELIVERY_MODE] ?: "NOTIFICATION",
+                choreSort                   = SortOrder(
+                    key = ChoreSortKey.fromName(prefs[Keys.CHORE_SORT_KEY]),
+                    reversed = prefs[Keys.CHORE_SORT_REVERSED] ?: false,
+                ),
+                taskSort                    = SortOrder(
+                    key = TaskSortKey.fromName(prefs[Keys.TASK_SORT_KEY]),
+                    reversed = prefs[Keys.TASK_SORT_REVERSED] ?: false,
+                ),
+                colourChoresBy              = ColourChoresBy.fromName(prefs[Keys.COLOUR_CHORES_BY]),
+                severitySwatches            = Severity.entries.associateWith { severity ->
+                    Swatch.fromName(prefs[Keys.severitySwatch(severity)]) ?: severity.defaultSwatch
+                },
                 // Normalise old per-mode entries to palette names for backward compatibility
                 appTheme                    = when (val raw = prefs[Keys.APP_THEME] ?: "CREAM") {
                     "SYSTEM_DEFAULT", "SAGE_LIGHT", "SAGE_DARK" -> "SAGE"
@@ -203,8 +233,26 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[Keys.TASK_ZEN_MODE] = enabled }
     }
 
-    suspend fun setShowDueCountdown(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.SHOW_DUE_COUNTDOWN] = enabled }
+    suspend fun setChoreSort(order: SortOrder<ChoreSortKey>) {
+        context.dataStore.edit {
+            it[Keys.CHORE_SORT_KEY] = order.key.name
+            it[Keys.CHORE_SORT_REVERSED] = order.reversed
+        }
+    }
+
+    suspend fun setTaskSort(order: SortOrder<TaskSortKey>) {
+        context.dataStore.edit {
+            it[Keys.TASK_SORT_KEY] = order.key.name
+            it[Keys.TASK_SORT_REVERSED] = order.reversed
+        }
+    }
+
+    suspend fun setColourChoresBy(mode: ColourChoresBy) {
+        context.dataStore.edit { it[Keys.COLOUR_CHORES_BY] = mode.name }
+    }
+
+    suspend fun setSeveritySwatch(severity: Severity, swatch: Swatch) {
+        context.dataStore.edit { it[Keys.severitySwatch(severity)] = swatch.name }
     }
 
     suspend fun setDeliveryMode(mode: String) {

@@ -1,0 +1,24 @@
+{
+  "bump": "minor",
+  "added": [
+    "Zen Dark theme: dark mode now uses the handoff's warm charcoal-green palette instead of Material's default dark scheme, and ships as the default brightness (System and Light remain available under Appearance)",
+    "Sort control on the Chores and Tasks lists: an outlined pill that reads the key and direction in words (pressure, due, name, category; priority, due, added, name) and opens a small picker sheet. The choice is remembered per list",
+    "Summary bar above the bottom navigation on Chores and Tasks, showing the count and how many items are hidden, with a link to the archived chores or done tasks",
+    "NFC scan button beside the Chores title that explains how to log a chore by tapping its tag",
+    "Settings > Colours: colour chore cards by severity or by category, and choose which palette swatch each severity wears",
+    "Settings > Categories: reorder categories, rename them, give each an icon and a colour, or delete one (its chores and tasks move to General)",
+    "Unified Log and Mark done sheets for chores and tasks: a Done control (Just now, Earlier today, Pick), a utility row (Calendar, Pin, Remind, Tag, Edit), and chore history with an inline Undo on the latest log",
+    "Unified Edit sheets for chores and tasks: the title is the field, settings sit in one grouped card with compact controls, and the new chore sheet uses the same layout",
+    "The + button opens a speed dial over the whole screen with New chore, New task and New memo; the active tab's item sits closest to your thumb"
+  ],
+  "changed": [
+    "List cards are tighter: 16dp corners, a 5dp spine, a 38dp icon chip with one Lucide icon per category, the meta line directly under the title, and the owner avatar left of the due badge. The cadence progress bar is gone",
+    "Icons throughout the app switch to the Lucide set; the Chores tab uses a house-with-check glyph",
+    "The header action row is the same on Chores and Tasks: search, owner, zen, group/flat",
+    "Chore due badges always show the countdown (for example 35d over, 1d left); the separate due-countdown header toggle is folded into the sort pill",
+    "Chore category can now be changed from the edit sheet"
+  ],
+  "fixed": [
+    "Bottom bar tabs, card captions and section counts use dedicated ink tones so they read at 4.5:1 in both themes"
+  ]
+}

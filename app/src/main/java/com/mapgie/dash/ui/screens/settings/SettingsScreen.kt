@@ -28,7 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CheckCircle as FilledCheckCircle
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -110,14 +109,14 @@ import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CompactThemePicker
-import com.mapgie.dash.ui.theme.DashIcons
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.SavedThemesList
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
 private enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT
+    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -142,6 +141,14 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.APPEARANCE -> AppearanceSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.COLOURS -> ColoursSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.CATEGORIES -> CategoriesSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -190,6 +197,18 @@ private fun SettingsMainList(
                 subtitle = "Light, dark, or system theme",
                 icon = Icons.Filled.Palette,
                 onClick = { onNavigate(SettingsSubScreen.APPEARANCE) }
+            )
+            SettingsNavItem(
+                title = "Colours",
+                subtitle = "Colour chores by severity or category, and pick the severity tints",
+                icon = LucideIcons.Droplet,
+                onClick = { onNavigate(SettingsSubScreen.COLOURS) }
+            )
+            SettingsNavItem(
+                title = "Categories",
+                subtitle = "Reorder, rename, and give each category an icon and colour",
+                icon = LucideIcons.LayoutGrid,
+                onClick = { onNavigate(SettingsSubScreen.CATEGORIES) }
             )
             SettingsNavItem(
                 title = "Display",
@@ -748,9 +767,9 @@ private fun QuickAddSubScreen(
 }
 
 private fun AddMenuOption.iconFor(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
-    AddMenuOption.TASK -> Icons.Filled.FilledCheckCircle
-    AddMenuOption.CHORE -> DashIcons.Brush
-    AddMenuOption.REMINDER -> Icons.Filled.Notifications
+    AddMenuOption.TASK -> LucideIcons.CircleCheck
+    AddMenuOption.CHORE -> LucideIcons.HouseCheck
+    AddMenuOption.REMINDER -> LucideIcons.Bell
 }
 
 private fun AddMenuOption.labelFor(reminderLabel: String): String = when (this) {

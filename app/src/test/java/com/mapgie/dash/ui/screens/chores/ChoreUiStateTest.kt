@@ -1,9 +1,12 @@
 package com.mapgie.dash.ui.screens.chores
 
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TagDto
 import java.time.Duration
 import java.time.Instant
@@ -14,7 +17,7 @@ import org.junit.Test
 /**
  * What the Chores list shows for a given [ChoreUiState]: owner scope, the
  * All / Overdue / Soon chips, the hidden (distant) section, swipe-to-snooze,
- * and the sort orders. Pure state logic, no ViewModel or Android involved.
+ * the sort pill orders, category grouping and the summary bar. Pure state logic, no ViewModel or Android involved.
  *
  * Timestamps sit mid-window (36h, 300h, ...) so day arithmetic cannot flip
  * a bucket while the test runs.
@@ -87,14 +90,15 @@ class ChoreUiStateTest {
 
     @Test
     fun `all chip shows every status`() {
+        // Default sort is pressure, worst first: never-done, then the most overdue.
         val state = ChoreUiState(active = byStatus, filter = ChoreFilter.ALL)
-        assertEquals(listOf("fresh", "aging", "stale", "never"), ids(state.displayed))
+        assertEquals(listOf("never", "stale", "aging", "fresh"), ids(state.displayed))
     }
 
     @Test
     fun `overdue chip shows stale and never-done chores only`() {
         val state = ChoreUiState(active = byStatus, filter = ChoreFilter.OVERDUE)
-        assertEquals(listOf("stale", "never"), ids(state.displayed))
+        assertEquals(listOf("never", "stale"), ids(state.displayed))
         assertTrue(state.displayed.all { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER })
     }
 
@@ -129,17 +133,98 @@ class ChoreUiStateTest {
     }
 
     @Test
-    fun `due countdown surfaces overdue chores to the top`() {
-        val state = ChoreUiState(active = listOf(fresh, aging, stale, never), showDueCountdown = true)
-        val shown = ids(state.displayed)
-        assertEquals(setOf("never", "stale"), shown.take(2).toSet())
-        assertEquals(listOf("aging", "fresh"), shown.drop(2))
+    fun `pressure worst first puts never-done, then most overdue, then freshest`() {
+        val state = ChoreUiState(active = listOf(fresh, aging, stale, never), sort = SortOrder(ChoreSortKey.PRESSURE))
+        assertEquals(listOf("never", "stale", "aging", "fresh"), ids(state.displayed))
     }
 
     @Test
-    fun `without zen or countdown the load order is kept`() {
-        val state = ChoreUiState(active = listOf(stale, fresh, never, aging))
-        assertEquals(listOf("stale", "fresh", "never", "aging"), ids(state.displayed))
+    fun `pressure freshest first is the exact reverse, never-done last`() {
+        val state = ChoreUiState(
+            active = listOf(fresh, aging, stale, never),
+            sort = SortOrder(ChoreSortKey.PRESSURE, reversed = true),
+        )
+        assertEquals(listOf("fresh", "aging", "stale", "never"), ids(state.displayed))
+    }
+
+    @Test
+    fun `due soonest first orders by the next due moment with never-done first`() {
+        // Same 36h-old log: a 3d cadence falls due before a 10d one.
+        val soon = chore("soon", intervalDays = 3.0, lastScannedAgo = Duration.ofHours(36))
+        val state = ChoreUiState(active = listOf(fresh, soon, never), sort = SortOrder(ChoreSortKey.DUE))
+        assertEquals(listOf("never", "soon", "fresh"), ids(state.displayed))
+    }
+
+    @Test
+    fun `due latest first reverses the dated order and puts never-done last`() {
+        val soon = chore("soon", intervalDays = 3.0, lastScannedAgo = Duration.ofHours(36))
+        val state = ChoreUiState(
+            active = listOf(never, soon, fresh),
+            sort = SortOrder(ChoreSortKey.DUE, reversed = true),
+        )
+        assertEquals(listOf("fresh", "soon", "never"), ids(state.displayed))
+    }
+
+    @Test
+    fun `name sort is alphabetical, case-insensitive, and reversible`() {
+        val b = chore("banana"); val a = chore("Apple"); val c = chore("cherry")
+        assertEquals(
+            listOf("Apple", "banana", "cherry"),
+            ids(ChoreUiState(active = listOf(b, a, c), sort = SortOrder(ChoreSortKey.NAME)).displayed),
+        )
+        assertEquals(
+            listOf("cherry", "banana", "Apple"),
+            ids(ChoreUiState(active = listOf(b, a, c), sort = SortOrder(ChoreSortKey.NAME, reversed = true)).displayed),
+        )
+    }
+
+    @Test
+    fun `sort pill label reads the key and the direction in words`() {
+        assertEquals("pressure · worst first", SortOrder(ChoreSortKey.PRESSURE).pillLabel)
+        assertEquals("due · latest first", SortOrder(ChoreSortKey.DUE, reversed = true).pillLabel)
+        assertEquals("name · A to Z", SortOrder(ChoreSortKey.NAME).pillLabel)
+    }
+
+    // ── Grouping and summary ──────────────────────────────────────────────────
+
+    private fun categorised(id: String, category: String?) = Chore.from(
+        tag = TagDto(id = id, tagId = "tag-$id", label = id, category = category, intervalDays = 10.0),
+        lastScanned = Instant.now().minus(Duration.ofHours(36)),
+        lastScanId = null,
+    )
+
+    @Test
+    fun `groups follow the catalog order, unlisted names alphabetically, general last, uncategorised after`() {
+        val chores = listOf(
+            categorised("g", "General"),
+            categorised("k", "Kitchen"),
+            categorised("n", null),
+            categorised("c", "Car"),
+            categorised("b", "Bathroom"),
+        )
+        val state = ChoreUiState(active = chores, catalog = CategoryCatalog(order = listOf("Kitchen", "Car")))
+        assertEquals(
+            listOf("Kitchen", "Car", "Bathroom", "General", UNCATEGORISED_LABEL),
+            state.grouped.map { it.first },
+        )
+    }
+
+    @Test
+    fun `summary counts shown chores and names the hidden ones only when there are any`() {
+        val distant = chore("distant", intervalDays = 365.0, lastScannedAgo = Duration.ofHours(36))
+        assertEquals("2 chores · 1 hidden", ChoreUiState(active = listOf(fresh, stale, distant)).summaryLabel)
+        assertEquals("1 chore", ChoreUiState(active = listOf(fresh)).summaryLabel)
+    }
+
+    @Test
+    fun `overdue count ignores the active chip but respects owner scope`() {
+        val state = ChoreUiState(
+            active = listOf(fresh, stale, never, chore("theirs-stale", owner = "mo", lastScannedAgo = Duration.ofHours(300))),
+            ownerHandle = me,
+            ownerFilter = OwnerFilter.MINE_AND_UNASSIGNED,
+            filter = ChoreFilter.SOON,
+        )
+        assertEquals(2, state.overdueCount)
     }
 
     // ── Swipe-to-snooze ───────────────────────────────────────────────────────

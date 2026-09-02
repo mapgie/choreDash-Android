@@ -809,3 +809,58 @@ brightness, chosen where the theme already knows `darkTheme` (`DashTheme`),
 and the on-colour checked numerically against both its own container and the
 darkest surface it can land on (4.5:1 minimum). The `Type*Dark` values in
 `Color.kt` are the worked example.
+
+---
+
+## 37. Build Compose icons from SVG path data, not hand-traced `moveTo`/`arcTo`
+
+Tracing a design's SVG glyphs by hand into `ImageVector.Builder` path calls
+(`moveTo`, `arcTo(isMoreThanHalf, isPositiveArc, ...)`) is slow and easy to get
+subtly wrong (a flipped arc flag is invisible until it renders). Compose ships a
+parser for SVG path syntax: `PathParser().parsePathString(d).toNodes()` returns
+the `List<PathNode>` that `ImageVector.Builder.addPath(pathData = ...)` takes, so
+the `d` attribute can be pasted verbatim. Two conversions are still needed
+because the parser only understands paths: `<circle>` becomes two half-circle
+arcs and `<rect rx>` becomes a rounded path; `ui/theme/LucideIcons.kt` has
+helpers for both. Zero-length dot strokes (`h.01`) should be widened to about
+`h.2` so the round caps reliably paint as points on every device.
+
+---
+
+## 38. A full-screen overlay (speed dial, scrim) must live outside the Scaffold
+
+A scrim that has to cover the bottom bar cannot be drawn from the Scaffold's
+`floatingActionButton` or content slots: those sit inside the bar's padding and
+z-order. Wrap the Scaffold in a `Box` and draw the overlay as a sibling after
+it. The bar's own FAB then sits under the scrim, so the overlay draws its own
+copy of the FAB at the same place; align the two by deriving both positions
+from the same numbers (`navigationBarsPadding()` plus the bar's bottom padding
+plus the centre slot's offset) rather than measuring. `BackHandler(enabled =
+expanded)` closes it, and the scrim's `clickable` gets `role = Role.Button` with
+a "Close" description so TalkBack can dismiss it too.
+
+---
+
+## 39. Verify design hex values numerically before adopting them as text colours
+
+The Zen Dark handoff's own light-mode badge text failed 4.5:1 on its tint for
+rose (3.9), amber (2.9) and sage (3.8), and the dark "ink faint" on a card was
+4.1. Design tools do not check contrast; the swatch table in `Swatch.kt` keeps
+deeper light text tones for that reason, and `SwatchContrastTest` computes the
+WCAG ratio in plain Kotlin for every text/tint, text/card and text/ground pair
+in both brightnesses. Any future palette edit fails that test before it ships.
+The same plain-Kotlin `contrastRatio()` in `data/model` is what the check uses,
+so keep colour maths out of Compose types where a JVM test needs it.
+
+---
+
+## 40. Removing a setting the UI no longer surfaces: delete the key, do not leave it dormant
+
+When the sort pill replaced the Chores due-countdown header toggle, the
+`showDueCountdown` preference became unreachable. A dormant DataStore key is
+worse than a deleted one: it still parses on every emission, still shows up
+in `AppSettings` for the next reader to wonder about, and nothing ever writes it
+again. Remove the key, the `AppSettings` field, the setter and the ViewModel
+plumbing in the same PR, and say in the changelog which control absorbed the
+behaviour ("folded into the sort pill"). Leaving the stored value on users'
+devices is harmless; DataStore ignores unknown keys.

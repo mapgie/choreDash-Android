@@ -2,11 +2,14 @@ package com.mapgie.dash.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.isPast
@@ -39,51 +42,71 @@ enum class StatusTone {
     NONE,
 }
 
-/** Accent-bar colour for a tone. Reuses the documented status palette in `Color.kt`. */
-@Composable
-fun StatusTone.barColor(): Color = when (this) {
-    StatusTone.CRITICAL -> StatusStale
-    StatusTone.ATTENTION -> StatusAging
-    StatusTone.OK -> StatusFresh
-    StatusTone.NEUTRAL -> MaterialTheme.colorScheme.outline
-    StatusTone.NONE -> Color.Transparent
+/**
+ * Which palette [Swatch] each signalling tone wears. The user picks these in
+ * Settings › Colours; the defaults are the design's rose / amber / sage.
+ */
+data class SeverityColors(
+    val critical: Swatch = Swatch.ROSE,
+    val attention: Swatch = Swatch.AMBER,
+    val ok: Swatch = Swatch.SAGE,
+) {
+    fun swatchFor(tone: StatusTone): Swatch? = when (tone) {
+        StatusTone.CRITICAL -> critical
+        StatusTone.ATTENTION -> attention
+        StatusTone.OK -> ok
+        StatusTone.NEUTRAL, StatusTone.NONE -> null
+    }
+
+    companion object {
+        fun from(map: Map<Severity, Swatch>) = SeverityColors(
+            critical = map[Severity.OVERDUE] ?: Severity.OVERDUE.defaultSwatch,
+            attention = map[Severity.DUE_SOON] ?: Severity.DUE_SOON.defaultSwatch,
+            ok = map[Severity.FRESH] ?: Severity.FRESH.defaultSwatch,
+        )
+    }
 }
+
+/** Provided by [DashTheme] from settings; defaults to the design's tones. */
+val LocalSeverityColors = staticCompositionLocalOf { SeverityColors() }
 
 /** True when the current scheme reads as dark (works for custom themes too). */
 @Composable
-private fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
+fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
-/**
- * Text colour for a status-coloured label (e.g. a due badge) matching the tone.
- * Light surfaces use the deep tones (the mid amber/sage are too pale for text);
- * dark surfaces use the mid tones, which read as the lighter variant there.
- */
+/** Solid tone for spines and icon strokes, per the current brightness. */
 @Composable
-fun StatusTone.textColor(): Color {
-    val dark = isDarkScheme()
-    return when (this) {
-        StatusTone.CRITICAL -> if (dark) StatusStale else StatusStaleDeep
-        StatusTone.ATTENTION -> if (dark) StatusAging else StatusAgingDeep
-        StatusTone.OK -> if (dark) StatusFresh else StatusFreshDeep
-        StatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
-        StatusTone.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+fun Swatch.spineColor(): Color = Color(tones(isDarkScheme()).spineArgb)
+
+/** Text tone that reads on both the tint and the surface, per the current brightness. */
+@Composable
+fun Swatch.textColor(): Color = Color(tones(isDarkScheme()).textArgb)
+
+/** Pale (light) or dim (dark) tint behind badges and icon chips. */
+@Composable
+fun Swatch.tintColor(): Color = Color(tones(isDarkScheme()).tintArgb)
+
+/** Accent-bar colour for a tone, from the user's severity swatches. */
+@Composable
+fun StatusTone.barColor(): Color = when (this) {
+    StatusTone.NEUTRAL -> MaterialTheme.colorScheme.outline
+    StatusTone.NONE -> Color.Transparent
+    else -> LocalSeverityColors.current.swatchFor(this)!!.spineColor()
 }
+
+/** Text colour for a status-coloured label (e.g. a due badge) matching the tone. */
+@Composable
+fun StatusTone.textColor(): Color =
+    LocalSeverityColors.current.swatchFor(this)?.textColor()
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
 
 /**
  * Background tint for a status badge pill. Returns null for tones that don't
  * signal (the label then renders as plain text without a pill).
  */
 @Composable
-fun StatusTone.badgeContainerColor(): Color? {
-    val dark = isDarkScheme()
-    return when (this) {
-        StatusTone.CRITICAL -> if (dark) StatusStaleTintDark else StatusStaleTint
-        StatusTone.ATTENTION -> if (dark) StatusAgingTintDark else StatusAgingTint
-        StatusTone.OK -> if (dark) StatusFreshTintDark else StatusFreshTint
-        StatusTone.NEUTRAL, StatusTone.NONE -> null
-    }
-}
+fun StatusTone.badgeContainerColor(): Color? =
+    LocalSeverityColors.current.swatchFor(this)?.tintColor()
 
 /** Chore staleness mapped onto the shared scale. */
 fun Chore.statusTone(): StatusTone = when (status) {

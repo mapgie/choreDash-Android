@@ -1,13 +1,12 @@
 package com.mapgie.dash.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,15 +24,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.nfc.NfcWriteResult
-import com.mapgie.dash.ui.components.AddMenu
 import com.mapgie.dash.ui.components.AddMenuButton
+import com.mapgie.dash.ui.components.SpeedDialOverlay
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
-import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.TypeAccentColors
 import com.mapgie.dash.widget.WIDGET_DEST_CHORES
 import com.mapgie.dash.widget.WIDGET_DEST_QUICK_ADD_CHORE
@@ -44,10 +43,10 @@ import com.mapgie.dash.widget.WIDGET_DEST_SETTINGS
 import com.mapgie.dash.widget.WIDGET_DEST_TASKS
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Chores : Screen("chores", "Chores", DashIcons.Brush)
-    object Tasks : Screen("tasks", "Tasks", Icons.Outlined.CheckCircle)
-    object Reminders : Screen("reminders", "Reminders", Icons.Outlined.Notifications)
-    object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)
+    object Chores : Screen("chores", "Chores", LucideIcons.HouseCheck)
+    object Tasks : Screen("tasks", "Tasks", LucideIcons.CircleCheck)
+    object Reminders : Screen("reminders", "Reminders", LucideIcons.Bell)
+    object Settings : Screen("settings", "Settings", LucideIcons.Settings)
 }
 
 // The full set of tabs, independent of which ones are currently visible in the
@@ -66,7 +65,7 @@ private val Screen.addMenuOption: AddMenuOption?
 // Gives each content-type tab its own colour tone (indicator pill + selected
 // icon/text), on top of the icon and label that already distinguish them. The
 // tones come from [TypeAccentColors] so the custom theme can map them onto the
-// user's picks. Settings has no type accent and falls back to the theme primary.
+// user's picks. Settings has no type accent and falls back to the sage secondary.
 private fun Screen.accentColors(accents: TypeAccentColors): Pair<Color, Color>? =
     when (this) {
         Screen.Tasks -> accents.taskContainer to accents.onTaskContainer
@@ -99,6 +98,18 @@ fun DashNavGraph(
     val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
     val navItems = allNavItems.filter { it != Screen.Reminders || navUiState.hasOutstandingReminders }
 
+    fun navigateTo(route: String) {
+        navController.navigate(route) {
+            // Mirror GaMeD LESSONS.md lesson #4: all programmatic tab nav
+            // must use the same popUpTo + saveState + restoreState pattern
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     LaunchedEffect(pendingWidgetDestination) {
         val targetRoute = when (pendingWidgetDestination) {
             WIDGET_DEST_QUICK_ADD_TASK -> {
@@ -120,129 +131,110 @@ fun DashNavGraph(
             else -> null
         }
         if (targetRoute != null) {
-            navController.navigate(targetRoute) {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
+            navigateTo(targetRoute)
             onWidgetDestinationConsumed()
         }
     }
 
-    val showFab = allNavItems
-        .filter { it.addMenuOption != null }
-        .any { screen -> currentDestination?.hierarchy?.any { it.route == screen.route } == true }
+    val activeScreen = allNavItems.firstOrNull { screen ->
+        currentDestination?.hierarchy?.any { it.route == screen.route } == true
+    }
+    val showFab = activeScreen?.addMenuOption != null
 
-    Scaffold(
-        // The quick-add menu floats centred above the bottom bar's add button
-        // while expanded; the button itself lives in the bar's centre slot.
-        floatingActionButtonPosition = FabPosition.Center,
-        floatingActionButton = {
-            if (showFab) {
-                AddMenu(
-                    expanded = fabExpanded,
-                    onExpandedChange = { fabExpanded = it },
-                    order = navUiState.fabOrder,
-                    reminderLabel = navUiState.reminderLabel.singular,
-                    onSelect = { option ->
-                        pendingAddIntent = option
-                        val targetRoute = when (option) {
-                            AddMenuOption.CHORE -> Screen.Chores.route
-                            AddMenuOption.TASK -> Screen.Tasks.route
-                            AddMenuOption.REMINDER -> Screen.Reminders.route
-                        }
-                        navController.navigate(targetRoute) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                val typeAccents = LocalTypeAccents.current
+                val tabs = navItems.map { screen ->
+                    val accent = screen.accentColors(typeAccents)
+                    DashTab(
+                        label = if (screen == Screen.Reminders) {
+                            navUiState.reminderLabel.displayName
+                        } else {
+                            screen.label
+                        },
+                        icon = screen.icon,
+                        selected = currentDestination?.hierarchy
+                            ?.any { it.route == screen.route } == true,
+                        activeContainer = accent?.first ?: MaterialTheme.colorScheme.secondaryContainer,
+                        activeContent = accent?.second ?: MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = { navigateTo(screen.route) },
+                    )
+                }
+                DashBottomBar(
+                    tabs = tabs,
+                    centerContent = {
+                        if (showFab) {
+                            AddMenuButton(
+                                expanded = fabExpanded,
+                                onExpandedChange = { fabExpanded = it },
+                            )
                         }
                     }
                 )
             }
-        },
-        bottomBar = {
-            val typeAccents = LocalTypeAccents.current
-            val tabs = navItems.map { screen ->
-                val accent = screen.accentColors(typeAccents)
-                DashTab(
-                    label = if (screen == Screen.Reminders) {
-                        navUiState.reminderLabel.displayName
-                    } else {
-                        screen.label
-                    },
-                    icon = screen.icon,
-                    selected = currentDestination?.hierarchy
-                        ?.any { it.route == screen.route } == true,
-                    activeContainer = accent?.first ?: MaterialTheme.colorScheme.primaryContainer,
-                    activeContent = accent?.second ?: MaterialTheme.colorScheme.onPrimaryContainer,
-                    // Mirror GaMeD LESSONS.md lesson #4: all programmatic tab nav
-                    // must use the same popUpTo + saveState + restoreState pattern
-                    onClick = {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                )
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable(Screen.Chores.route) {
+                    ChoreListScreen(
+                        pendingNfcTagId = pendingNfcTagId,
+                        onNfcConsumed = onNfcConsumed,
+                        nfcWriteRequest = nfcWriteRequest,
+                        nfcWriteResult = nfcWriteResult,
+                        onStartNfcWrite = onStartNfcWrite,
+                        onCancelNfcWrite = onCancelNfcWrite,
+                        onNfcWriteResultConsumed = onNfcWriteResultConsumed,
+                        pendingAddIntent = pendingAddIntent,
+                        onPendingAddIntentConsumed = { pendingAddIntent = null }
+                    )
+                }
+                composable(Screen.Tasks.route) {
+                    TaskListScreen(
+                        pendingAddIntent = pendingAddIntent,
+                        onPendingAddIntentConsumed = { pendingAddIntent = null }
+                    )
+                }
+                composable(Screen.Reminders.route) {
+                    RemindersListScreen(
+                        pendingAddIntent = pendingAddIntent,
+                        onPendingAddIntentConsumed = { pendingAddIntent = null }
+                    )
+                }
+                composable(Screen.Settings.route) {
+                    SettingsScreen(
+                        onNavigateToLicenses = { navController.navigate("licenses") },
+                    )
+                }
+                composable("licenses") {
+                    LicensesScreen(onBack = { navController.popBackStack() })
+                }
             }
-            DashBottomBar(
-                tabs = tabs,
-                centerContent = {
-                    if (showFab) {
-                        AddMenuButton(
-                            expanded = fabExpanded,
-                            onExpandedChange = { fabExpanded = it },
-                        )
+        }
+
+        // The speed dial covers the whole screen, bar included, so it sits
+        // outside the Scaffold. Picking an item opens the matching sheet in
+        // "new" mode on its own tab.
+        if (showFab) {
+            SpeedDialOverlay(
+                expanded = fabExpanded,
+                onExpandedChange = { fabExpanded = it },
+                order = navUiState.fabOrder,
+                activeOption = activeScreen?.addMenuOption,
+                reminderLabel = navUiState.reminderLabel.singular.lowercase(),
+                onSelect = { option ->
+                    pendingAddIntent = option
+                    val targetRoute = when (option) {
+                        AddMenuOption.CHORE -> Screen.Chores.route
+                        AddMenuOption.TASK -> Screen.Tasks.route
+                        AddMenuOption.REMINDER -> Screen.Reminders.route
                     }
+                    navigateTo(targetRoute)
                 }
             )
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(Screen.Chores.route) {
-                ChoreListScreen(
-                    pendingNfcTagId = pendingNfcTagId,
-                    onNfcConsumed = onNfcConsumed,
-                    nfcWriteRequest = nfcWriteRequest,
-                    nfcWriteResult = nfcWriteResult,
-                    onStartNfcWrite = onStartNfcWrite,
-                    onCancelNfcWrite = onCancelNfcWrite,
-                    onNfcWriteResultConsumed = onNfcWriteResultConsumed,
-                    pendingAddIntent = pendingAddIntent,
-                    onPendingAddIntentConsumed = { pendingAddIntent = null }
-                )
-            }
-            composable(Screen.Tasks.route) {
-                TaskListScreen(
-                    pendingAddIntent = pendingAddIntent,
-                    onPendingAddIntentConsumed = { pendingAddIntent = null }
-                )
-            }
-            composable(Screen.Reminders.route) {
-                RemindersListScreen(
-                    pendingAddIntent = pendingAddIntent,
-                    onPendingAddIntentConsumed = { pendingAddIntent = null }
-                )
-            }
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateToLicenses = { navController.navigate("licenses") },
-                )
-            }
-            composable("licenses") {
-                LicensesScreen(onBack = { navController.popBackStack() })
-            }
         }
     }
 }

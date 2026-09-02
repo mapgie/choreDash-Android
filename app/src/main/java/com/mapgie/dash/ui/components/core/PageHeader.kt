@@ -1,9 +1,12 @@
 package com.mapgie.dash.ui.components.core
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,30 +17,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
 /**
- * Cozy Cream page header for the four main tabs: a 5dp horizontal gradient strip
- * across the very top of the screen, then the page title set lowercase in the
- * serif headline face with a full stop tinted in the tab's accent colour
- * ("tasks." / "chores." / "settings.").
+ * Page header for the four main tabs: a 5dp horizontal gradient strip across the
+ * very top of the screen, then the page title set lowercase in the serif headline
+ * face with a full stop tinted in the tab's accent colour ("tasks." / "chores." /
+ * "settings.").
  *
  * The gradient runs secondary → tertiaryContainer → tertiary so it stays in
- * palette for every theme (on Cream that is exactly the design's
- * sage → cream-gold → amber strip).
+ * palette for every theme (on Cream that is the design's sage → gold → amber
+ * strip in both brightnesses).
  *
- * [actions] slots trailing controls (filter/zen/sort icon buttons) on the title
- * row, baseline-centred against the title.
+ * [leading] slots a control immediately after the title (the Chores NFC scan
+ * button); [actions] slots the trailing icon row, which is identical on Chores
+ * and Tasks: search, owner, zen, group/flat.
  */
 @Composable
 fun PageHeader(
     title: String,
     accent: Color,
     modifier: Modifier = Modifier,
-    actions: @Composable () -> Unit = {},
+    leading: @Composable RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
@@ -56,6 +61,7 @@ fun PageHeader(
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 2.dp)
@@ -67,8 +73,9 @@ fun PageHeader(
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
             )
+            leading()
+            Spacer(Modifier.weight(1f))
             actions()
         }
     }

@@ -27,19 +27,21 @@ val Lora = FontFamily(
 
 // No hardcoded colours — let theme propagate via LocalContentColor
 val DashTypography = Typography(
+    // Sheet titles: Lora 30/600 with a tight 1.1 line height.
     headlineLarge = TextStyle(
         fontFamily = Lora,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
+        fontSize = 30.sp,
+        lineHeight = 33.sp,
         letterSpacing = 0.sp
     ),
+    // Page titles ("chores."): Lora 27/600.
     headlineMedium = TextStyle(
         fontFamily = Lora,
-        fontWeight = FontWeight.Medium,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 27.sp,
+        lineHeight = 32.sp,
+        letterSpacing = (-0.2).sp
     ),
     bodyLarge = TextStyle(
         fontFamily = Nunito,
@@ -69,13 +71,13 @@ val DashTypography = Typography(
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
-    // Card/list-row titles: Cozy Cream sets these heavy (Nunito 700, 17px)
+    // Card/list-row titles: the revised card sets these heavy and tight (Nunito 800, 16px, 1.2 line height)
     titleMedium = TextStyle(
         fontFamily = Nunito,
-        fontWeight = FontWeight.Bold,
-        fontSize = 17.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 16.sp,
+        lineHeight = 19.sp,
+        letterSpacing = 0.sp
     ),
     titleSmall = TextStyle(
         fontFamily = Nunito,

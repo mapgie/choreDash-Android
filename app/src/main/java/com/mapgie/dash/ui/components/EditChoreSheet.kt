@@ -1,58 +1,128 @@
 package com.mapgie.dash.ui.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.GENERAL_CATEGORY
+import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
+import com.mapgie.dash.ui.components.sheet.SettingsRow
+import com.mapgie.dash.ui.components.sheet.SheetBlock
+import com.mapgie.dash.ui.components.sheet.SheetHeader
+import com.mapgie.dash.ui.components.sheet.SheetPadding
+import com.mapgie.dash.ui.components.sheet.SheetPrimaryRow
+import com.mapgie.dash.ui.components.sheet.SheetRowDivider
+import com.mapgie.dash.ui.components.sheet.StepperPill
+import com.mapgie.dash.ui.components.sheet.TertiaryLink
+import com.mapgie.dash.ui.components.sheet.TertiaryLinkRow
+import com.mapgie.dash.ui.components.sheet.TitleField
+import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.theme.LocalDashTokens
+import com.mapgie.dash.ui.theme.LocalTypeAccents
+import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.badgeContainerColor
+import com.mapgie.dash.ui.theme.statusTone
+import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 
+/**
+ * The Edit sheet for chores (handoff 7a), one grammar with the task sheet: the
+ * title is the input, then one grouped settings card of compact rows (Category
+ * value chip · Owner avatar row · Repeat every stepper · NFC tag), the same
+ * Cancel + sage Save footer as the Log sheet, and a centred tertiary row (Add
+ * to calendar · Share · Archive). With [chore] null it is the New chore sheet:
+ * eyebrow NEW CHORE, empty title focused, and a tag ID field on the NFC row.
+ *
+ * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditChoreSheet(
-    chore: Chore,
+    chore: Chore?,
+    icon: ImageVector,
+    categorySwatch: Swatch?,
     owners: List<String>,
+    categories: List<String>,
     sheetState: SheetState,
-    onSave: (tagId: String, label: String, owner: String?, intervalDays: Double?) -> Unit,
+    onSave: (tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
-    onWriteTag: (chore: Chore) -> Unit,
-    onDismiss: () -> Unit
+    onWriteTag: (tagId: String) -> Unit,
+    onDismiss: () -> Unit,
+    initialTagId: String = "",
 ) {
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
-    var label by remember { mutableStateOf(chore.label) }
-    var selectedOwner by remember { mutableStateOf(chore.owner ?: "") }
-    var intervalText by remember { mutableStateOf(chore.intervalDays?.toInt()?.toString() ?: "") }
-    var ownerExpanded by remember { mutableStateOf(false) }
+    val tokens = LocalDashTokens.current
+    val accents = LocalTypeAccents.current
+    val isNew = chore == null
+    val isArchived = chore?.archivedAt != null
+
+    // Snapshot each field's starting value beside its state so the dirty check
+    // compares against what the field actually opened with (LESSONS.md #27).
+    val initialLabel = remember { chore?.label ?: "" }
+    var label by remember { mutableStateOf(initialLabel) }
+    val initialCategory = remember { if (chore != null) chore.category ?: "" else GENERAL_CATEGORY }
+    var category by remember { mutableStateOf(initialCategory) }
+    val initialOwner = remember { chore?.owner ?: "" }
+    var owner by remember { mutableStateOf(initialOwner) }
+    val initialInterval = remember { chore?.intervalDays?.toInt() }
+    var interval by remember { mutableStateOf(initialInterval) }
+    val initialTag = remember { chore?.tagId ?: initialTagId }
+    var tagId by remember { mutableStateOf(initialTag) }
+
+    var categoryMenuOpen by remember { mutableStateOf(false) }
+    var showNewCategory by remember { mutableStateOf(false) }
+    var showIntervalEntry by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showShareChoice by remember { mutableStateOf(false) }
-    var showMoreOptions by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
 
-    val isArchived = chore.archivedAt != null
+    val isDirty = label != initialLabel ||
+        category != initialCategory ||
+        owner != initialOwner ||
+        interval != initialInterval ||
+        tagId != initialTag
 
-    val isDirty = label != chore.label ||
-        selectedOwner != (chore.owner ?: "") ||
-        intervalText != (chore.intervalDays?.toInt()?.toString() ?: "")
-
-    // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
-    // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
-    // visible (sheetState.show()) instead of letting it finish hiding, so we never
-    // hit the stuck-invisible-overlay bug while still warning before data loss.
     fun requestDismiss() {
         if (isDirty) {
             sheetScope.launch { sheetState.show() }
@@ -62,10 +132,19 @@ fun EditChoreSheet(
         }
     }
 
+    fun hideThen(action: () -> Unit) {
+        sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
+    }
+
     fun calendarInfo() = calendarEventWithoutTime(
-        title = chore.label,
-        description = chore.category?.let { "Category: $it" }
+        title = label.trim().ifBlank { chore?.label ?: "" },
+        description = category.trim().ifBlank { null }?.let { "Category: $it" }
     )
+
+    val tone = chore?.statusTone()
+    val chipContainer = categorySwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
+    val chipContent = categorySwatch?.textColor() ?: tone?.textColor() ?: accents.onChoreContainer
+    val canSave = label.isNotBlank() && tagId.isNotBlank()
 
     ModalBottomSheet(
         onDismissRequest = { requestDismiss() },
@@ -77,181 +156,163 @@ fun EditChoreSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
+                .padding(horizontal = SheetPadding)
+                .padding(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 24dp after drag handle
-            Spacer(Modifier.height(24.dp))
-
-            // Header: eyebrow label + chore name as visual anchor + icon actions
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+            SheetHeader(
+                icon = icon,
+                chipContainer = chipContainer,
+                chipContent = chipContent,
+                eyebrow = when {
+                    isNew -> "New chore"
+                    isArchived -> "Archived chore"
+                    else -> "Edit chore"
+                },
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    if (chore.category != null) {
-                        Text(
-                            chore.category.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                TitleField(
+                    value = label,
+                    onValueChange = { label = it },
+                    placeholder = "Chore name",
+                    autoFocus = isNew,
+                )
+            }
+
+            SheetBlock {
+                SettingsRow(icon = LucideIcons.LayoutGrid, label = "Category") {
+                    Box {
+                        ValueChip(
+                            text = category.ifBlank { "None" },
+                            onClick = { categoryMenuOpen = true },
+                            contentDescription = "Category: ${category.ifBlank { "none" }}. Change category",
+                            container = categorySwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+                            content = categorySwatch?.textColor() ?: MaterialTheme.colorScheme.onSurface,
                         )
-                        // 4dp between eyebrow and title
-                        Spacer(Modifier.height(4.dp))
+                        CategoryMenu(
+                            expanded = categoryMenuOpen,
+                            categories = categories,
+                            onPick = { category = it; categoryMenuOpen = false },
+                            onNew = { categoryMenuOpen = false; showNewCategory = true },
+                            onDismiss = { categoryMenuOpen = false },
+                        )
+                    }
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.User, label = "Owner") {
+                    OwnerAvatarRow(
+                        owners = owners,
+                        selected = owner.ifBlank { null },
+                        onSelect = { owner = it ?: "" },
+                    )
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Repeat, label = "Repeat every") {
+                    StepperPill(
+                        valueText = interval?.let { "$it d" } ?: "none",
+                        onMinus = { interval = interval?.let { if (it <= 1) null else it - 1 } },
+                        onPlus = { interval = (interval ?: 0) + 1 },
+                        onValueClick = { showIntervalEntry = true },
+                        minusEnabled = interval != null,
+                        minusDescription = "Repeat one day less often",
+                        plusDescription = "Repeat one day more often",
+                        valueDescription = "Repeat every ${interval?.let { "$it days" } ?: "no set interval"}. Type a number",
+                    )
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.NfcScan, label = "NFC tag") {
+                    if (isNew) {
+                        TagIdField(value = tagId, onValueChange = { tagId = it })
                     } else {
                         Text(
-                            if (isArchived) "ARCHIVED CHORE" else "EDIT CHORE",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = tagId.ifBlank { "no label" },
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                            color = if (tagId.isNotBlank()) tokens.tagLabel else tokens.inkFaint,
+                            maxLines = 1,
+                            modifier = Modifier.widthIn(max = 120.dp),
                         )
-                        Spacer(Modifier.height(4.dp))
                     }
-                    Text(chore.label, style = MaterialTheme.typography.headlineLarge)
-                }
-                Row {
-                    IconButton(
-                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Add to calendar"
-                            role = Role.Button
-                        }
-                    ) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = null)
-                    }
-                    IconButton(
-                        onClick = { showShareChoice = true },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Share"
-                            role = Role.Button
-                        }
-                    ) {
-                        Icon(Icons.Filled.Share, contentDescription = null)
+                    if (tagId.isNotBlank()) {
+                        ValueChip(
+                            text = if (isNew) "Write tag" else "Rewrite",
+                            onClick = { hideThen { onWriteTag(tagId.trim()) } },
+                            contentDescription = "Write this chore's ID to an NFC tag",
+                            chevron = false,
+                        )
                     }
                 }
             }
 
-            // 8dp between title and first field
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = label,
-                onValueChange = { label = it },
-                label = { Text("Label") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+            SheetPrimaryRow(
+                actionLabel = "Save",
+                actionEnabled = canSave,
+                onCancel = { requestDismiss() },
+                onAction = {
+                    val intervalDays = interval?.toDouble()
+                    val ownerValue = owner.trim().ifBlank { null }
+                    val categoryValue = category.trim().ifBlank { null }
+                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, intervalDays) }
+                },
             )
 
-            if (owners.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                ExposedDropdownMenuBox(
-                    expanded = ownerExpanded,
-                    onExpandedChange = { ownerExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = selectedOwner,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Owner") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ownerExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = ownerExpanded,
-                        onDismissRequest = { ownerExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("(none)") },
-                            onClick = { selectedOwner = ""; ownerExpanded = false }
-                        )
-                        owners.forEach { owner ->
-                            DropdownMenuItem(
-                                text = { Text(owner) },
-                                onClick = { selectedOwner = owner; ownerExpanded = false }
-                            )
-                        }
-                    }
-                }
-            }
+            TertiaryLinkRow(
+                links = listOfNotNull(
+                    TertiaryLink(
+                        icon = LucideIcons.Calendar, label = "Add to calendar",
+                        onClick = { context.startActivity(CalendarShareUtils.buildAddToCalendarIntent(calendarInfo())) },
+                    ),
+                    TertiaryLink(icon = LucideIcons.Share, label = "Share", onClick = { showShareChoice = true }),
+                    if (chore != null) TertiaryLink(
+                        icon = LucideIcons.Archive,
+                        label = if (isArchived) "Unarchive" else "Archive",
+                        onClick = { showArchiveConfirm = true },
+                        destructive = !isArchived,
+                    ) else null,
+                ),
+            )
+        }
+    }
 
-            // Progressive disclosure for advanced fields
-            Spacer(Modifier.height(8.dp))
-            TextButton(
-                onClick = { showMoreOptions = !showMoreOptions },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (showMoreOptions) "Fewer options" else "More options...")
-            }
+    if (showNewCategory) {
+        NewCategoryDialog(
+            onCreate = { category = it; showNewCategory = false },
+            onDismiss = { showNewCategory = false },
+        )
+    }
 
-            if (showMoreOptions) {
-                Spacer(Modifier.height(8.dp))
+    if (showIntervalEntry) {
+        var text by remember { mutableStateOf(interval?.toString() ?: "") }
+        AlertDialog(
+            onDismissRequest = { showIntervalEntry = false },
+            title = { Text("Repeat every") },
+            text = {
                 OutlinedTextField(
-                    value = intervalText,
-                    onValueChange = { intervalText = it },
-                    label = { Text("Interval (days, optional)") },
+                    value = text,
+                    onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) text = v },
+                    label = { Text("Days (blank for none)") },
+                    singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                            onWriteTag(chore)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Write tag")
-                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    interval = text.toIntOrNull()?.takeIf { it > 0 }
+                    showIntervalEntry = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIntervalEntry = false }) { Text("Cancel") }
             }
-
-            // Primary actions: Cancel + Save
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { requestDismiss() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Cancel") }
-                Button(
-                    onClick = {
-                        val intervalDays = intervalText.toDoubleOrNull()
-                        val owner = selectedOwner.ifBlank { null }
-                        sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                            onSave(chore.tagId, label.trim(), owner, intervalDays)
-                        }
-                    },
-                    enabled = label.isNotBlank(),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Save") }
-            }
-
-            // 32dp before destructive action
-            Spacer(Modifier.height(32.dp))
-
-            // Destructive action: lighter weight TextButton with error colour
-            TextButton(
-                onClick = { showArchiveConfirm = true },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (isArchived) "Unarchive" else "Archive")
-            }
-        }
+        )
     }
 
     if (showShareChoice) {
         AlertDialog(
             onDismissRequest = { showShareChoice = false },
             title = { Text("Share chore") },
-            text = { Text("Choose how to share \"${chore.label}\".") },
+            text = { Text("Choose how to share “${label.trim()}”.") },
             confirmButton = {
                 TextButton(onClick = {
                     showShareChoice = false
@@ -267,7 +328,7 @@ fun EditChoreSheet(
         )
     }
 
-    if (showArchiveConfirm) {
+    if (showArchiveConfirm && chore != null) {
         AlertDialog(
             onDismissRequest = { showArchiveConfirm = false },
             title = { Text(if (isArchived) "Unarchive chore?" else "Archive chore?") },
@@ -282,9 +343,7 @@ fun EditChoreSheet(
             confirmButton = {
                 TextButton(onClick = {
                     showArchiveConfirm = false
-                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                        onArchiveToggle(chore, !isArchived)
-                    }
+                    hideThen { onArchiveToggle(chore, !isArchived) }
                 }) { Text(if (isArchived) "Unarchive" else "Archive") }
             },
             dismissButton = {
@@ -295,6 +354,7 @@ fun EditChoreSheet(
 
     if (showDiscardConfirm) {
         DiscardChangesDialog(
+            itemName = chore?.label ?: label.trim().ifBlank { null },
             onKeepEditing = { showDiscardConfirm = false },
             onDiscard = {
                 showDiscardConfirm = false
@@ -302,4 +362,88 @@ fun EditChoreSheet(
             }
         )
     }
+}
+
+/** Compact inline field for a new chore's tag ID, on the NFC row. */
+@Composable
+private fun TagIdField(value: String, onValueChange: (String) -> Unit) {
+    val tokens = LocalDashTokens.current
+    Box(
+        modifier = Modifier
+            .widthIn(min = 90.dp, max = 150.dp)
+            .padding(vertical = 4.dp),
+    ) {
+        if (value.isEmpty()) {
+            Text(
+                text = "Tag ID",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                color = tokens.inkFaint,
+            )
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = tokens.tagLabel,
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Tag ID" },
+        )
+    }
+}
+
+/**
+ * Category picker shared by both edit sheets: the known categories, General
+ * when it is not among them, and "New category…".
+ */
+@Composable
+internal fun CategoryMenu(
+    expanded: Boolean,
+    categories: List<String>,
+    onPick: (String) -> Unit,
+    onNew: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val options = if (categories.any { it.equals(GENERAL_CATEGORY, ignoreCase = true) }) categories
+                  else categories + GENERAL_CATEGORY
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        options.forEach { option ->
+            DropdownMenuItem(text = { Text(option) }, onClick = { onPick(option) })
+        }
+        DropdownMenuItem(
+            text = { Text("New category…", color = MaterialTheme.colorScheme.onSecondaryContainer) },
+            onClick = onNew,
+        )
+    }
+}
+
+/** Small dialog to type a category that does not exist yet. */
+@Composable
+internal fun NewCategoryDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New category") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(text.trim()) }, enabled = text.isNotBlank()) { Text("Add") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }

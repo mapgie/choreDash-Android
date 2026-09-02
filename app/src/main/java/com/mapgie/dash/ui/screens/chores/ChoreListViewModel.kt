@@ -3,15 +3,20 @@ package com.mapgie.dash.ui.screens.chores
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CadenceBucket
+import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
-import com.mapgie.dash.data.model.defaultSnoozeDuration
+import com.mapgie.dash.data.model.ColourChoresBy
+import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
+import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.defaultSnoozeDuration
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.ChoreSnoozeStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
@@ -51,6 +56,9 @@ data class RecentSnooze(
     val previousUntil: Instant?,
 )
 
+/** Label shown on a group header for chores with no category. */
+const val UNCATEGORISED_LABEL = "Uncategorised"
+
 data class ChoreUiState(
     val loading: Boolean = false,
     val error: String? = null,
@@ -63,11 +71,13 @@ data class ChoreUiState(
     val ownerHandle: String = "",
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
-    val showDueCountdown: Boolean = false,
+    val sort: SortOrder<ChoreSortKey> = SortOrder(ChoreSortKey.PRESSURE),
     val showHidden: Boolean = false,
     // Off until settings load so chores aren't hidden with unconfigured lead times
     val smartVisibility: Boolean = false,
     val choreLeadDays: Map<CadenceBucket, Int> = emptyMap(),
+    val colourChoresBy: ColourChoresBy = ColourChoresBy.SEVERITY,
+    val catalog: CategoryCatalog = CategoryCatalog(),
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
     /** Tag id to wake time for chores snoozed on this device. */
@@ -137,33 +147,110 @@ data class ChoreUiState(
                 }
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
-            if (zenMode) {
+            return if (zenMode) {
                 // Zen sort: ascending = most overdue first (never-done, then oldest scan);
                 // descending = recently done first, never-done last. Never-done is
                 // ordered by an explicit first key: reversing a nulls-aware comparator
                 // reverses its null placement too (see LESSONS.md).
-                result = if (zenSortAscending) {
+                if (zenSortAscending) {
                     result.sortedWith(compareBy(nullsFirst<Instant>()) { it.lastScanned })
                 } else {
                     result.sortedWith(
                         compareBy<Chore> { it.lastScanned == null }.thenByDescending { it.lastScanned }
                     )
                 }
-            } else if (showDueCountdown) {
-                // When showing the due countdown, surface the most urgent chores first
-                // (matches choreDash web's due-button behaviour of sorting overdue to the top)
-                result = result.sortedWith(
-                    compareBy(
-                        { it.status != ChoreStatus.NEVER && it.status != ChoreStatus.STALE },
-                        { it.lastScanned ?: Instant.MIN }
-                    )
-                )
+            } else {
+                result.sortedForPill(sort)
             }
-            return result
+        }
+
+    /**
+     * [displayed] split into category groups in catalog order (user order, then
+     * unlisted names alphabetically, General last), each group keeping the pill
+     * sort. Chores with no category land in an "Uncategorised" group at the end.
+     */
+    val grouped: List<Pair<String, List<Chore>>>
+        get() {
+            val groups = displayed.groupBy { it.category?.takeIf { c -> c.isNotBlank() } }
+            return groups.entries
+                .sortedWith(
+                    compareBy<Map.Entry<String?, List<Chore>>> { it.key == null }
+                        .thenBy { catalog.rankOf(it.key) }
+                        .thenBy { it.key?.lowercase() ?: "" }
+                )
+                .map { (category, chores) -> (category ?: UNCATEGORISED_LABEL) to chores }
+        }
+
+    /** Overdue chores in scope, shown on the Overdue chip ("Overdue · 5"). */
+    val overdueCount: Int
+        get() = ownerFiltered.count { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
+
+    /** "7 chores · 1 hidden" for the summary bar; the hidden part is omitted at zero. */
+    val summaryLabel: String
+        get() {
+            val shown = displayed.size
+            val hidden = hiddenChores.size
+            val base = if (shown == 1) "1 chore" else "$shown chores"
+            return if (hidden > 0) "$base · $hidden hidden" else base
         }
 
     val categories: List<String>
-        get() = (active + archived).mapNotNull { it.category }.filter { it.isNotBlank() }.distinct().sorted()
+        get() = catalog.sorted(
+            (active + archived).mapNotNull { it.category }.filter { it.isNotBlank() }
+        )
+}
+
+/**
+ * Orders chores for the sort pill. Every key names both directions in words, so
+ * the reversed branch is written out rather than calling `reversed()` on a
+ * nulls-aware comparator (LESSONS.md #35).
+ */
+fun List<Chore>.sortedForPill(order: SortOrder<ChoreSortKey>): List<Chore> = when (order.key) {
+    ChoreSortKey.PRESSURE ->
+        if (!order.reversed) {
+            // Worst first: never-done, then the largest share of the window elapsed,
+            // then the oldest log among ties (all overdue chores clamp at 1).
+            sortedWith(
+                compareBy<Chore> { it.lastScanned != null }
+                    .thenByDescending { it.pressureFraction() ?: 2f }
+                    .thenBy { it.lastScanned ?: Instant.MIN }
+            )
+        } else {
+            sortedWith(
+                compareBy<Chore> { it.lastScanned == null }
+                    .thenBy { it.pressureFraction() ?: 2f }
+                    .thenByDescending { it.lastScanned ?: Instant.MIN }
+            )
+        }
+    ChoreSortKey.DUE ->
+        if (!order.reversed) {
+            sortedWith(
+                compareBy<Chore> { it.dueInstant() != null }
+                    .thenBy { it.dueInstant() ?: Instant.MIN }
+            )
+        } else {
+            sortedWith(
+                compareBy<Chore> { it.dueInstant() == null }
+                    .thenByDescending { it.dueInstant() ?: Instant.MIN }
+            )
+        }
+    ChoreSortKey.NAME ->
+        if (!order.reversed) sortedBy { it.label.lowercase() }
+        else sortedByDescending { it.label.lowercase() }
+    ChoreSortKey.CATEGORY ->
+        if (!order.reversed) {
+            sortedWith(
+                compareBy<Chore> { it.category.isNullOrBlank() }
+                    .thenBy { it.category?.lowercase() ?: "" }
+                    .thenBy { it.label.lowercase() }
+            )
+        } else {
+            sortedWith(
+                compareBy<Chore> { it.category.isNullOrBlank() }
+                    .thenByDescending { it.category?.lowercase() ?: "" }
+                    .thenBy { it.label.lowercase() }
+            )
+        }
 }
 
 @HiltViewModel
@@ -174,6 +261,7 @@ class ChoreListViewModel @Inject constructor(
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
     private val choreSnoozeStore: ChoreSnoozeStore,
+    private val categoryStyleStore: CategoryStyleStore,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -188,12 +276,18 @@ class ChoreListViewModel @Inject constructor(
                     it.copy(
                         ownerHandle = settings.ownerHandle,
                         zenMode = settings.zenMode,
-                        showDueCountdown = settings.showDueCountdown,
+                        sort = settings.choreSort,
                         groupByCategory = settings.groupChoresByCategory,
                         smartVisibility = settings.smartChoreVisibility,
                         choreLeadDays = settings.choreLeadDays,
+                        colourChoresBy = settings.colourChoresBy,
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            categoryStyleStore.catalog.collect { catalog ->
+                _uiState.update { it.copy(catalog = catalog) }
             }
         }
         viewModelScope.launch {
@@ -307,9 +401,10 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun loadScanHistory(tagId: String) {
+    /** Recent history for the log sheet; [limit] grows when the user asks for all of it. */
+    fun loadScanHistory(tagId: String, limit: Long = 4) {
         viewModelScope.launch {
-            runCatching { choreRepository.scanHistory(tagId) }
+            runCatching { choreRepository.scanHistory(tagId, limit) }
                 .onSuccess { history -> _uiState.update { it.copy(scanHistory = history) } }
         }
     }
@@ -322,10 +417,10 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
-    fun updateChore(tagId: String, label: String, owner: String?, intervalDays: Double?) {
+    fun updateChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
         viewModelScope.launch {
             runCatching {
-                choreRepository.updateTag(tagId, label, owner, intervalDays)
+                choreRepository.updateTag(tagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
@@ -396,8 +491,10 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(zenSortAscending = ascending) }
     }
 
-    fun setShowDueCountdown(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setShowDueCountdown(enabled) }
+    /** Sort pill choice; applied immediately and persisted. */
+    fun setSort(order: SortOrder<ChoreSortKey>) {
+        _uiState.update { it.copy(sort = order) }
+        viewModelScope.launch { settingsRepository.setChoreSort(order) }
     }
 
     fun toggleShowHidden() {

@@ -1,4 +1,106 @@
-# Handoff: ChoreDash — "Cozy Cream" Mobile Redesign
+# Handoff: ChoreDash — "Cozy Cream" + "Zen Dark" Mobile Redesign
+
+> **Rule zero: never drop functionality silently.** This is a visual redesign, not a feature cut. Every existing behaviour (sort, summary bar, NFC read/write, smart visibility, unsaved-changes guard, widgets, reminders, undo, sharing, calendar export, owner assignment…) must survive unless this README says explicitly to remove it. If a mockup doesn't show a feature, that means it is out of frame — not gone. If something genuinely can't be kept, stop and list it in a "Dropped / needs decision" note in the PR description rather than omitting it.
+>
+## Implementation rule: nothing is dropped silently
+Every control, screen, link and behaviour in the design (turns 5a–7a) and every feature already in the shipped app is **required**. If something can't be built as drawn, keep the existing behaviour and flag it in the PR — never remove it. Specifically retained: Chores sort pill, summary bar ("7 chores · 1 hidden · Done ›"), NFC scan + tag label, group/flat toggle, smart-visibility hidden count, pin-to-widget (chore detail sheet), calendar/share, dirty-state Back guard on every sheet, Undo latest log, category management, colour-by severity/category.
+
+## Turn index (newest first) in `ChoreDash.dc.html`
+- **8a** — Final direction: the locked decisions across every turn, in one place (read this first)
+- **7a** — Edit sheets (chore + task), "+" speed dial open (New chore · New task · New memo) — built in both Zen Dark and Cozy Cream light
+- **6a** — Log / Mark-done sheets, unified
+- **5a** — Zen Dark theme: Chores, Tasks, revised Cozy Cream Chores, Settings › Colours, Settings › Categories
+- 4a and earlier — legacy; superseded where they conflict with the above
+
+> **Revision 2 (turn 5a) — read this first.** Turn 5a in `ChoreDash.dc.html` supersedes the list-card and bottom-nav specs below, adds the **Zen Dark** theme, and changes the icon strategy. Where 5a and older sections disagree, **5a wins**. The four corrections that motivated it:
+> 1. **Dark theme was never specified** — the shipped dark mode used Material's default dark scheme with light tokens pasted in. Use the Zen Dark token column below; never derive dark colors automatically.
+> 2. **Icons: NOT Material.** Use **Lucide** (stroke icons, 2px, round caps) — ship them as Android VectorDrawables (or the `com.composables:icons-lucide` Compose package). One icon per *category*, never the same brush glyph on every row. Map: House → `droplet` (water) / `home`; Car → `car`; Laundry → `washing-machine`; Plants → `sprout`; Kitchen → `utensils`; Bathroom → `bath`; Outdoor → `tree-pine`; Admin → `zap`; Errand → `pill`; General → `printer`; Holiday → `plane`. Tab bar: `circle-check` (Tasks), `house-check` (Chores — house outline with a check inside; not brush/broom/spray, which were rejected), `bell` (Memos), `settings` (Settings). Header action row is identical on Chores and Tasks — `search`, `user`, `target` (zen), `layout-grid` — same order, same positions, so the thumb never relearns. The `nfc` scan button sits on the LEFT, beside the "chores." title, and only on Chores. Delete the emoji/Unicode glyphs (✳ ◆ ❋) that appear in older 3a markup — they were placeholders.
+> 3. **NFC scan must be reachable from the Chores header** — a tinted round icon button (`nfc` glyph) on the left of the header, immediately after the screen title, plus the existing "Write tag" in the chore-detail sheet. The in-list NFC hint card is dropped.
+> 4. **List cards are tighter and have no progress bar.** See "List card (revised)". Right-hand cluster order is **avatar → due badge** (owner left of date, so dates line up for scanning).
+> 5. **Chores sort control is required.** The filter row ends with a right-aligned outlined pill `pressure ↓` (Outline token border, radius 999). No arrows. The pill reads the key AND the direction in words — "pressure · worst first", "due · soonest first", "name · A–Z". Tap opens a small sheet: pick key, then direction ("worst first / freshest first", "soonest / latest", "A–Z / Z–A"). Same component on Tasks.
+> 6. **Summary bar is required** on Chores and Tasks: a hairline-topped strip between list and nav — left "7 chores · 1 hidden" (Ink faint, 13px/700), right "Done ›" link opening the completed list. Hidden count comes from smart visibility.
+> 7. **Settings › Colours** (new screen): segmented "Colour chores by: Severity | Category"; three severity rows (Overdue / Due soon / Fresh) each with a 6-swatch palette `#d9615c #c99a4a #dcb85f #8aa877 #7f9bb3 #b6a3d6` (selected = 2px ring in Ink); live preview card. Severity colour drives spine + icon chip + badge; in Category mode those three take the category colour and the badge text stays neutral (Ink muted).
+> 8. **Settings › Categories** (new screen): drag-to-reorder list, "+" in header adds. Tapping a row expands it inline: rename field, icon picker (Lucide set: `washing-machine` `brush` `home` `droplet` `sprout` `utensils` `bath` `tree-pine` `leaf` `lamp`), 7-swatch colour picker (palette above + `#e0b28d`), Delete (rose, states where chores move) and Done. "General" is the default category and cannot be deleted or reordered.
+> 5. **Chores sort control is required.** The `pressure ↓` outlined pill at the right end of the filter-chip row (same slot as `due ↑` on Tasks) is a sort menu: pressure · due date · name · category. Tap cycles direction; long-press opens the list. Not optional.
+> 6. **Summary bar is required** on both Chores and Tasks, directly above the bottom nav: left `7 chores · 1 hidden` (count + smart-visibility hidden count; omit "· N hidden" when 0), right `Done ›` navigating to the completed list. 13px/700, Ink faint, 8×20 padding, hairline top border. Tasks reads `6 tasks`.
+
+## "+" FAB open state (turn 7a)
+Speed dial, not a sheet. Tap: scrim rgba(15,18,13,.62) over the screen (nav included); FAB fill flips to Ink `#ece6d6` and the + rotates 45° into ×. Three pills rise above it (bottom → top: New chore, New task, New memo — amber icon chip for memo; 10px apart, 14px above the FAB), each: 40px tinted icon chip (sage for chore, lavender for task) · 15/800 label. No explanatory hint text — the chore/task distinction is taught once in the first-run splash and repeated under Settings › Help. Pill surface = Card token, radius 999, shadow 0 8 22 rgba(0,0,0,.45). Order is fixed regardless of the active tab; the active tab's item is first (closest to thumb) — on Tasks, swap so New task is lowest. Scrim tap, Back, or × closes. Picking an item opens the matching Edit sheet in "new" mode (eyebrow NEW CHORE / NEW TASK, empty title focused, keyboard up).
+
+## Sheet dismissal & unsaved changes (applies to ALL bottom sheets: Log, Edit, Category editor)
+Keep the existing dirty-state guard — do not drop it while rebuilding the sheets. Rules:
+- A sheet is **dirty** once any field differs from its opened value (title text, any picker, owner, notes, "Done" segment other than the default).
+- If dirty, **system Back, swipe-down, and scrim tap all intercept** and show a confirm sheet (same chrome, Zen Dark tokens): title "Discard changes?", body "Your edits to *Meds* won't be saved.", buttons: outlined **Keep editing** (default/focus) + rose-text **Discard**. Never a silent dismiss.
+- If clean, Back/swipe/scrim dismiss immediately.
+- Cancel button = same as Back (guarded when dirty). Save/Log it/Mark done always dismiss.
+- Draft text survives rotation and process death within the session (rememberSaveable / SavedStateHandle); on reopen of the same item the draft is offered, not auto-applied.
+- Do not use predictive-back animation to dismiss a dirty sheet — the intercept must fire before the gesture commits.
+
+## Edit sheet (turn 7a — one component for chores AND tasks)
+Same sheet chrome as the Log sheet. **No stacked outlined text fields.** Anatomy:
+1. Header: 44px category chip · eyebrow "EDIT CHORE" / "EDIT TASK" · the title is the editable field itself (Lora 30/600, sage 1.5px underline, no box, no floating label).
+2. One grouped settings card (`#1b2019`, radius 16, 1px `#2f372b` dividers). Each row: 17px Lucide icon · label (14.5/700) · control on the right. Controls are compact: **value chip** (pill, chevron, opens picker) for Category / Due / Remind; **avatar row** for Owner (ring = selected, "Any" last); **stepper pill** for Repeat every (chores, "28 d"); **3-segment pill** for Priority (tasks); NFC row (chores only) shows the current label as text ("meds" / "no label" in Ink faint) plus a "Rewrite" / "Write tag" chip. Row order — chores: Category, Owner, Repeat every, Remind, NFC tag. Tasks: Category, Owner, Priority, Due, Remind.
+3. Notes: a single soft block (`#1b2019`, radius 14) with pencil icon; placeholder in Ink faint. Grows with content.
+4. Footer identical to the Log sheet: outlined Cancel + sage Save.
+5. Tertiary link row, centred, 13px/800 Ink faint: Add to calendar · Share · **Archive** (chores) / **Delete** (tasks) in rose. No full-width destructive buttons; no "Fewer/More options" disclosure — everything fits.
+
+## Log / Done sheet (turn 6a — one component for chores AND tasks)
+Sheet surface `#2a3127` (Cozy Cream: `#fffdf9`), radius 26 top, padding 20, section gap 18, scrim rgba(15,18,13,.55). Anatomy, top to bottom, identical on both:
+1. Handle 40×4 `#4d574a`.
+2. Header: 44px category icon chip (status-tinted) · eyebrow "CATEGORY · cadence/priority" · Lora 30/600 title · status badge + meta line ("last done 5 Aug · 27d ago" / "added 12 Aug · no reminder") · owner avatar 30px on the right.
+3. **DONE** segmented control replaces the "Log at a different time" toggle: Just now | Earlier today | Pick… (opens date-time picker). Selected segment = sage tint.
+4. Primary row: outlined Cancel (flex 1) + filled sage action (flex 1.6): "Log it" for chores, "Mark done" for tasks. Sage fill, Ink-on-sage text `#1c2118`, check icon. **No rose primary buttons.**
+5. Utility row, 40px circular icon buttons with 11px labels. Chores: Calendar · Pin · Remind · Tag · Edit. Tasks: Calendar · Pin · Remind · Edit (no NFC slot — tasks have no tags; 4 slots spread evenly).
+   Chores also show the **tag label** under the meta line: nfc icon + label in `#dfcf90` 12.5/800; chores without a tag show "no label" in Ink faint. This replaces the scattered "Remove latest log / Add reminder… / More options… / Edit task…" text links.
+6. Context block: chores → **HISTORY** list (`#1b2019`, rows: dot · date · "Nd ago · owner"; latest row has an inline rose **Undo** chip, which replaces "Remove latest log"; header link "All N ›"). Tasks → **NOTES** block (or omitted if empty).
+Never use the old rose `#ffb4a8` pill palette in dark; every colour comes from the Zen Dark column.
+
+## Zen Dark tokens (turn 5a)
+| Token | Cozy Cream | Zen Dark |
+| --- | --- | --- |
+| Ground | `#f2ede2` | `#22281f` |
+| Card | `#fffdf9` | `#2f372b` (no shadow) |
+| Nav bar bg | `#f7f2e7` | `#1b2019` |
+| Hairline / nav border | `#e5ddcd` | `#343d30` |
+| Outline (sort pill) | `#ddd3c1` | `#45503f` |
+| Ink | `#33302a` | `#ece6d6` |
+| Ink muted (captions, header icons) | `#a29885` | `#a7ad98` |
+| Ink faint (card meta) | `#a29885` | `#8f978a` |
+| Section count | `#c9c0ae` | `#5d6656` |
+| Nav inactive icon+label | `#8f8571` | `#b4bba9` |
+| Sage accent / FAB | `#8aa877` | `#8aa877` (FAB glyph `#1c2118`) |
+| Sage text | `#5f7d52` | `#9fbd8a` |
+| Sage tint (chips, nav active) | `#dfe8d3` / `#e7ecdd` | `#3a4634` (nav active text `#c6e0b3`) |
+| Rose spine | `#b8524e` | `#d9615c` |
+| Rose text | `#b8524e` | `#e8938d` |
+| Rose tint | `#f6e3e1` | `#4a2f2e` |
+| Amber spine | `#d9a648` | `#dcb85f` |
+| Amber text | `#b07f24` | `#dcb85f` |
+| Amber tint | `#f3e8d2` | `#3d3624` |
+| Lavender accent | `#7a5fa0` | `#b6a3d6` (chip text `#221a2e`) |
+| Lavender text | `#5f4a7a` | `#c9b8e6` (nav active `#d4c6ee`) |
+| Lavender tint | `#e9e0f2` | `#3b3448` |
+| Avatar M | `#e5ddcd` / `#6d6455` | `#3f4a3a` / `#cfe0c2` |
+| Avatar A | `#e9e0f2` / `#7a5fa0` | `#4d4a3a` / `#e8dfb8` |
+| Header NFC button | `#dfe8d3` / `#5f7d52` | `#3a4634` / `#dfcf90` |
+| Top accent strip | `#8aa877 → #e8d9b0 → #d9a648` | `#8aa877 → #dfcf90 → #c99a4a` |
+
+Contrast floor: every text/icon on its surface ≥ 4.5:1 (nav labels included). If a WCAG toggle is on, lift Ink faint to Ink muted.
+
+## List card (revised, turn 5a — replaces the older spec)
+Radius **16**, padding **10px 14px 10px 20px**, row gap in list **7px**, spine **5px**. Icon chip **38px** circle, Lucide icon 18px, tinted by status. Title 16px/800, line-height 1.2; meta 12px/700 directly below (2px). Right side is a **single horizontal row** (gap 8): status badge (11.5px/800, radius 7, padding 3×9) then optional 24px avatar. **No progress bar, no second line of badges.** Light cards keep a soft shadow `0 3px 10px rgba(128,110,85,0.10)`; dark cards have none.
+
+## Bottom navigation (revised)
+Same five-slot structure. Inactive icon+label must use the "Nav inactive" token (not Ink faint) — this fixes the unreadable dark bar. Active slot: pill tint + accent text per the table. Nav bg is one step *darker* than ground in Zen Dark (`#1b2019`), one step lighter in Cozy Cream.
+
+
+## 8a — Final direction (read first)
+Turn 8a resolves every open decision:
+- **Theme:** Zen Dark ships as the default; Cozy Cream is the light alternate. Same tokens, palette swap only.
+- **Cards:** 5a's compact revision (no progress bar, colored spine + one Lucide icon/category, cadence line). 3a's original cards are historical, not to be built.
+- **Nav:** Tasks · Chores · [+] · Memos · Settings, as below.
+- **Edit/log sheets:** one grammar for chores and tasks (7a/6a), now in both themes.
+- **Open question for engineering:** Zen Dark's Save button uses sage; Cozy Cream's uses lavender/purple (`#7a5fa0`, matching 4a). Pick one primary-action color before building both themes — flagged, not decided, in the design.
 
 ## Overview
 A visual redesign of the ChoreDash household chores & tasks app (Android, Kotlin/Compose, Supabase-per-device sync). This package covers the **Cozy Cream** direction: a warm, light, low-pressure aesthetic built on a cream ground with sage / rose / amber / lavender accents, rounded cards with colored left "spines", circular icon chips, and serif page headers. It spans the four main tabs (Tasks, Chores, Memos, Settings) plus the deeper screens behind them (edit sheets, settings sub-pages, appearance/themes).
@@ -136,7 +238,7 @@ Serif `about.` + back. Centered 74px sage rounded-square app icon (scrub-brush),
 
 ## Assets
 - **Fonts:** Lora + Nunito (Google Fonts) — or bundle equivalents in the app.
-- **Icons:** all icons are inline SVG placeholders in the HTML; replace with Material/Compose icons (check-circle, brush, bell, gear/settings, search, users, calendar, share, chevrons, alarm, shield/DND, pencil, play, trash, plus/minus).
+- **Icons:** Lucide (see Revision 2). The inline SVGs in the HTML are Lucide-style and can be exported 1:1 as VectorDrawables; do **not** substitute Material icons.
 - No raster images or logos — the app icon is the sage scrub-brush glyph.
 
 ## Files

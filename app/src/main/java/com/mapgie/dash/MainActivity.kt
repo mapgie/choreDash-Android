@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
@@ -114,6 +115,7 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 wcag      = settings?.wcagMode ?: false,
                 customHSL = customHSL,
+                severitySwatches = settings?.severitySwatches ?: Severity.defaults,
             ) {
                 // Hold blank screen until first DataStore emission (<10 ms)
                 // to avoid flashing wrong theme or credentials state.
