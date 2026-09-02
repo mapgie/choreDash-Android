@@ -194,7 +194,6 @@ internal fun SwatchRow(
                     .selectable(selected = isSelected, onClick = { onSelect(swatch) }),
             ) {
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(if (isSelected) 38.dp else 30.dp)
                         .clip(CircleShape)
