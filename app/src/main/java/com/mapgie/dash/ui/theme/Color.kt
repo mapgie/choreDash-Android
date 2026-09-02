@@ -153,11 +153,15 @@ val StatusStaleTintDark = Color(0xFF4A302E)
 val StatusAgingTintDark = Color(0xFF48402A)
 val StatusFreshTintDark = Color(0xFF39422F)
 
-// Content-type accent tones. Fixed across all AppTheme palettes (light or dark)
-// so Chores, Tasks, and Reminders keep a stable colour identity no matter which
-// palette the user has picked — used on the bottom nav indicator and the add-menu
-// FAB. Colour is a secondary cue only: icon shape and text label already
-// distinguish the three types, satisfying the "not colour alone" rule.
+// Content-type accent tones. Fixed across all AppTheme palettes so Chores, Tasks,
+// and Reminders keep a stable colour identity no matter which palette the user has
+// picked — used on the bottom nav indicator, the page-header dot and the add-menu
+// FAB. Each hue has a light set (pastel container, deep on-colour) and a dark set
+// (desaturated deep container, pale on-colour); DashTheme picks the set for the
+// current brightness so the on-colour keeps at least 4.5:1 against both its
+// container and the dark surfaces. Colour is a secondary cue only: icon shape and
+// text label already distinguish the three types, satisfying the "not colour
+// alone" rule.
 val TypeTaskContainer = Color(0xFFE9E0F2)
 val TypeTaskOnContainer = Color(0xFF4A3866)
 val TypeChoreContainer = Color(0xFFDFE8D3)
@@ -165,11 +169,18 @@ val TypeChoreOnContainer = Color(0xFF33471F)
 val TypeReminderContainer = Color(0xFFF3E8D2)
 val TypeReminderOnContainer = Color(0xFF5C4413)
 
+val TypeTaskContainerDark = Color(0xFF4A3A66)
+val TypeTaskOnContainerDark = Color(0xFFDCCEF2)
+val TypeChoreContainerDark = Color(0xFF3B4A31)
+val TypeChoreOnContainerDark = Color(0xFFC9DDB4)
+val TypeReminderContainerDark = Color(0xFF54471F)
+val TypeReminderOnContainerDark = Color(0xFFEEDFAE)
+
 // Owner avatar palette. A person's handle hashes to one of these six tones via
 // ownerColorFor(), so the same owner shows the same colour on every screen and in
-// the overview sheets. Containers are pastel with dark on-colours and, like the
-// Type* accents above, are deliberately fixed across light and dark palettes so a
-// person's identity colour stays stable. The initial letter is always drawn and the
+// the overview sheets. Containers are pastel with dark on-colours and are
+// deliberately fixed across light and dark palettes so a person's identity colour
+// stays stable. The initial letter is always drawn and the
 // avatar carries a "Owner: <handle>" description, so colour is never the only signal.
 data class AvatarTone(val container: Color, val onContainer: Color)
 

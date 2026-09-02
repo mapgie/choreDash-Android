@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,14 +19,11 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -63,11 +59,13 @@ import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
+import com.mapgie.dash.ui.components.core.HeaderIconButton
+import com.mapgie.dash.ui.components.core.OwnerFilterButton
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
-import com.mapgie.dash.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -121,66 +119,45 @@ fun TaskListScreen(
                     title = if (uiState.zenMode) "zen" else "tasks",
                     accent = LocalTypeAccents.current.onTaskContainer,
                     actions = {
+                        // Design order: owner filter, zen, search, group/flat.
                         if (!uiState.zenMode) {
-                            IconButton(
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                OwnerFilterButton(
+                                    filter = uiState.ownerFilter,
+                                    onFilterChange = viewModel::setOwnerFilter,
+                                )
+                            }
+                        } else {
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most urgent first" else "Sorted: least urgent first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            )
+                        }
+                        HeaderIconButton(
+                            icon = DashIcons.Zen,
+                            contentDescription = if (uiState.zenMode)
+                                "Exit zen mode" else "Enter zen mode",
+                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
+                            active = uiState.zenMode,
+                        )
+                        if (!uiState.zenMode) {
+                            HeaderIconButton(
+                                icon = Icons.Outlined.Search,
+                                contentDescription = if (searchActive) "Close search" else "Search tasks",
                                 onClick = {
                                     searchActive = !searchActive
                                     if (!searchActive) searchQuery = ""
                                 },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Search,
-                                    contentDescription = if (searchActive) "Close search" else "Search tasks",
-                                    tint = if (searchActive)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (uiState.ownerHandle.isNotBlank()) {
-                                IconButton(
-                                    onClick = {
-                                        viewModel.setOwnerFilter(
-                                            if (uiState.ownerFilter == OwnerFilter.MINE) OwnerFilter.ALL
-                                            else OwnerFilter.MINE
-                                        )
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Person,
-                                        contentDescription = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                            "Show all owners" else "Show my tasks",
-                                        tint = if (uiState.ownerFilter == OwnerFilter.MINE)
-                                            MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        } else {
-                            IconButton(
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                    contentDescription = if (uiState.zenSortAscending)
-                                        "Sorted: most urgent first" else "Sorted: least urgent first",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Spa,
-                                contentDescription = if (uiState.zenMode)
-                                    "Exit zen mode" else "Enter zen mode",
-                                tint = if (uiState.zenMode)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                active = searchActive,
+                            )
+                            HeaderIconButton(
+                                icon = if (uiState.groupByCategory) Icons.Outlined.GridView
+                                       else Icons.Outlined.ViewAgenda,
+                                contentDescription = if (uiState.groupByCategory)
+                                    "Show as flat list" else "Group by category",
+                                onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
                             )
                         }
                     },
@@ -231,7 +208,8 @@ fun TaskListScreen(
                         }
                     }
                 } else {
-                    // Filter chips + the "due ↑" sort control
+                    // The "due ↑" sort control. No status chips: done tasks live in
+                    // the collapsible Done section below the list.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -239,18 +217,6 @@ fun TaskListScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TaskFilter.entries.forEach { f ->
-                            FilterChip(
-                                selected = uiState.filter == f,
-                                onClick = { viewModel.setFilter(f) },
-                                label = { Text(f.label) },
-                                shape = PillShape,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            )
-                        }
                         Spacer(Modifier.weight(1f))
                         if (!uiState.zenMode) {
                             TextButton(onClick = { viewModel.setSort(uiState.sort.next()) }) {
@@ -280,7 +246,7 @@ fun TaskListScreen(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            if (uiState.groupByCategory && !uiState.zenMode && uiState.filter != TaskFilter.DONE) {
+                            if (uiState.groupByCategory && !uiState.zenMode) {
                                 val grouped = active.groupBy { it.category?.takeIf(String::isNotBlank) ?: "Other" }
                                 grouped.forEach { (cat, tasks) ->
                                     stickyHeader {
@@ -300,7 +266,7 @@ fun TaskListScreen(
                                             onToggleDone = { viewModel.markDone(task.id) },
                                             onSwipeToggleDone = { viewModel.markDone(task.id) },
                                             showCategory = false,
-                                            showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
                                         )
                                     }
@@ -314,7 +280,7 @@ fun TaskListScreen(
                                         onToggleDone = { viewModel.markDone(task.id) },
                                         onSwipeToggleDone = { viewModel.markDone(task.id) },
                                         showCategory = !uiState.groupByCategory,
-                                        showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                        showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode
                                     )
                                 }
@@ -351,7 +317,7 @@ fun TaskListScreen(
                                             onToggleDone = { viewModel.markUndone(task.id) },
                                             onSwipeToggleDone = { viewModel.markUndone(task.id) },
                                             showCategory = !uiState.groupByCategory,
-                                            showOwner = (uiState.ownerFilter != OwnerFilter.MINE),
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
                                         )
                                     }
@@ -469,13 +435,6 @@ private fun SwipeToCompleteCard(
         )
     }
 }
-
-private val TaskFilter.label: String
-    get() = when (this) {
-        TaskFilter.ALL -> "All"
-        TaskFilter.ACTIVE -> "Active"
-        TaskFilter.DONE -> "Done"
-    }
 
 private val TaskSort.shortLabel: String
     get() = when (this) {

@@ -27,10 +27,11 @@ data class CustomHSL(
 /**
  * Per content-type accent colours (a container tone plus its on-container tone)
  * for the Tasks / Chores / Reminders tabs, used by the bottom nav indicator and
- * the add-menu FABs. Built-in palettes keep the fixed identity tones so each
- * content type has a stable colour across palettes; the custom theme maps them
- * onto the user's primary/secondary/tertiary picks so those colours show
- * throughout the UI instead of clashing with unrelated fixed pastels.
+ * the add-menu FABs. Built-in palettes keep the fixed identity tones (light or
+ * dark set per brightness) so each content type has a stable colour across
+ * palettes; the custom theme maps them onto the user's primary/secondary/tertiary
+ * picks so those colours show throughout the UI instead of clashing with
+ * unrelated fixed pastels.
  */
 data class TypeAccentColors(
     val taskContainer:     Color, val onTaskContainer:     Color,
@@ -38,14 +39,22 @@ data class TypeAccentColors(
     val reminderContainer: Color, val onReminderContainer: Color,
 )
 
-/** Defaults to the fixed content-type identity tones; [DashTheme] overrides it for the custom theme. */
-val LocalTypeAccents = staticCompositionLocalOf {
-    TypeAccentColors(
-        taskContainer     = TypeTaskContainer,     onTaskContainer     = TypeTaskOnContainer,
-        choreContainer    = TypeChoreContainer,    onChoreContainer    = TypeChoreOnContainer,
-        reminderContainer = TypeReminderContainer, onReminderContainer = TypeReminderOnContainer,
-    )
-}
+/** The light set of the fixed content-type identity tones. */
+private val LightTypeAccents = TypeAccentColors(
+    taskContainer     = TypeTaskContainer,     onTaskContainer     = TypeTaskOnContainer,
+    choreContainer    = TypeChoreContainer,    onChoreContainer    = TypeChoreOnContainer,
+    reminderContainer = TypeReminderContainer, onReminderContainer = TypeReminderOnContainer,
+)
+
+/** The dark set: same hues, deep containers with pale on-colours for dark surfaces. */
+private val DarkTypeAccents = TypeAccentColors(
+    taskContainer     = TypeTaskContainerDark,     onTaskContainer     = TypeTaskOnContainerDark,
+    choreContainer    = TypeChoreContainerDark,    onChoreContainer    = TypeChoreOnContainerDark,
+    reminderContainer = TypeReminderContainerDark, onReminderContainer = TypeReminderOnContainerDark,
+)
+
+/** Defaults to the light content-type identity tones; [DashTheme] overrides it per brightness and for the custom theme. */
+val LocalTypeAccents = staticCompositionLocalOf { LightTypeAccents }
 
 @Composable
 fun DashTheme(
@@ -85,19 +94,18 @@ fun DashTheme(
 
     // For the custom theme, map the content-type accents onto the user's
     // primary/secondary/tertiary picks so Tasks/Chores/Reminders carry the
-    // chosen colours; built-in palettes keep their fixed identity tones.
+    // chosen colours; built-in palettes keep their fixed identity tones, in the
+    // light or dark set so the on-colours stay readable on dark surfaces.
     val typeAccents = if (appTheme == AppTheme.CUSTOM && customHSL != null) {
         TypeAccentColors(
             taskContainer     = colorScheme.primaryContainer,   onTaskContainer     = colorScheme.onPrimaryContainer,
             choreContainer    = colorScheme.secondaryContainer,  onChoreContainer    = colorScheme.onSecondaryContainer,
             reminderContainer = colorScheme.tertiaryContainer,   onReminderContainer = colorScheme.onTertiaryContainer,
         )
+    } else if (darkTheme) {
+        DarkTypeAccents
     } else {
-        TypeAccentColors(
-            taskContainer     = TypeTaskContainer,     onTaskContainer     = TypeTaskOnContainer,
-            choreContainer    = TypeChoreContainer,    onChoreContainer    = TypeChoreOnContainer,
-            reminderContainer = TypeReminderContainer, onReminderContainer = TypeReminderOnContainer,
-        )
+        LightTypeAccents
     }
 
     CompositionLocalProvider(LocalTypeAccents provides typeAccents) {

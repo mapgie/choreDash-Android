@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.chores
 
+import android.nfc.NfcAdapter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -9,16 +10,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -36,13 +38,19 @@ import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.ChoreOverviewSheet
 import com.mapgie.dash.ui.components.EditChoreSheet
+import com.mapgie.dash.ui.components.NfcHintCard
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
 import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.OwnerFilterButton
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.PillShape
+import com.mapgie.dash.util.formatAbsoluteDate
+import java.time.Instant
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -78,6 +86,8 @@ fun ChoreListScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var addSheetTagId by remember { mutableStateOf("") }
     var reminderTargetChore by remember { mutableStateOf<Chore?>(null) }
+    val context = LocalContext.current
+    val hasNfc = remember { NfcAdapter.getDefaultAdapter(context) != null }
 
     // Handle incoming NFC tag from MainActivity
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
@@ -138,6 +148,22 @@ fun ChoreListScreen(
         viewModel.clearRecentScan()
     }
 
+    // Show snackbar after a swipe-to-snooze (or wake), with Undo action
+    LaunchedEffect(uiState.recentSnooze) {
+        val snooze = uiState.recentSnooze ?: return@LaunchedEffect
+        val message = snooze.until?.let { "${snooze.choreLabel} snoozed until ${formatAbsoluteDate(it)}" }
+            ?: "${snooze.choreLabel} is back"
+        val result = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = "Undo",
+            duration = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            viewModel.undoSnooze(snooze)
+        }
+        viewModel.clearRecentSnooze()
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
@@ -153,77 +179,52 @@ fun ChoreListScreen(
                     title = if (uiState.zenMode) "zen" else "chores",
                     accent = LocalTypeAccents.current.onChoreContainer,
                     actions = {
+                        // Design order: owner filter, due countdown, zen, search, group/flat.
                         if (!uiState.zenMode) {
-                            IconButton(
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                OwnerFilterButton(
+                                    filter = uiState.ownerFilter,
+                                    onFilterChange = viewModel::setOwnerFilter,
+                                )
+                            }
+                            HeaderIconButton(
+                                icon = Icons.Outlined.Timer,
+                                contentDescription = if (uiState.showDueCountdown)
+                                    "Hide due countdown" else "Show due countdown",
+                                onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
+                                active = uiState.showDueCountdown,
+                            )
+                        } else {
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            )
+                        }
+                        HeaderIconButton(
+                            icon = DashIcons.Zen,
+                            contentDescription = if (uiState.zenMode)
+                                "Exit zen mode" else "Enter zen mode",
+                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
+                            active = uiState.zenMode,
+                        )
+                        if (!uiState.zenMode) {
+                            HeaderIconButton(
+                                icon = Icons.Outlined.Search,
+                                contentDescription = if (searchActive) "Close search" else "Search chores",
                                 onClick = {
                                     searchActive = !searchActive
                                     if (!searchActive) searchQuery = ""
                                 },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Search,
-                                    contentDescription = if (searchActive) "Close search" else "Search chores",
-                                    tint = if (searchActive)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    viewModel.setOwnerFilter(
-                                        if (uiState.ownerFilter == OwnerFilter.ME) OwnerFilter.ALL
-                                        else OwnerFilter.ME
-                                    )
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Person,
-                                    contentDescription = if (uiState.ownerFilter == OwnerFilter.ME)
-                                        "Show all owners" else "Show my chores",
-                                    tint = if (uiState.ownerFilter == OwnerFilter.ME)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.setShowDueCountdown(!uiState.showDueCountdown) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Bolt,
-                                    contentDescription = if (uiState.showDueCountdown)
-                                        "Hide due countdown" else "Show due countdown",
-                                    tint = if (uiState.showDueCountdown)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            IconButton(
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    if (uiState.zenSortAscending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                    contentDescription = if (uiState.zenSortAscending)
-                                        "Sorted: most overdue first" else "Sorted: recently done first",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Spa,
-                                contentDescription = if (uiState.zenMode)
-                                    "Exit zen mode" else "Enter zen mode",
-                                tint = if (uiState.zenMode)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                active = searchActive,
+                            )
+                            HeaderIconButton(
+                                icon = if (uiState.groupByCategory) Icons.Outlined.GridView
+                                       else Icons.Outlined.ViewAgenda,
+                                contentDescription = if (uiState.groupByCategory)
+                                    "Show as flat list" else "Group by category",
+                                onClick = { viewModel.setGroupBy(!uiState.groupByCategory) },
                             )
                         }
                     },
@@ -258,13 +259,15 @@ fun ChoreListScreen(
                         items(results, key = { it.id }) { chore ->
                             SwipeToLogCard(
                                 chore = chore,
-                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                showOwner = uiState.ownerFilter.showsOwner,
                                 zenMode = false,
                                 showDueCountdown = uiState.showDueCountdown,
                                 showCategory = true,
                                 onTap = { logTargetChore = it; showLogSheet = true },
                                 onLongPress = { editTargetChore = it; showEditSheet = true },
                                 onSwipeLog = { viewModel.logChore(it.tagId) },
+                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                snoozedUntil = uiState.snoozedUntil(chore),
                                 highlightQuery = query
                             )
                         }
@@ -327,13 +330,15 @@ fun ChoreListScreen(
                                         items(chores, key = { it.id }) { chore ->
                                             SwipeToLogCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
                                                 onLongPress = { editTargetChore = it; showEditSheet = true },
-                                                onSwipeLog = { viewModel.logChore(it.tagId) }
+                                                onSwipeLog = { viewModel.logChore(it.tagId) },
+                                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                                snoozedUntil = uiState.snoozedUntil(chore)
                                             )
                                         }
                                     }
@@ -341,13 +346,15 @@ fun ChoreListScreen(
                                     items(displayed, key = { it.id }) { chore ->
                                         SwipeToLogCard(
                                             chore = chore,
-                                            showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                            showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
                                             showDueCountdown = uiState.showDueCountdown,
                                             showCategory = !uiState.groupByCategory,
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetChore = it; showEditSheet = true },
-                                            onSwipeLog = { viewModel.logChore(it.tagId) }
+                                            onSwipeLog = { viewModel.logChore(it.tagId) },
+                                            onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                            snoozedUntil = uiState.snoozedUntil(chore)
                                         )
                                     }
                                 }
@@ -359,14 +366,12 @@ fun ChoreListScreen(
                                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                         ) {
                                             Text(
-                                                when {
-                                                    uiState.showHidden ->
-                                                        "Collapse hidden chores (${hiddenChores.size})"
-                                                    uiState.smartVisibility ->
-                                                        "${hiddenChores.size} hidden until closer to due"
-                                                    else ->
-                                                        "${hiddenChores.size} not due for 60+ days"
-                                                },
+                                                hiddenSectionLabel(
+                                                    total = hiddenChores.size,
+                                                    snoozed = uiState.snoozedCount,
+                                                    expanded = uiState.showHidden,
+                                                    smartVisibility = uiState.smartVisibility,
+                                                ),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -376,16 +381,22 @@ fun ChoreListScreen(
                                         items(hiddenChores, key = { "hidden_${it.id}" }) { chore ->
                                             SwipeToLogCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
                                                 onLongPress = { editTargetChore = it; showEditSheet = true },
-                                                onSwipeLog = { viewModel.logChore(it.tagId) }
+                                                onSwipeLog = { viewModel.logChore(it.tagId) },
+                                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                                snoozedUntil = uiState.snoozedUntil(chore)
                                             )
                                         }
                                     }
+                                }
+
+                                if (hasNfc && !uiState.zenMode) {
+                                    item(key = "nfc_hint") { NfcHintCard() }
                                 }
 
                                 if (uiState.archived.isNotEmpty()) {
@@ -411,7 +422,7 @@ fun ChoreListScreen(
                                         ) { chore ->
                                             ChoreCard(
                                                 chore = chore,
-                                                showOwner = uiState.ownerFilter == OwnerFilter.ALL,
+                                                showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showDueCountdown = uiState.showDueCountdown,
                                                 showCategory = !uiState.groupByCategory,
@@ -566,12 +577,18 @@ private fun SwipeToLogCard(
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
     onSwipeLog: (Chore) -> Unit,
+    onSwipeSnooze: (Chore) -> Unit,
+    snoozedUntil: Instant? = null,
     highlightQuery: String? = null
 ) {
+    // Swipe right (start to end) logs the chore; swipe left (end to start)
+    // snoozes it, or wakes it if it is already snoozed.
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onSwipeLog(chore)
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> onSwipeLog(chore)
+                SwipeToDismissBoxValue.EndToStart -> onSwipeSnooze(chore)
+                SwipeToDismissBoxValue.Settled -> Unit
             }
             false // never actually dismiss the item
         },
@@ -580,24 +597,35 @@ private fun SwipeToLogCard(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
+        enableDismissFromEndToStart = true,
         backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    "Log✔",
-                    modifier = Modifier.padding(start = 24.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            // Only drawn mid-swipe so nothing sits behind a resting card.
+            val direction = dismissState.dismissDirection
+            if (direction != SwipeToDismissBoxValue.Settled) {
+                val snoozing = direction == SwipeToDismissBoxValue.EndToStart
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .background(
+                            if (snoozing) MaterialTheme.colorScheme.tertiaryContainer
+                            else MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ),
+                    contentAlignment = if (snoozing) Alignment.CenterEnd else Alignment.CenterStart
+                ) {
+                    Text(
+                        when {
+                            !snoozing -> "Log✔"
+                            snoozedUntil != null -> "Wake"
+                            else -> "Snooze"
+                        },
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (snoozing) MaterialTheme.colorScheme.onTertiaryContainer
+                                else MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
     ) {
@@ -608,6 +636,7 @@ private fun SwipeToLogCard(
             showDueCountdown = showDueCountdown,
             showCategory = showCategory,
             highlightQuery = highlightQuery,
+            snoozedUntil = snoozedUntil,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(
@@ -616,6 +645,27 @@ private fun SwipeToLogCard(
                 )
         )
     }
+}
+
+/**
+ * Label for the collapsed hidden section: lead-time hidden and snoozed counts
+ * stated separately so the user knows why each group is out of sight.
+ */
+private fun hiddenSectionLabel(
+    total: Int,
+    snoozed: Int,
+    expanded: Boolean,
+    smartVisibility: Boolean,
+): String {
+    if (expanded) return "Collapse hidden chores ($total)"
+    val beyondLeadTime = total - snoozed
+    val parts = mutableListOf<String>()
+    if (beyondLeadTime > 0) {
+        parts += if (smartVisibility) "$beyondLeadTime hidden until closer to due"
+                 else "$beyondLeadTime not due for 60+ days"
+    }
+    if (snoozed > 0) parts += "$snoozed snoozed"
+    return parts.joinToString(" · ")
 }
 
 @Composable

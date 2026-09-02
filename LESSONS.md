@@ -770,3 +770,42 @@ option variables unquoted in the wrapper (`$JAVA_OPTS`), so unset means
 zero words, or filter empties the way the upstream Gradle script does with
 xargs. The blank class name in the error is the tell: some argv word
 before the real main class evaluated to an empty string.
+
+---
+
+## 35. `compareByDescending(nullsLast())` puts nulls FIRST
+
+`compareByDescending(comparator) { selector }` wraps the whole comparator in
+`reversed()`, and that reversal applies to the null placement as well as the
+value order. So `compareByDescending(nullsLast<Instant>()) { it.lastScanned }`
+sorts never-scanned chores to the top, the opposite of what it reads as. The
+Chores zen "recently done first" sort shipped this way until a unit test
+caught it.
+
+Fix: put the null test in its own key so nothing reverses it, then order the
+non-null values:
+
+```kotlin
+// never-done last, then most recent scan first
+list.sortedWith(compareBy<Chore> { it.lastScanned == null }.thenByDescending { it.lastScanned })
+```
+
+The same trap applies to `.reversed()` on any `nullsFirst`/`nullsLast`
+comparator. If a sort has a null bucket, write a test for both directions.
+
+---
+
+## 36. "Fixed across light and dark" identity tones need a dark set
+
+The content-type accents (task lavender, chore sage, reminder amber) were one
+pastel container plus one deep on-colour, reused unchanged in dark mode so the
+identity stayed stable. That works for the chip itself, but the on-colour was
+also drawn directly on the dark nav bar (active tab label) and the dark page
+background (the header's coloured full stop), where a deep green on near-black
+is about 1.2:1. Colour identity is a hue, not a pair of hex values.
+
+Rule: any tone drawn on a surface the theme controls needs a variant per
+brightness, chosen where the theme already knows `darkTheme` (`DashTheme`),
+and the on-colour checked numerically against both its own container and the
+darkest surface it can land on (4.5:1 minimum). The `Type*Dark` values in
+`Color.kt` are the worked example.

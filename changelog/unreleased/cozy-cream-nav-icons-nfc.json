@@ -1,0 +1,11 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Chores now use the Cozy Cream scrub-brush icon in the bottom bar, list cards and add menu",
+    "The Chores and Tasks header icons (owner filter, zen, search) now match the Cozy Cream design, with a new group/flat list toggle",
+    "The Chores list now ends with a card reminding you that a chore can be logged by tapping its NFC tag"
+  ],
+  "fixed": [
+    "Bottom bar tab labels and page header accents are now readable in dark mode"
+  ]
+}

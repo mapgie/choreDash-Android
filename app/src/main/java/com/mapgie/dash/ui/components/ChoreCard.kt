@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +19,7 @@ import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
+import com.mapgie.dash.ui.theme.DashIcons
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.StatusTone
@@ -28,6 +29,7 @@ import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.util.formatAbsoluteDate
 import com.mapgie.dash.util.relativeTime
+import java.time.Instant
 
 /**
  * Cozy Cream list card for a chore: status spine, circular brush chip tinted by
@@ -36,6 +38,10 @@ import com.mapgie.dash.util.relativeTime
  * cadence-pressure bar along the bottom (track fills as the chore approaches
  * due; full = overdue). The bar restates the spine/badge status, so colour is
  * never the only signal.
+ *
+ * A snoozed chore ([snoozedUntil] set) swaps the brush chip for a snooze glyph
+ * on a neutral tint and replaces the countdown with "Snoozed until <date>";
+ * the spine and bar keep telling the truth about its status underneath.
  */
 @Composable
 fun ChoreCard(
@@ -45,7 +51,8 @@ fun ChoreCard(
     showDueCountdown: Boolean = false,
     showCategory: Boolean = true,
     modifier: Modifier = Modifier,
-    highlightQuery: String? = null
+    highlightQuery: String? = null,
+    snoozedUntil: Instant? = null,
 ) {
     val tone = chore.statusTone()
     val accents = LocalTypeAccents.current
@@ -77,11 +84,15 @@ fun ChoreCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val snoozed = snoozedUntil != null
                     CardIconChip(
-                        icon = Icons.Outlined.CleaningServices,
-                        containerColor = if (zenMode) Color.Transparent
-                                         else tone.badgeContainerColor() ?: accents.choreContainer,
-                        contentColor = if (zenMode) MaterialTheme.colorScheme.onSurfaceVariant
+                        icon = if (snoozed) Icons.Outlined.Snooze else DashIcons.Brush,
+                        containerColor = when {
+                            zenMode -> Color.Transparent
+                            snoozed -> MaterialTheme.colorScheme.surfaceContainerHighest
+                            else -> tone.badgeContainerColor() ?: accents.choreContainer
+                        },
+                        contentColor = if (zenMode || snoozed) MaterialTheme.colorScheme.onSurfaceVariant
                                        else tone.textColor(),
                     )
 
@@ -112,6 +123,8 @@ fun ChoreCard(
                     ) {
                         if (!zenMode) {
                             when {
+                                snoozedUntil != null ->
+                                    MetaLabel(text = "Snoozed until ${formatAbsoluteDate(snoozedUntil)}")
                                 chore.lastScanned == null ->
                                     StatusBadge(text = "Never", tone = tone)
                                 showDueCountdown && chore.nextDueText() != null ->

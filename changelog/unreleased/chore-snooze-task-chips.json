@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Swipe a chore to the left to snooze it. It moves to the hidden section for its smart visibility lead time, or one day when smart visibility is off, and swiping again wakes it. Logging a chore ends its snooze. Snoozes are per device."
+  ],
+  "changed": [
+    "The Tasks screen no longer shows All, Active and Done filter chips. Done tasks always live in the collapsible Done section below the list."
+  ]
+}
