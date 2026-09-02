@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderInsert
@@ -81,6 +82,12 @@ import com.mapgie.dash.ui.components.core.SummaryBar
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.LocalDashTokens
+import com.mapgie.dash.ui.components.LeaveZenButton
+import com.mapgie.dash.ui.components.ZenRow
+import com.mapgie.dash.ui.components.ZenScopeToggle
+import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.ZenPhrase
 import com.mapgie.dash.ui.theme.PillShape
 import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.badgeContainerColor
@@ -114,16 +121,16 @@ fun ChoreListScreen(
     val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var logTargetChore by remember { mutableStateOf<Chore?>(null) }
-    var editTargetChore by remember { mutableStateOf<Chore?>(null) }
+    var editTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     var showLogSheet by remember { mutableStateOf(false) }
-    var showEditSheet by remember { mutableStateOf(false) }
+    var showEditSheet by rememberSaveable { mutableStateOf(false) }
     var showArchivedSection by remember { mutableStateOf(false) }
-    var showAddSheet by remember { mutableStateOf(false) }
+    var showAddSheet by rememberSaveable { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var showNfcDialog by remember { mutableStateOf(false) }
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var addSheetTagId by remember { mutableStateOf("") }
+    var addSheetTagId by rememberSaveable { mutableStateOf("") }
     var reminderTargetChore by remember { mutableStateOf<Chore?>(null) }
     val context = LocalContext.current
     val hasNfc = remember { NfcAdapter.getDefaultAdapter(context) != null }
@@ -135,6 +142,17 @@ fun ChoreListScreen(
     fun swatchFor(chore: Chore): Swatch? =
         if (uiState.colourChoresBy == ColourChoresBy.CATEGORY) uiState.catalog.effectiveSwatch(chore.category)
         else null
+
+    // The Edit sheet's target is kept by id and resolved from uiState so the open
+    // sheet survives rotation and process death; it closes cleanly if the chore
+    // is gone once the list has loaded.
+    val editTargetChore = editTargetId?.let { id -> (uiState.active + uiState.archived).find { it.id == id } }
+    LaunchedEffect(showEditSheet, editTargetChore, uiState.loading) {
+        if (showEditSheet && editTargetChore == null && !uiState.loading) {
+            showEditSheet = false
+            editTargetId = null
+        }
+    }
 
     // Handle incoming NFC tag from MainActivity
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
@@ -222,18 +240,42 @@ fun ChoreListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (uiState.zenMode) MaterialTheme.colorScheme.surfaceContainerLow
+                        else MaterialTheme.colorScheme.background
+                    )
+            ) {
                 PageHeader(
                     title = if (uiState.zenMode) "zen" else "chores",
-                    accent = choreAccent,
+                    accent = if (uiState.zenMode) LocalDashTokens.current.sectionCount else choreAccent,
                     leading = {
                         if (hasNfc && !uiState.zenMode) {
                             NfcScanButton(onClick = { showNfcDialog = true })
                         }
                     },
                     actions = {
-                        // Same row as Tasks: search, owner, zen, group/flat.
-                        if (!uiState.zenMode) {
+                        if (uiState.zenMode) {
+                            // Zen header (3a-4): mine | all, the sort arrow, LEAVE.
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                ZenScopeToggle(
+                                    mine = uiState.ownerFilter == OwnerFilter.MINE,
+                                    onMineChange = { mine ->
+                                        viewModel.setOwnerFilter(if (mine) OwnerFilter.MINE else OwnerFilter.EVERYONE)
+                                    },
+                                )
+                            }
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            )
+                            LeaveZenButton(onClick = { viewModel.setZenMode(false) })
+                        } else {
+                            // Same row as Tasks: search, owner, zen, group/flat.
                             HeaderIconButton(
                                 icon = LucideIcons.Search,
                                 contentDescription = if (searchActive) "Close search" else "Search chores",
@@ -251,23 +293,11 @@ fun ChoreListScreen(
                                     activeTint = choreAccent,
                                 )
                             }
-                        } else {
                             HeaderIconButton(
-                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most overdue first" else "Sorted: recently done first",
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                                icon = LucideIcons.Target,
+                                contentDescription = "Enter zen mode",
+                                onClick = { viewModel.setZenMode(true) },
                             )
-                        }
-                        HeaderIconButton(
-                            icon = LucideIcons.Target,
-                            contentDescription = if (uiState.zenMode)
-                                "Exit zen mode" else "Enter zen mode",
-                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                            active = uiState.zenMode,
-                            activeTint = choreAccent,
-                        )
-                        if (!uiState.zenMode) {
                             HeaderIconButton(
                                 icon = if (uiState.groupByCategory) LucideIcons.LayoutGrid
                                        else LucideIcons.List,
@@ -315,7 +345,7 @@ fun ChoreListScreen(
                                 zenMode = false,
                                 showCategory = true,
                                 onTap = { logTargetChore = it; showLogSheet = true },
-                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                onLongPress = { editTargetId = it.id; showEditSheet = true },
                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
                                 snoozedUntil = uiState.snoozedUntil(chore),
@@ -415,12 +445,30 @@ fun ChoreListScreen(
                                                 zenMode = uiState.zenMode,
                                                 showCategory = false,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
-                                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                                onLongPress = { editTargetId = it.id; showEditSheet = true },
                                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
                                                 snoozedUntil = uiState.snoozedUntil(chore)
                                             )
                                         }
+                                    }
+                                } else if (uiState.zenMode) {
+                                    // Zen rows (3a-4): open circle, title, gentle cue; no colours, no counts.
+                                    items(displayed, key = { it.id }) { chore ->
+                                        val zenDone = chore.id in uiState.zenDoneIds
+                                        ZenRow(
+                                            title = chore.label,
+                                            sub = ZenPhrase.forChore(chore.category, chore.status, zenDone),
+                                            done = zenDone,
+                                            onToggle = { if (!zenDone) viewModel.logChoreInZen(chore) },
+                                            modifier = Modifier
+                                                .padding(horizontal = Dimens.cardInset)
+                                                .semantics { role = Role.Button }
+                                                .combinedClickable(
+                                                    onClick = { logTargetChore = chore; showLogSheet = true },
+                                                    onLongClick = { editTargetId = chore.id; showEditSheet = true }
+                                                ),
+                                        )
                                     }
                                 } else {
                                     items(displayed, key = { it.id }) { chore ->
@@ -432,7 +480,7 @@ fun ChoreListScreen(
                                             zenMode = uiState.zenMode,
                                             showCategory = !uiState.groupByCategory,
                                             onTap = { logTargetChore = it; showLogSheet = true },
-                                            onLongPress = { editTargetChore = it; showEditSheet = true },
+                                            onLongPress = { editTargetId = it.id; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) },
                                             onSwipeSnooze = { viewModel.toggleSnooze(it) },
                                             snoozedUntil = uiState.snoozedUntil(chore)
@@ -468,7 +516,7 @@ fun ChoreListScreen(
                                                 zenMode = uiState.zenMode,
                                                 showCategory = !uiState.groupByCategory,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
-                                                onLongPress = { editTargetChore = it; showEditSheet = true },
+                                                onLongPress = { editTargetId = it.id; showEditSheet = true },
                                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
                                                 snoozedUntil = uiState.snoozedUntil(chore)
@@ -510,7 +558,7 @@ fun ChoreListScreen(
                                                     .combinedClickable(
                                                         onClick = {},
                                                         onLongClick = {
-                                                            editTargetChore = chore
+                                                            editTargetId = chore.id
                                                             showEditSheet = true
                                                         }
                                                     )
@@ -582,7 +630,7 @@ fun ChoreListScreen(
             },
             onEdit = { c ->
                 showLogSheet = false
-                editTargetChore = c
+                editTargetId = c.id
                 showEditSheet = true
             },
             onWriteTag = { c ->
@@ -600,7 +648,7 @@ fun ChoreListScreen(
     }
 
     if (showEditSheet && editTargetChore != null) {
-        val chore = editTargetChore!!
+        val chore = editTargetChore
         EditChoreSheet(
             chore = chore,
             icon = iconFor(chore),
@@ -608,6 +656,9 @@ fun ChoreListScreen(
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = editSheetState,
+            draft = remember(chore.id) { viewModel.choreDrafts.get(chore.id) },
+            onDraftChange = { viewModel.choreDrafts.put(chore.id, it) },
+            onDraftClear = { viewModel.choreDrafts.clear(chore.id) },
             onSave = { tagId, label, category, owner, intervalDays ->
                 viewModel.updateChore(tagId, label, category, owner, intervalDays)
                 showEditSheet = false
@@ -662,6 +713,9 @@ fun ChoreListScreen(
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = addSheetState,
+            draft = remember { viewModel.choreDrafts.get(NEW_DRAFT_KEY) },
+            onDraftChange = { viewModel.choreDrafts.put(NEW_DRAFT_KEY, it) },
+            onDraftClear = { viewModel.choreDrafts.clear(NEW_DRAFT_KEY) },
             onSave = { tagId, label, category, owner, intervalDays ->
                 viewModel.addChore(tagId, label, category, owner, intervalDays)
                 showAddSheet = false

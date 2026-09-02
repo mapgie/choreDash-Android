@@ -93,8 +93,8 @@ private fun BarTab(tab: DashTab, modifier: Modifier = Modifier) {
             .clip(MaterialTheme.shapes.small)
             .semantics { role = Role.Tab }
             .selectable(selected = tab.selected, onClick = tab.onClick)
-            .heightIn(min = 48.dp)
-            .padding(vertical = 4.dp)
+            .heightIn(min = 44.dp)
+            .padding(vertical = 2.dp)
     ) {
         Box(
             modifier = Modifier

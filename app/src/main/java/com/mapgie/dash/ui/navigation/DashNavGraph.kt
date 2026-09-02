@@ -1,6 +1,7 @@
 package com.mapgie.dash.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -197,10 +198,16 @@ fun DashNavGraph(
                 )
             }
         ) { innerPadding ->
+            // The tab screens have Scaffolds of their own (for snackbars). Consume
+            // the system-bar insets here once, or each of them pads for the status
+            // and navigation bars a second time and the header floats 30dp below
+            // the strip with a matching dead band above the bottom bar.
             NavHost(
                 navController = navController,
                 startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
             ) {
                 composable(Screen.Chores.route) {
                     ChoreListScreen(

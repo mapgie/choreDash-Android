@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.draftKeyFor
 import com.mapgie.dash.data.model.TaskSortKey
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.EditTaskSheet
@@ -69,6 +70,14 @@ import com.mapgie.dash.ui.components.core.SummaryBar
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.LocalDashTokens
+import com.mapgie.dash.ui.components.LeaveZenButton
+import com.mapgie.dash.ui.components.ZenRow
+import com.mapgie.dash.ui.components.ZenScopeToggle
+import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.ZenPhrase
+import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.data.model.urgency
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -83,8 +92,8 @@ fun TaskListScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    var showTaskSheet by remember { mutableStateOf(false) }
-    var editingTask by remember { mutableStateOf<TaskDto?>(null) }
+    var showTaskSheet by rememberSaveable { mutableStateOf(false) }
+    var editingTaskId by rememberSaveable { mutableStateOf<String?>(null) }
     var doneExpanded by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var reminderTargetTask by remember { mutableStateOf<TaskDto?>(null) }
@@ -100,6 +109,17 @@ fun TaskListScreen(
     fun iconFor(task: TaskDto): ImageVector =
         LucideIcons.forCategory(uiState.catalog.iconFor(task.category))
 
+    // The Edit sheet's target is kept by id and resolved from uiState so the open
+    // sheet survives rotation and process death; it closes cleanly if the task
+    // is gone once the list has loaded.
+    val editingTask = editingTaskId?.let { id -> uiState.tasks.find { it.id == id } }
+    LaunchedEffect(showTaskSheet, editingTaskId, editingTask, uiState.loading) {
+        if (showTaskSheet && editingTaskId != null && editingTask == null && !uiState.loading) {
+            showTaskSheet = false
+            editingTaskId = null
+        }
+    }
+
     // Error snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -110,7 +130,7 @@ fun TaskListScreen(
 
     LaunchedEffect(pendingAddIntent) {
         if (pendingAddIntent == AddMenuOption.TASK) {
-            editingTask = null
+            editingTaskId = null
             showTaskSheet = true
             onPendingAddIntentConsumed()
         }
@@ -134,13 +154,37 @@ fun TaskListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (uiState.zenMode) MaterialTheme.colorScheme.surfaceContainerLow
+                        else MaterialTheme.colorScheme.background
+                    )
+            ) {
                 PageHeader(
                     title = if (uiState.zenMode) "zen" else "tasks",
-                    accent = taskAccent,
+                    accent = if (uiState.zenMode) LocalDashTokens.current.sectionCount else taskAccent,
                     actions = {
-                        // Same row as Chores: search, owner, zen, group/flat.
-                        if (!uiState.zenMode) {
+                        if (uiState.zenMode) {
+                            // Zen header (3a-4): mine | all, the sort arrow, LEAVE.
+                            if (uiState.ownerHandle.isNotBlank()) {
+                                ZenScopeToggle(
+                                    mine = uiState.ownerFilter == OwnerFilter.MINE,
+                                    onMineChange = { mine ->
+                                        viewModel.setOwnerFilter(if (mine) OwnerFilter.MINE else OwnerFilter.EVERYONE)
+                                    },
+                                )
+                            }
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most urgent first" else "Sorted: least urgent first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                            )
+                            LeaveZenButton(onClick = { viewModel.setZenMode(false) })
+                        } else {
+                            // Same row as Chores: search, owner, zen, group/flat.
                             HeaderIconButton(
                                 icon = LucideIcons.Search,
                                 contentDescription = if (searchActive) "Close search" else "Search tasks",
@@ -158,23 +202,11 @@ fun TaskListScreen(
                                     activeTint = taskAccent,
                                 )
                             }
-                        } else {
                             HeaderIconButton(
-                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most urgent first" else "Sorted: least urgent first",
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
+                                icon = LucideIcons.Target,
+                                contentDescription = "Enter zen mode",
+                                onClick = { viewModel.setZenMode(true) },
                             )
-                        }
-                        HeaderIconButton(
-                            icon = LucideIcons.Target,
-                            contentDescription = if (uiState.zenMode)
-                                "Exit zen mode" else "Enter zen mode",
-                            onClick = { viewModel.setZenMode(!uiState.zenMode) },
-                            active = uiState.zenMode,
-                            activeTint = taskAccent,
-                        )
-                        if (!uiState.zenMode) {
                             HeaderIconButton(
                                 icon = if (uiState.groupByCategory) LucideIcons.LayoutGrid
                                        else LucideIcons.List,
@@ -218,7 +250,7 @@ fun TaskListScreen(
                                 task = task,
                                 icon = iconFor(task),
                                 onTap = { overviewTask = it; showOverviewSheet = true },
-                                onLongPress = { editingTask = it; showTaskSheet = true },
+                                onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                 onToggleDone = {
                                     if (task.completedAt != null) viewModel.markUndone(task.id)
                                     else viewModel.markDone(task.id)
@@ -277,7 +309,7 @@ fun TaskListScreen(
                                             task = task,
                                             icon = iconFor(task),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
-                                            onLongPress = { editingTask = it; showTaskSheet = true },
+                                            onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markDone(task.id) },
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
@@ -285,13 +317,33 @@ fun TaskListScreen(
                                         )
                                     }
                                 }
+                            } else if (uiState.zenMode) {
+                                // Zen rows (3a-4): open circle, title, gentle cue; no colours, no counts.
+                                items(uiState.zenRows, key = { it.id }) { task ->
+                                    val zenDone = task.completedAt != null
+                                    ZenRow(
+                                        title = task.title,
+                                        sub = ZenPhrase.forTask(task.category, task.urgency(), task.priorityEnum(), zenDone),
+                                        done = zenDone,
+                                        onToggle = {
+                                            if (zenDone) viewModel.markUndone(task.id) else viewModel.markDone(task.id)
+                                        },
+                                        modifier = Modifier
+                                            .padding(horizontal = Dimens.cardInset)
+                                            .semantics { role = Role.Button }
+                                            .combinedClickable(
+                                                onClick = { overviewTask = task; showOverviewSheet = true },
+                                                onLongClick = { editingTaskId = task.id; showTaskSheet = true }
+                                            ),
+                                    )
+                                }
                             } else {
                                 items(active, key = { it.id }) { task ->
                                     SwipeToCompleteCard(
                                         task = task,
                                         icon = iconFor(task),
                                         onTap = { overviewTask = it; showOverviewSheet = true },
-                                        onLongPress = { editingTask = it; showTaskSheet = true },
+                                        onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                         onToggleDone = { viewModel.markDone(task.id) },
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
@@ -300,7 +352,7 @@ fun TaskListScreen(
                                 }
                             }
 
-                            if (done.isNotEmpty()) {
+                            if (done.isNotEmpty() && !uiState.zenMode) {
                                 item(key = "done_header") {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -326,7 +378,7 @@ fun TaskListScreen(
                                             task = task,
                                             icon = iconFor(task),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
-                                            onLongPress = { editingTask = it; showTaskSheet = true },
+                                            onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markUndone(task.id) },
                                             showCategory = !uiState.groupByCategory,
                                             showOwner = uiState.ownerFilter.showsOwner,
@@ -368,16 +420,21 @@ fun TaskListScreen(
         )
     }
 
-    if (showTaskSheet) {
+    // Wait for a saved target to resolve rather than opening as "New task" meanwhile.
+    if (showTaskSheet && (editingTaskId == null || editingTask != null)) {
+        val draftKey = draftKeyFor(editingTaskId)
         EditTaskSheet(
             task = editingTask,
             icon = editingTask?.let { iconFor(it) } ?: LucideIcons.CircleCheck,
             owners = uiState.owners,
             categories = uiState.categories,
             onSave = { insert -> viewModel.addTask(insert) },
-            onUpdate = { update -> editingTask?.id?.let { viewModel.updateTask(it, update) } },
-            onDelete = { editingTask?.id?.let { viewModel.deleteTask(it) } },
-            onDismiss = { showTaskSheet = false; editingTask = null }
+            onUpdate = { update -> editingTaskId?.let { viewModel.updateTask(it, update) } },
+            onDelete = { editingTaskId?.let { viewModel.deleteTask(it) } },
+            onDismiss = { showTaskSheet = false; editingTaskId = null },
+            draft = remember(draftKey) { viewModel.taskDrafts.get(draftKey) },
+            onDraftChange = { viewModel.taskDrafts.put(draftKey, it) },
+            onDraftClear = { viewModel.taskDrafts.clear(draftKey) },
         )
     }
 
@@ -403,7 +460,7 @@ fun TaskListScreen(
             },
             onEdit = { t ->
                 showOverviewSheet = false
-                editingTask = t
+                editingTaskId = t.id
                 showTaskSheet = true
             },
             onDismiss = { showOverviewSheet = false }

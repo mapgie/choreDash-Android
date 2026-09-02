@@ -907,3 +907,30 @@ the Activity intent so a configuration change does not reopen the screen.
 Use a plain `navController.navigate` for these one-off screens, not the tab
 helper with `popUpTo`/`restoreState`, so Back returns to whatever tab was
 showing.
+
+---
+
+## 44. Offer a stored draft once, at open, and snapshot the offer in rememberSaveable
+
+The Edit sheets keep every field in `rememberSaveable` and mirror the current
+values into a `DraftStore` (a JSON map in the ViewModel's `SavedStateHandle`)
+whenever the sheet is dirty. Two traps when the sheet then reads that store
+back on open:
+
+1. Do not decide "is there a draft to offer?" on every composition. After a
+   rotation the fields already carry the edits (restored by `rememberSaveable`)
+   and the store holds the same values, so a live check would offer the user
+   their own current text. Capture the offer once in
+   `rememberSaveable(stateSaver = jsonStateSaver(...)) { draft?.takeIf { it.differsFrom(opened) } }`
+   and only clear it on Restore or Forget.
+2. Keep the offered draft separate from the store while it is pending. Writing
+   the fields into the store on every change would overwrite the old draft on
+   the first keystroke, before the user could restore it. A clean dismiss with
+   an unanswered offer writes the offered draft back; Save, Discard, Delete and
+   Archive clear the store.
+
+The same change moved the screens' sheet target from a remembered object
+(`Chore?` / `TaskDto?`) to a `rememberSaveable` id resolved from `uiState`.
+Wait for `uiState.loading` to finish before treating a missing id as "vanished",
+or a process-death restore closes the sheet (or opens it as "New") before the
+list has loaded.

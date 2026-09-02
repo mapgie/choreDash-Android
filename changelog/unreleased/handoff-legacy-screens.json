@@ -10,5 +10,9 @@
     "Zen mode is now its own calm list: open circles to tick things off, soft cues like \"kitchen · when you're up\" instead of colours and counts, a mine/all switch and a Leave control in the header",
     "The search row is the design's card-coloured pill with a sage caret and a text Cancel action",
     "With WCAG colours on, faint captions lift to the muted ink so they clear 4.5:1 with margin"
+  ],
+  "fixed": [
+    "Rotating the phone no longer closes an open Edit sheet or loses what was typed in it",
+    "The tab screens no longer pad for the status and navigation bars twice, which left a dead band under the accent strip and another above the bottom bar"
   ]
 }
