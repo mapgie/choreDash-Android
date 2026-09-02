@@ -18,6 +18,7 @@ val Nunito = FontFamily(
     Font(R.font.nunito, FontWeight.SemiBold,  variationSettings = FontVariation.Settings(FontVariation.weight(600))),
     Font(R.font.nunito, FontWeight.Bold,      variationSettings = FontVariation.Settings(FontVariation.weight(700))),
     Font(R.font.nunito, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+    Font(R.font.nunito, FontWeight.Black,     variationSettings = FontVariation.Settings(FontVariation.weight(900))),
 )
 
 val Lora = FontFamily(

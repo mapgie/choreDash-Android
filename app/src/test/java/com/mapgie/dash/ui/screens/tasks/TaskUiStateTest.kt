@@ -6,6 +6,7 @@ import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskSortKey
 import java.time.LocalDate
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -171,5 +172,20 @@ class TaskUiStateTest {
         val done = task("done", completedAt = "2026-08-01T10:00:00Z")
         assertEquals("1 task · 1 hidden", TaskUiState(tasks = listOf(soon, far, done), hideThresholdDays = 7).summaryLabel)
         assertEquals("2 tasks", TaskUiState(tasks = listOf(soon, far, done)).summaryLabel)
+    }
+
+    // ── Zen rows ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `zen shows open tasks then anything finished today, never older done tasks`() {
+        // Noon today and noon three days ago cannot cross midnight during the run.
+        val zone = ZoneId.systemDefault()
+        val noonToday = LocalDate.now(zone).atTime(12, 0).atZone(zone).toInstant().toString()
+        val noonThreeDaysAgo = LocalDate.now(zone).minusDays(3).atTime(12, 0).atZone(zone).toInstant().toString()
+        val open = task("open")
+        val doneToday = task("done_today", completedAt = noonToday)
+        val doneEarlier = task("done_earlier", completedAt = noonThreeDaysAgo)
+        val state = TaskUiState(tasks = listOf(doneEarlier, doneToday, open), zenMode = true)
+        assertEquals(listOf("open", "done_today"), ids(state.zenRows))
     }
 }

@@ -19,16 +19,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -36,8 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.mapgie.dash.ui.screens.settings.SubScreenTitle
-import com.mapgie.dash.ui.screens.settings.subScreenTopAppBarColors
+import com.mapgie.dash.ui.screens.settings.SubScreenHeader
 
 private data class Library(val name: String, val copyright: String, val url: String)
 
@@ -87,17 +81,7 @@ private val licenseGroups = listOf(
 fun LicensesScreen(onBack: () -> Unit) {
     val uriHandler = LocalUriHandler.current
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { SubScreenTitle("Open source licences") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = subScreenTopAppBarColors()
-            )
-        }
+        topBar = { SubScreenHeader(title = "Open source licences", onBack = onBack) }
     ) { padding ->
         Column(
             modifier = Modifier

@@ -1,15 +1,18 @@
 package com.mapgie.dash.ui.screens.chores
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ColourChoresBy
+import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
@@ -71,6 +74,8 @@ data class ChoreUiState(
     val ownerHandle: String = "",
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
+    /** Chores logged from the zen list this session; they stay visible, ticked and faded, until zen is left. */
+    val zenDoneIds: Set<String> = emptySet(),
     val sort: SortOrder<ChoreSortKey> = SortOrder(ChoreSortKey.PRESSURE),
     val showHidden: Boolean = false,
     // Off until settings load so chores aren't hidden with unconfigured lead times
@@ -262,11 +267,19 @@ class ChoreListViewModel @Inject constructor(
     private val pinnedItemStore: PinnedItemStore,
     private val choreSnoozeStore: ChoreSnoozeStore,
     private val categoryStyleStore: CategoryStyleStore,
+    savedStateHandle: SavedStateHandle,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChoreUiState(loading = true))
     val uiState: StateFlow<ChoreUiState> = _uiState.asStateFlow()
+
+    /**
+     * Unsaved Edit chore sheet drafts by chore id (or NEW_DRAFT_KEY for the New
+     * chore sheet), kept in saved state so they outlive rotation and process
+     * death within the session. The sheet offers them back; it never auto-applies.
+     */
+    val choreDrafts = DraftStore(savedStateHandle, "chore_drafts", ChoreDraft.serializer())
 
     init {
         // Keep ownerHandle in sync so the owner filter works correctly across settings changes
@@ -484,7 +497,14 @@ class ChoreListViewModel @Inject constructor(
     }
 
     fun setZenMode(enabled: Boolean) {
+        if (!enabled) _uiState.update { it.copy(zenDoneIds = emptySet()) }
         viewModelScope.launch { settingsRepository.setZenMode(enabled) }
+    }
+
+    /** Zen circle tap: log the chore and keep its row in place, ticked, for the rest of the session. */
+    fun logChoreInZen(chore: Chore) {
+        _uiState.update { it.copy(zenDoneIds = it.zenDoneIds + chore.id) }
+        logChore(chore.tagId)
     }
 
     fun setZenSort(ascending: Boolean) {

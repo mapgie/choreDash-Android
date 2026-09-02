@@ -26,14 +26,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -120,18 +118,13 @@ internal fun CategoriesSubScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { SubScreenTitle("Categories") },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.semantics { role = Role.Button }) {
-                        Icon(LucideIcons.ChevronLeft, contentDescription = "Back")
-                    }
-                },
+            SubScreenHeader(
+                title = "Categories",
+                onBack = onBack,
                 actions = {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .padding(end = 12.dp)
                             .size(44.dp)
                             .clip(CircleShape)
                             .semantics {
@@ -156,7 +149,6 @@ internal fun CategoriesSubScreen(
                         }
                     }
                 },
-                colors = subScreenTopAppBarColors()
             )
         }
     ) { innerPadding ->

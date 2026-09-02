@@ -30,7 +30,9 @@ import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteResult
+import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.ui.navigation.DashNavGraph
+import com.mapgie.dash.ui.screens.reminder.ReminderViewKind
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CustomHSL
 import com.mapgie.dash.ui.theme.DashTheme
@@ -55,6 +57,10 @@ class MainActivity : ComponentActivity() {
 
     // Compose state: set when launched from a home screen widget, drives navigation
     private var pendingWidgetDestination by mutableStateOf<String?>(null)
+
+    // Compose state: set when launched from a reminder notification, as
+    // (route kind, record id); drives navigation to the full-screen reminder view.
+    private var pendingReminderView by mutableStateOf<Pair<String, String>?>(null)
 
     // When set, the next scanned tag is written with this chore tag ID instead of being read
     private var nfcWriteRequest by mutableStateOf<String?>(null)
@@ -84,6 +90,7 @@ class MainActivity : ComponentActivity() {
         )
 
         handleNfcIntent(intent, fromForeground = false)
+        handleReminderIntent(intent)
 
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = null)
@@ -132,6 +139,14 @@ class MainActivity : ComponentActivity() {
                     onNfcConsumed = { pendingNfcTagId = null },
                     pendingWidgetDestination = pendingWidgetDestination,
                     onWidgetDestinationConsumed = { pendingWidgetDestination = null },
+                    pendingReminderView = pendingReminderView,
+                    onReminderViewConsumed = {
+                        pendingReminderView = null
+                        // Strip the extras so a configuration change does not
+                        // re-deliver the launch intent and reopen the view.
+                        intent?.removeExtra(NotificationHelper.EXTRA_REMINDER_ID)
+                        intent?.removeExtra(NotificationHelper.EXTRA_TASK_ID)
+                    },
                     nfcWriteRequest = nfcWriteRequest,
                     nfcWriteResult = nfcWriteResult,
                     onStartNfcWrite = { tagId ->
@@ -154,7 +169,23 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleNfcIntent(intent, fromForeground = isActivityResumed)
+        handleReminderIntent(intent)
+    }
+
+    // Reminder notifications open MainActivity with EXTRA_REMINDER_ID (standalone
+    // reminder) or EXTRA_TASK_ID (a task's own reminder). Reminder wins when both
+    // are present, matching AlarmReceiver.
+    private fun handleReminderIntent(intent: Intent?) {
+        if (intent == null) return
+        val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
+        val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
+        pendingReminderView = when {
+            !reminderId.isNullOrBlank() -> ReminderViewKind.REMINDER.routeArg to reminderId
+            !taskId.isNullOrBlank() -> ReminderViewKind.TASK.routeArg to taskId
+            else -> return
+        }
     }
 
     private fun handleNfcIntent(intent: Intent, fromForeground: Boolean) {

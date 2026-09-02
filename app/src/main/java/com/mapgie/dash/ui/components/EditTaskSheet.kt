@@ -22,21 +22,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.TaskDueType
 import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUpdate
-import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.ui.components.sheet.DraftResumeRow
+import com.mapgie.dash.ui.components.sheet.LocalDateStateSaver
 import com.mapgie.dash.ui.components.sheet.NotesBlock
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
 import com.mapgie.dash.ui.components.sheet.SegmentPill
@@ -51,6 +56,9 @@ import com.mapgie.dash.ui.components.sheet.TertiaryLink
 import com.mapgie.dash.ui.components.sheet.TertiaryLinkRow
 import com.mapgie.dash.ui.components.sheet.TitleField
 import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.components.sheet.ZonedDateTimeStateSaver
+import com.mapgie.dash.ui.components.sheet.enumStateSaver
+import com.mapgie.dash.ui.components.sheet.jsonStateSaver
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.util.CalendarShareUtils
@@ -59,15 +67,14 @@ import com.mapgie.dash.util.calendarEventForInstant
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-private const val DUE_NONE = "none"
-private const val DUE_DATE = "date"
-private const val DUE_PERIOD = "period"
+private const val DUE_NONE = TaskDueType.NONE
+private const val DUE_DATE = TaskDueType.DATE
+private const val DUE_PERIOD = TaskDueType.PERIOD
 
 /**
  * The Edit sheet for tasks (handoff 7a), one grammar with the chore sheet: the
@@ -78,6 +85,9 @@ private const val DUE_PERIOD = "period"
  * New task sheet: eyebrow NEW TASK, empty title focused.
  *
  * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
+ * Fields survive rotation and process death (rememberSaveable) and every change
+ * is mirrored to the caller through [onDraftChange]; a [draft] handed back on
+ * reopen is offered at the top of the sheet, never applied on its own.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +99,10 @@ fun EditTaskSheet(
     onSave: (TaskInsert) -> Unit,
     onUpdate: (TaskUpdate) -> Unit,
     onDelete: (() -> Unit)?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    draft: TaskDraft? = null,
+    onDraftChange: (TaskDraft) -> Unit = {},
+    onDraftClear: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
@@ -97,85 +110,116 @@ fun EditTaskSheet(
     val accents = LocalTypeAccents.current
     val isNew = task == null
 
-    val initialTitle = remember { task?.title ?: "" }
-    var title by remember { mutableStateOf(initialTitle) }
-    val initialNotes = remember { task?.notes ?: "" }
-    var notes by remember { mutableStateOf(initialNotes) }
-    val initialCategory = remember { if (task != null) task.category ?: "" else DEFAULT_CATEGORY }
-    var category by remember { mutableStateOf(initialCategory) }
-    val initialPriority = remember { task?.priorityEnum() ?: TaskPriority.NORMAL }
-    var priority by remember { mutableStateOf(initialPriority) }
-    val initialOwner = remember { task?.owner ?: "" }
-    var owner by remember { mutableStateOf(initialOwner) }
+    // The values the sheet opened with, snapshotted once so the dirty check
+    // compares against what the fields actually started as (LESSONS.md #27).
+    // Every field is rememberSaveable so rotation and process death keep edits.
+    val opened = remember { TaskDraft.of(task) }
+    var title by rememberSaveable { mutableStateOf(opened.title) }
+    var notes by rememberSaveable { mutableStateOf(opened.notes) }
+    var category by rememberSaveable { mutableStateOf(opened.category) }
+    var priority by rememberSaveable(stateSaver = enumStateSaver<TaskPriority>()) {
+        mutableStateOf(opened.priorityEnum())
+    }
+    var owner by rememberSaveable { mutableStateOf(opened.owner) }
 
-    val initialDueType = remember {
-        when {
-            task?.dueDate != null -> DUE_DATE
-            task?.duePeriod != null -> DUE_PERIOD
-            else -> DUE_NONE
-        }
-    }
-    var dueType by remember { mutableStateOf(initialDueType) }
-    val initialDueDate = remember {
-        task?.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-    }
-    var dueDate by remember { mutableStateOf(initialDueDate) }
-    val initialDuePeriod = remember { task?.duePeriod ?: "today" }
-    var duePeriod by remember { mutableStateOf(initialDuePeriod) }
-    var showDueDatePicker by remember { mutableStateOf(false) }
+    var dueType by rememberSaveable { mutableStateOf(opened.dueType) }
+    var dueDate by rememberSaveable(stateSaver = LocalDateStateSaver) { mutableStateOf(opened.dueDate()) }
+    var duePeriod by rememberSaveable { mutableStateOf(opened.duePeriod) }
+    var showDueDatePicker by rememberSaveable { mutableStateOf(false) }
     val dueDatePickerState = rememberDatePickerState(
         initialSelectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
     )
 
-    val initialReminderEnabled = remember { task?.reminderAt != null }
-    var reminderEnabled by remember { mutableStateOf(initialReminderEnabled) }
-    // Normalized to whole minutes (matching resolvedReminderInstant()'s own truncation
-    // below) so a stored reminderAt with non-zero seconds doesn't look "changed" on open.
-    val initialReminderAt = remember {
-        task?.reminderAt?.let {
-            runCatching {
-                Instant.parse(it).atZone(ZoneId.systemDefault()).withSecond(0).withNano(0).toInstant().toString()
-            }.getOrNull()
-        }
-    }
-    var reminderBase by remember {
+    var reminderEnabled by rememberSaveable { mutableStateOf(opened.reminderEnabled) }
+    // The opened reminder is already whole minutes (TaskDraft.of), matching what
+    // resolvedReminder() produces, so a stored time with seconds is not "changed".
+    var reminderBase by rememberSaveable(stateSaver = ZonedDateTimeStateSaver) {
         mutableStateOf(
-            task?.reminderAt
-                ?.let { runCatching { Instant.parse(it).atZone(ZoneId.systemDefault()) }.getOrNull() }
+            opened.reminderAtEpochMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
                 ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
         )
     }
-    var reminderHour by remember { mutableIntStateOf(reminderBase.hour) }
-    var reminderMinute by remember { mutableIntStateOf(reminderBase.minute) }
-    var showReminderDatePicker by remember { mutableStateOf(false) }
-    var showReminderTimePicker by remember { mutableStateOf(false) }
+    var reminderHour by rememberSaveable { mutableIntStateOf(reminderBase.hour) }
+    var reminderMinute by rememberSaveable { mutableIntStateOf(reminderBase.minute) }
+    var showReminderDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showReminderTimePicker by rememberSaveable { mutableStateOf(false) }
     val reminderPickerState = rememberDatePickerState(
         initialSelectedDateMillis = reminderBase.toInstant().toEpochMilli()
     )
 
-    var categoryMenuOpen by remember { mutableStateOf(false) }
-    var showNewCategory by remember { mutableStateOf(false) }
-    var dueMenuOpen by remember { mutableStateOf(false) }
-    var remindMenuOpen by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showShareChoice by remember { mutableStateOf(false) }
-    var showDiscardConfirm by remember { mutableStateOf(false) }
+    var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showNewCategory by rememberSaveable { mutableStateOf(false) }
+    var dueMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var remindMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
+    var showShareChoice by rememberSaveable { mutableStateOf(false) }
+    var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
+
+    // A stored draft is offered once, at open, and never applied on its own. The
+    // offer itself is saved so a rotation does not repeat it for edits that
+    // rememberSaveable already brought back.
+    var offeredDraft by rememberSaveable(stateSaver = jsonStateSaver(TaskDraft.serializer())) {
+        mutableStateOf(draft?.takeIf { it.differsFrom(opened) })
+    }
+
+    fun resolvedReminder(): ZonedDateTime =
+        reminderBase.withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0)
 
     fun resolvedReminderInstant(): String? {
         if (!reminderEnabled) return null
-        return reminderBase.withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0).toInstant().toString()
+        return resolvedReminder().toInstant().toString()
     }
 
-    val isDirty = title != initialTitle ||
-        notes != initialNotes ||
-        category != initialCategory ||
-        priority != initialPriority ||
-        owner != initialOwner ||
-        dueType != initialDueType ||
-        dueDate != initialDueDate ||
-        duePeriod != initialDuePeriod ||
-        reminderEnabled != initialReminderEnabled ||
-        (reminderEnabled && resolvedReminderInstant() != initialReminderAt)
+    val currentDraft = TaskDraft(
+        title = title,
+        notes = notes,
+        category = category,
+        owner = owner,
+        priority = priority.name,
+        dueType = dueType,
+        dueDateEpochDay = dueDate?.toEpochDay(),
+        duePeriod = duePeriod,
+        reminderEnabled = reminderEnabled,
+        reminderAtEpochMillis = if (reminderEnabled) resolvedReminder().toInstant().toEpochMilli() else null,
+    )
+    val isDirty = currentDraft.differsFrom(opened)
+
+    // Mirror every change into the draft store while the sheet is dirty.
+    LaunchedEffect(currentDraft) {
+        if (isDirty) onDraftChange(currentDraft)
+    }
+
+    fun restoreDraft(restored: TaskDraft) {
+        title = restored.title
+        notes = restored.notes
+        category = restored.category
+        owner = restored.owner
+        priority = restored.priorityEnum()
+        dueType = restored.dueType
+        dueDate = restored.dueDate()
+        duePeriod = restored.duePeriod
+        dueDatePickerState.selectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+        reminderEnabled = restored.reminderEnabled
+        restored.reminderAtEpochMillis?.let { millis ->
+            val at = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
+            reminderBase = at
+            reminderHour = at.hour
+            reminderMinute = at.minute
+            reminderPickerState.selectedDateMillis = millis
+        }
+        offeredDraft = null
+    }
+
+    fun forgetDraft() {
+        offeredDraft = null
+        if (isDirty) onDraftChange(currentDraft) else onDraftClear()
+    }
+
+    /** Nothing changed: drop this sheet's draft, but keep an offer the user has not answered. */
+    fun settleDraftOnCleanDismiss() {
+        val offered = offeredDraft
+        if (offered != null) onDraftChange(offered) else onDraftClear()
+    }
 
     // Guard every dismiss vector (back, scrim tap, swipe-down all funnel through
     // onDismissRequest per LESSONS.md #1/#2). If dirty, bounce the sheet back to
@@ -186,6 +230,7 @@ fun EditTaskSheet(
             sheetScope.launch { sheetState.show() }
             showDiscardConfirm = true
         } else {
+            settleDraftOnCleanDismiss()
             sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
         }
     }
@@ -269,6 +314,14 @@ fun EditTaskSheet(
                     onValueChange = { title = it },
                     placeholder = "Task title",
                     autoFocus = isNew,
+                )
+            }
+
+            offeredDraft?.let { offered ->
+                DraftResumeRow(
+                    itemName = task?.title ?: offered.displayName() ?: "a new task",
+                    onRestore = { restoreDraft(offered) },
+                    onForget = { forgetDraft() },
                 )
             }
 
@@ -373,6 +426,7 @@ fun EditTaskSheet(
                 actionEnabled = title.isNotBlank(),
                 onCancel = { requestDismiss() },
                 onAction = {
+                    onDraftClear()
                     if (task == null) onSave(buildInsert())
                     else onUpdate(buildUpdate())
                     sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
@@ -483,6 +537,7 @@ fun EditTaskSheet(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
+                    onDraftClear()
                     onDelete()
                     sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
@@ -499,6 +554,7 @@ fun EditTaskSheet(
             onKeepEditing = { showDiscardConfirm = false },
             onDiscard = {
                 showDiscardConfirm = false
+                onDraftClear()
                 sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
             }
         )

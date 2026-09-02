@@ -16,9 +16,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -89,17 +86,12 @@ internal fun ColoursSubScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel(text = "Colour chores by", modifier = Modifier.padding(horizontal = 6.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    ColourChoresBy.entries.forEachIndexed { index, mode ->
-                        SegmentedButton(
-                            selected = colourBy == mode,
-                            onClick = { viewModel.setColourChoresBy(mode) },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = ColourChoresBy.entries.size),
-                            modifier = Modifier.semantics { role = Role.RadioButton },
-                            label = { Text(mode.label) }
-                        )
-                    }
-                }
+                CozySegmented(
+                    options = ColourChoresBy.entries,
+                    selected = colourBy,
+                    onSelect = { viewModel.setColourChoresBy(it) },
+                    label = { it.label },
+                )
                 Text(
                     "Severity tints the spine, icon and badge by how overdue a chore is. " +
                         "Category uses each category's own colour instead.",

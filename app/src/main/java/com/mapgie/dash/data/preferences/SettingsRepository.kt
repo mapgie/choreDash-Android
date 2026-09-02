@@ -79,6 +79,8 @@ data class AppSettings(
     val fabOrder: List<AddMenuOption> = DEFAULT_FAB_ORDER,
     // Wording used for the reminders feature throughout the UI
     val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
+    // Whether the first-run welcome sheet (chores vs tasks vs memos) has been dismissed
+    val helpSeen: Boolean = false,
 )
 
 @Singleton
@@ -91,6 +93,7 @@ class SettingsRepository @Inject constructor(
         val OWNER_HANDLE                   = stringPreferencesKey("owner_handle")
         val THEME_MODE                     = stringPreferencesKey("theme_mode")
         val WCAG_MODE                      = booleanPreferencesKey("wcag_mode")
+        val HELP_SEEN                      = booleanPreferencesKey("help_seen")
         val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
         val TASK_ZEN_MODE                  = booleanPreferencesKey("task_zen_mode")
         val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
@@ -197,6 +200,7 @@ class SettingsRepository @Inject constructor(
                 reminderLabel               = prefs[Keys.REMINDER_LABEL]
                     ?.let { runCatching { ReminderLabelStyle.valueOf(it) }.getOrNull() }
                     ?: ReminderLabelStyle.REMINDERS,
+                helpSeen                    = prefs[Keys.HELP_SEEN] ?: false,
             )
         }
 
@@ -223,6 +227,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setWcagMode(enabled: Boolean) {
         context.dataStore.edit { it[Keys.WCAG_MODE] = enabled }
+    }
+
+    suspend fun setHelpSeen(seen: Boolean) {
+        context.dataStore.edit { it[Keys.HELP_SEEN] = seen }
     }
 
     suspend fun setZenMode(enabled: Boolean) {

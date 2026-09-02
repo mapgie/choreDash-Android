@@ -23,10 +23,12 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -40,8 +42,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.ui.components.sheet.DraftResumeRow
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
 import com.mapgie.dash.ui.components.sheet.SettingsRow
 import com.mapgie.dash.ui.components.sheet.SheetBlock
@@ -54,6 +58,7 @@ import com.mapgie.dash.ui.components.sheet.TertiaryLink
 import com.mapgie.dash.ui.components.sheet.TertiaryLinkRow
 import com.mapgie.dash.ui.components.sheet.TitleField
 import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.components.sheet.jsonStateSaver
 import com.mapgie.dash.ui.theme.LocalDashTokens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -74,6 +79,9 @@ import kotlinx.coroutines.launch
  * eyebrow NEW CHORE, empty title focused, and a tag ID field on the NFC row.
  *
  * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
+ * Fields survive rotation and process death (rememberSaveable) and every change
+ * is mirrored to the caller through [onDraftChange]; a [draft] handed back on
+ * reopen is offered at the top of the sheet, never applied on its own.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +97,9 @@ fun EditChoreSheet(
     onWriteTag: (tagId: String) -> Unit,
     onDismiss: () -> Unit,
     initialTagId: String = "",
+    draft: ChoreDraft? = null,
+    onDraftChange: (ChoreDraft) -> Unit = {},
+    onDraftClear: () -> Unit = {},
 ) {
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -97,37 +108,65 @@ fun EditChoreSheet(
     val isNew = chore == null
     val isArchived = chore?.archivedAt != null
 
-    // Snapshot each field's starting value beside its state so the dirty check
-    // compares against what the field actually opened with (LESSONS.md #27).
-    val initialLabel = remember { chore?.label ?: "" }
-    var label by remember { mutableStateOf(initialLabel) }
-    val initialCategory = remember { if (chore != null) chore.category ?: "" else GENERAL_CATEGORY }
-    var category by remember { mutableStateOf(initialCategory) }
-    val initialOwner = remember { chore?.owner ?: "" }
-    var owner by remember { mutableStateOf(initialOwner) }
-    val initialInterval = remember { chore?.intervalDays?.toInt() }
-    var interval by remember { mutableStateOf(initialInterval) }
-    val initialTag = remember { chore?.tagId ?: initialTagId }
-    var tagId by remember { mutableStateOf(initialTag) }
+    // The values the sheet opened with, snapshotted once so the dirty check
+    // compares against what the fields actually started as (LESSONS.md #27).
+    // Every field is rememberSaveable so rotation and process death keep edits.
+    val opened = remember { ChoreDraft.of(chore, initialTagId) }
+    var label by rememberSaveable { mutableStateOf(opened.label) }
+    var category by rememberSaveable { mutableStateOf(opened.category) }
+    var owner by rememberSaveable { mutableStateOf(opened.owner) }
+    var interval by rememberSaveable { mutableStateOf(opened.intervalDays) }
+    var tagId by rememberSaveable { mutableStateOf(opened.tagId) }
 
-    var categoryMenuOpen by remember { mutableStateOf(false) }
-    var showNewCategory by remember { mutableStateOf(false) }
-    var showIntervalEntry by remember { mutableStateOf(false) }
-    var showArchiveConfirm by remember { mutableStateOf(false) }
-    var showShareChoice by remember { mutableStateOf(false) }
-    var showDiscardConfirm by remember { mutableStateOf(false) }
+    var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showNewCategory by rememberSaveable { mutableStateOf(false) }
+    var showIntervalEntry by rememberSaveable { mutableStateOf(false) }
+    var showArchiveConfirm by rememberSaveable { mutableStateOf(false) }
+    var showShareChoice by rememberSaveable { mutableStateOf(false) }
+    var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
 
-    val isDirty = label != initialLabel ||
-        category != initialCategory ||
-        owner != initialOwner ||
-        interval != initialInterval ||
-        tagId != initialTag
+    // A stored draft is offered once, at open, and never applied on its own. The
+    // offer itself is saved so a rotation does not repeat it for edits that
+    // rememberSaveable already brought back.
+    var offeredDraft by rememberSaveable(stateSaver = jsonStateSaver(ChoreDraft.serializer())) {
+        mutableStateOf(draft?.takeIf { it.differsFrom(opened) })
+    }
+
+    val currentDraft = ChoreDraft(label = label, category = category, owner = owner, intervalDays = interval, tagId = tagId)
+    val isDirty = currentDraft.differsFrom(opened)
+
+    // Mirror every change into the draft store while the sheet is dirty.
+    LaunchedEffect(currentDraft) {
+        if (isDirty) onDraftChange(currentDraft)
+    }
+
+    fun restoreDraft(restored: ChoreDraft) {
+        label = restored.label
+        category = restored.category
+        owner = restored.owner
+        interval = restored.intervalDays
+        // A tag ID that arrived with an NFC scan wins over a draft that has none.
+        tagId = restored.tagId.ifBlank { tagId }
+        offeredDraft = null
+    }
+
+    fun forgetDraft() {
+        offeredDraft = null
+        if (isDirty) onDraftChange(currentDraft) else onDraftClear()
+    }
+
+    /** Nothing changed: drop this sheet's draft, but keep an offer the user has not answered. */
+    fun settleDraftOnCleanDismiss() {
+        val offered = offeredDraft
+        if (offered != null) onDraftChange(offered) else onDraftClear()
+    }
 
     fun requestDismiss() {
         if (isDirty) {
             sheetScope.launch { sheetState.show() }
             showDiscardConfirm = true
         } else {
+            settleDraftOnCleanDismiss()
             sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
         }
     }
@@ -177,6 +216,14 @@ fun EditChoreSheet(
                     onValueChange = { label = it },
                     placeholder = "Chore name",
                     autoFocus = isNew,
+                )
+            }
+
+            offeredDraft?.let { offered ->
+                DraftResumeRow(
+                    itemName = chore?.label ?: offered.displayName() ?: "a new chore",
+                    onRestore = { restoreDraft(offered) },
+                    onForget = { forgetDraft() },
                 )
             }
 
@@ -252,6 +299,7 @@ fun EditChoreSheet(
                     val intervalDays = interval?.toDouble()
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
+                    onDraftClear()
                     hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, intervalDays) }
                 },
             )
@@ -282,7 +330,7 @@ fun EditChoreSheet(
     }
 
     if (showIntervalEntry) {
-        var text by remember { mutableStateOf(interval?.toString() ?: "") }
+        var text by rememberSaveable { mutableStateOf(interval?.toString() ?: "") }
         AlertDialog(
             onDismissRequest = { showIntervalEntry = false },
             title = { Text("Repeat every") },
@@ -343,6 +391,7 @@ fun EditChoreSheet(
             confirmButton = {
                 TextButton(onClick = {
                     showArchiveConfirm = false
+                    onDraftClear()
                     hideThen { onArchiveToggle(chore, !isArchived) }
                 }) { Text(if (isArchived) "Unarchive" else "Archive") }
             },
@@ -358,6 +407,7 @@ fun EditChoreSheet(
             onKeepEditing = { showDiscardConfirm = false },
             onDiscard = {
                 showDiscardConfirm = false
+                onDraftClear()
                 sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
             }
         )

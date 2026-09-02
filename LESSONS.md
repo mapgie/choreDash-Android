@@ -864,3 +864,73 @@ again. Remove the key, the `AppSettings` field, the setter and the ViewModel
 plumbing in the same PR, and say in the changelog which control absorbed the
 behaviour ("folded into the sort pill"). Leaving the stored value on users'
 devices is harmless; DataStore ignores unknown keys.
+
+---
+
+## 41. "Superseded where they conflict" means the older artboards still apply
+
+The consolidated handoff said turns 4a and earlier were "legacy; superseded
+where they conflict with the above". The first pass read that as "ignore 4a"
+and shipped the 5a to 8a screens only, so Settings, Appearance, Display,
+Reminders & alerts, About, the zen list, the search row and the reminder view
+kept their Material defaults and the user rightly said the design was not all
+implemented. A superseding turn only replaces what it redraws. Audit every
+artboard in the package against the code (list them from the HTML comments,
+`<!-- ░░ 4A DISPLAY ░░ -->`, and tick each one off), and put anything that is
+skipped in the PR's "Dropped / needs decision" list, never in silence.
+
+---
+
+## 42. When a design removes hint copy, the surface it points to must ship in the same PR
+
+7a took the explanatory text off the speed dial because "the chore/task
+distinction is taught once in the first-run splash and repeated under
+Settings › Help". Neither existed, so removing the hint left nothing teaching
+the distinction at all. A rule that moves copy elsewhere is a requirement for
+the elsewhere: build the welcome sheet and the Help page (or keep the hint)
+in the same change. `HelpContent` renders both from one composable so the
+two never drift.
+
+---
+
+## 43. Deep links from a notification tap: state on the Activity, navigate from the graph, strip the extras
+
+A notification's content intent lands in `MainActivity` via `onCreate` on a
+cold start or `onNewIntent` when the app is already up, and the nav
+controller lives inside `setContent`. The pattern that works for both paths is
+the one NFC and the widgets already use: read the extras into a Compose state
+on the Activity (`pendingReminderView`), hand it to `DashNavGraph`, navigate
+from a `LaunchedEffect` keyed on it, and call back to clear it. Two details
+bite: `onNewIntent` must call `setIntent(intent)` or a later rotation replays
+the old intent, and the "consumed" callback should `removeExtra` the keys from
+the Activity intent so a configuration change does not reopen the screen.
+Use a plain `navController.navigate` for these one-off screens, not the tab
+helper with `popUpTo`/`restoreState`, so Back returns to whatever tab was
+showing.
+
+---
+
+## 44. Offer a stored draft once, at open, and snapshot the offer in rememberSaveable
+
+The Edit sheets keep every field in `rememberSaveable` and mirror the current
+values into a `DraftStore` (a JSON map in the ViewModel's `SavedStateHandle`)
+whenever the sheet is dirty. Two traps when the sheet then reads that store
+back on open:
+
+1. Do not decide "is there a draft to offer?" on every composition. After a
+   rotation the fields already carry the edits (restored by `rememberSaveable`)
+   and the store holds the same values, so a live check would offer the user
+   their own current text. Capture the offer once in
+   `rememberSaveable(stateSaver = jsonStateSaver(...)) { draft?.takeIf { it.differsFrom(opened) } }`
+   and only clear it on Restore or Forget.
+2. Keep the offered draft separate from the store while it is pending. Writing
+   the fields into the store on every change would overwrite the old draft on
+   the first keystroke, before the user could restore it. A clean dismiss with
+   an unanswered offer writes the offered draft back; Save, Discard, Delete and
+   Archive clear the store.
+
+The same change moved the screens' sheet target from a remembered object
+(`Chore?` / `TaskDto?`) to a `rememberSaveable` id resolved from `uiState`.
+Wait for `uiState.loading` to finish before treating a missing id as "vanished",
+or a process-death restore closes the sheet (or opens it as "New") before the
+list has loaded.

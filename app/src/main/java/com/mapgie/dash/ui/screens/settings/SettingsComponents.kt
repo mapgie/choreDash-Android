@@ -1,126 +1,32 @@
 package com.mapgie.dash.ui.screens.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.mapgie.dash.ui.components.core.SectionLabel
 
 /**
- * Uppercase, letterspaced label above a group of settings items, in the shared
- * [SectionLabel] style.
+ * Wraps a settings sub-screen in a Scaffold whose top bar is the 4a header:
+ * the accent strip, a back chevron and the lowercase serif title with an
+ * accent full stop ("appearance."), flat on the page ground.
  */
-@Composable
-fun SettingsSectionHeader(title: String) {
-    SectionLabel(
-        text = title,
-        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp, end = 16.dp)
-    )
-}
-
-/**
- * A row that navigates to a sub-screen. Leading icon, title + subtitle, trailing chevron.
- */
-@Composable
-fun SettingsNavItem(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    iconTint: Color? = null,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(subtitle) },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint ?: MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-        },
-        trailingContent = {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        modifier = Modifier
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
-    )
-}
-
-/**
- * Serif sub-screen title in the Cozy Cream style: lowercase with a
- * primary-tinted full stop ("appearance.").
- */
-@Composable
-fun SubScreenTitle(title: String) {
-    Text(
-        text = buildAnnotatedString {
-            append(title.lowercase())
-            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(".") }
-        },
-        style = MaterialTheme.typography.titleLarge,
-    )
-}
-
-/** Shared app-bar colours for settings sub-screens: flat on the page ground. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun subScreenTopAppBarColors() = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.background,
-    titleContentColor = MaterialTheme.colorScheme.onBackground,
-    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-)
-
-/**
- * Wraps a settings sub-screen in a Scaffold with a TopAppBar and back arrow.
- * The bar sits flat on the page ground with a lowercase serif title, matching
- * the tab page headers.
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsSubScreenScaffold(
     title: String,
@@ -128,53 +34,9 @@ fun SettingsSubScreenScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { SubScreenTitle(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.semantics { role = Role.Button }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = subScreenTopAppBarColors()
-            )
-        },
+        topBar = { SubScreenHeader(title = title, onBack = onBack) },
         content = content,
     )
-}
-
-/**
- * A toggle row with a label and short description, for use inside a sub-screen.
- */
-@Composable
-fun SwitchRow(
-    label: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .semantics { role = Role.Switch }
-            .toggleable(value = checked, onValueChange = onCheckedChange),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
-            modifier = Modifier.semantics { stateDescription = if (checked) "On" else "Off" }
-        )
-    }
 }
 
 /**

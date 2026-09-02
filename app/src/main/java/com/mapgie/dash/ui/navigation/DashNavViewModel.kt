@@ -13,18 +13,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DashNavUiState(
     val hasOutstandingReminders: Boolean = false,
     val fabOrder: List<AddMenuOption> = DEFAULT_FAB_ORDER,
     val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
+    /**
+     * True until the first-run welcome sheet has been dismissed. The sheet waits
+     * for credentials so a fresh install sees the connection screen first.
+     */
+    val showWelcome: Boolean = false,
 )
 
 @HiltViewModel
 class DashNavViewModel @Inject constructor(
     reminderRepository: ReminderRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<DashNavUiState> = combine(
@@ -35,6 +41,11 @@ class DashNavViewModel @Inject constructor(
             hasOutstandingReminders = hasOutstandingReminders,
             fabOrder = settings.fabOrder,
             reminderLabel = settings.reminderLabel,
+            showWelcome = !settings.helpSeen && settings.supabaseUrl.isNotBlank(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashNavUiState())
+
+    fun markWelcomeSeen() {
+        viewModelScope.launch { settingsRepository.setHelpSeen(true) }
+    }
 }

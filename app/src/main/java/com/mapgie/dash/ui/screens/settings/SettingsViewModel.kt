@@ -89,6 +89,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setWcagMode(enabled) }
     }
 
+    fun setHelpSeen(seen: Boolean) {
+        viewModelScope.launch { settingsRepository.setHelpSeen(seen) }
+    }
+
     fun setDeliveryMode(mode: String) {
         viewModelScope.launch { settingsRepository.setDeliveryMode(mode) }
     }

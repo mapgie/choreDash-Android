@@ -1,13 +1,16 @@
 package com.mapgie.dash.ui.screens.tasks
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
 import com.mapgie.dash.data.model.TaskPriority
@@ -95,6 +98,18 @@ data class TaskUiState(
         get() = displayed.filter { it.completedAt != null }
 
     /**
+     * The zen list: open tasks in zen order, then anything finished today so a
+     * tick stays visible (struck through, faded) instead of vanishing mid-breath.
+     */
+    val zenRows: List<TaskDto>
+        get() = activeTasks + doneTasks.filter { it.completedToday() }
+
+    private fun TaskDto.completedToday(): Boolean {
+        val at = completedAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: return false
+        return at.atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now(ZoneId.systemDefault())
+    }
+
+    /**
      * [activeTasks] split into category groups in catalog order (user order,
      * then unlisted names alphabetically, General last); tasks with no category
      * land in an "Other" group at the end.
@@ -159,11 +174,19 @@ class TaskListViewModel @Inject constructor(
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
     private val categoryStyleStore: CategoryStyleStore,
+    savedStateHandle: SavedStateHandle,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
+
+    /**
+     * Unsaved Edit task sheet drafts by task id (or NEW_DRAFT_KEY for the New
+     * task sheet), kept in saved state so they outlive rotation and process
+     * death within the session. The sheet offers them back; it never auto-applies.
+     */
+    val taskDrafts = DraftStore(savedStateHandle, "task_drafts", TaskDraft.serializer())
 
     init {
         viewModelScope.launch {
