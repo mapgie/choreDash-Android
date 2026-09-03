@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -171,6 +172,12 @@ fun EditChoreSheet(
         }
     }
 
+    // Material 3 builds the sheet's nested-scroll connection once per SheetState and
+    // that connection keeps the onDismissRequest it was created with, so a swipe-down
+    // on the sheet body would run the very first requestDismiss, whose isDirty was
+    // still false (LESSONS.md #45). Read the latest one through State instead.
+    val latestRequestDismiss by rememberUpdatedState<() -> Unit>({ requestDismiss() })
+
     fun hideThen(action: () -> Unit) {
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
@@ -186,7 +193,7 @@ fun EditChoreSheet(
     val canSave = label.isNotBlank()
 
     ModalBottomSheet(
-        onDismissRequest = { requestDismiss() },
+        onDismissRequest = { latestRequestDismiss() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(
             shouldDismissOnBackPress = true

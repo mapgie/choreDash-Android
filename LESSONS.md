@@ -635,6 +635,10 @@ var category by remember { mutableStateOf(initialCategory) }
 val isDirty = category != initialCategory
 ```
 
+A correct `isDirty` is not enough on its own: the `onDismissRequest` that
+Material3 fires for a swipe-down can be a stale one that captured the first
+`isDirty`. See #45 for the `rememberUpdatedState` indirection that fixes it.
+
 ## 28. Theme-builder parameters must come from user state, not clamps or constants
 
 The custom colour scheme builder used to clamp the picked saturation and
@@ -1040,3 +1044,40 @@ check the table's `NOT NULL`/`UNIQUE` constraints for that column first —
 the UI validation and the schema constraint can drift independently, and
 fixing only the visible one still fails, just one layer down and with a
 worse error message.
+
+---
+
+## 49. ModalBottomSheet fires a stale `onDismissRequest` for swipe-down, so read the dismiss handler through `rememberUpdatedState`
+
+The `requestDismiss()` guard from #27 was in place on every Edit/New sheet and
+still lost a freshly typed chore or task: swipe the sheet body down and it
+closed silently, cleared the draft store, and never showed "Discard changes?".
+Back press and scrim tap asked as expected.
+
+Material3 (1.2.x and 1.3.x, `ModalBottomSheet.android.kt`) wires swipe-down on
+the sheet's *content* through a nested-scroll connection that is
+`remember(sheetState) { ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection(..., onFling = settleToDismiss) }`.
+`settleToDismiss` is a plain lambda capturing the `onDismissRequest` parameter
+of that first composition. Our `onDismissRequest = { requestDismiss() }` is a
+new closure per composition, and each `requestDismiss` is a local function that
+captured that composition's `isDirty` value. So the first, `isDirty == false`
+closure is the one the swipe fling calls forever. Because the sheet's `Column`
+has `verticalScroll`, the whole body except the drag handle takes that path;
+the drag handle uses `draggable(onDragStopped = { settleToDismiss(it) })`,
+which is fresh, which is why testing by dragging the handle did not reproduce.
+
+Fix: hand Material3 a lambda that reads the *current* handler through State,
+so whichever captured instance it calls, the newest logic runs:
+
+```kotlin
+fun requestDismiss() { /* isDirty check, bounce, dialog (see #27) */ }
+
+val latestRequestDismiss by rememberUpdatedState<() -> Unit>({ requestDismiss() })
+
+ModalBottomSheet(onDismissRequest = { latestRequestDismiss() }, ...)
+```
+
+General rule: any callback handed to a Material component that the component
+may `remember` (nested-scroll connections, gesture detectors, dialog wrappers)
+must read mutable decisions through `State`, not through values captured at
+creation. A computed `val isDirty` is exactly the kind of value that goes stale.

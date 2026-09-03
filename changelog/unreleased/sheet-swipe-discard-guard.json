@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Swiping down on a New chore, New task or reminder sheet with unsaved changes now asks before discarding, instead of closing silently and losing what you typed."
+  ]
+}
