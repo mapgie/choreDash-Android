@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import javax.inject.Inject
 
 enum class ChoreFilter(val label: String) {
@@ -435,7 +436,10 @@ class ChoreListViewModel @Inject constructor(
     fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
         viewModelScope.launch {
             runCatching {
-                choreRepository.createTag(tagId, label, category, owner, intervalDays)
+                // A chore isn't required to have a physical NFC tag; generate a unique
+                // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
+                val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
+                choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
