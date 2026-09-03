@@ -994,3 +994,27 @@ check covers the page, the cards and the whole chip ramp), on-container text at
 unit tests); a ten-line RGB-to-HSL in Kotlin is enough. If a toggle's whole
 effect can be measured, measure it in CI rather than trusting the eye.
 
+---
+
+## 47. Removing a behaviour removes its test in the same commit: grep the test tree for the *property name*
+
+`app/src/test` is the feature list (CLAUDE.md): each `*UiState` property the
+screens read has a test named for the behaviour. When a feature is deleted
+(the "N chores · M hidden" summary strip), its `summaryLabel` getter went, but
+the two tests that pinned it were left behind and the unit-test job failed at
+compile time, a full CI round after the push.
+
+The miss was a grep for the wrong word ("summaryText"), so the search came
+back empty and read as "no tests". Before deleting a public property or
+function, search the test tree for the exact identifier being removed (and
+its call sites), not a paraphrase:
+
+```
+grep -rn "summaryLabel" app/src/test app/src/main
+```
+
+An empty result from a *misspelt* grep looks identical to a real one. Copy
+the identifier from the declaration line rather than retyping it, and treat
+"removed a public member" as a trigger to delete its tests deliberately,
+since they describe behaviour the app no longer promises.
+
