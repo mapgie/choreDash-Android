@@ -78,9 +78,28 @@ fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.background.luminance() <
 @Composable
 fun Swatch.spineColor(): Color = Color(tones(isDarkScheme()).spineArgb)
 
-/** Text tone that reads on both the tint and the surface, per the current brightness. */
+/**
+ * Text tone that reads on both the tint and the surface, per the current
+ * brightness. With the WCAG toggle on it is lifted to 7:1 on its own tint and
+ * on the page ground (see [wcagSwatchText]).
+ */
 @Composable
-fun Swatch.textColor(): Color = Color(tones(isDarkScheme()).textArgb)
+fun Swatch.textColor(): Color {
+    val dark = isDarkScheme()
+    val tones = tones(dark)
+    val text = Color(tones.textArgb)
+    return if (LocalWcagContrast.current) {
+        wcagSwatchText(text, Color(tones.tintArgb), MaterialTheme.colorScheme.background, dark)
+    } else text
+}
+
+/**
+ * The swatch text lift the WCAG toggle applies: darkened (light) or lightened
+ * (dark) until it reads at 7:1 on both the badge tint and the page ground.
+ * Pure so WcagContrastTest can pin it for every swatch.
+ */
+fun wcagSwatchText(text: Color, tint: Color, ground: Color, dark: Boolean): Color =
+    text.adjustedForContrast(worstGround(listOf(tint, ground), dark), WCAG_TEXT_RATIO, !dark)
 
 /** Pale (light) or dim (dark) tint behind badges and icon chips. */
 @Composable

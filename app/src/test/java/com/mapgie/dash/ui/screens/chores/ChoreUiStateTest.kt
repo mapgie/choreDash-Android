@@ -210,13 +210,6 @@ class ChoreUiStateTest {
     }
 
     @Test
-    fun `summary counts shown chores and names the hidden ones only when there are any`() {
-        val distant = chore("distant", intervalDays = 365.0, lastScannedAgo = Duration.ofHours(36))
-        assertEquals("2 chores · 1 hidden", ChoreUiState(active = listOf(fresh, stale, distant)).summaryLabel)
-        assertEquals("1 chore", ChoreUiState(active = listOf(fresh)).summaryLabel)
-    }
-
-    @Test
     fun `overdue count ignores the active chip but respects owner scope`() {
         val state = ChoreUiState(
             active = listOf(fresh, stale, never, chore("theirs-stale", owner = "mo", lastScannedAgo = Duration.ofHours(300))),

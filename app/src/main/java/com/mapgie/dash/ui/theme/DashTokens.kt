@@ -41,7 +41,28 @@ data class DashTokens(
     val sheetDivider: Color,
     /** Sheet drag handle. */
     val handle: Color,
-)
+) {
+    /**
+     * With the WCAG toggle on: every token used as text (faint captions, section
+     * counts, inactive tab labels, the tag gold, the NFC button glyph) is lifted
+     * to 7:1 on the ground it sits on, and the outlined pill's border to 3:1.
+     * Faint ink and the section count adopt the scheme's (already lifted) muted
+     * ink outright, matching the handoff's contrast rule. Hairlines, the drag
+     * handle and the scrim are decorative and stay as designed.
+     */
+    fun withWcagContrast(scheme: ColorScheme, dark: Boolean): DashTokens {
+        val darken = !dark
+        val ground = worstGround(scheme.grounds(), dark)
+        return copy(
+            navInactive = navInactive.adjustedForContrast(navBackground, WCAG_TEXT_RATIO, darken),
+            inkFaint = scheme.onSurfaceVariant,
+            sectionCount = scheme.onSurfaceVariant,
+            pillOutline = pillOutline.adjustedForContrast(ground, WCAG_UI_RATIO, darken),
+            nfcButtonContent = nfcButtonContent.adjustedForContrast(nfcButtonContainer, WCAG_TEXT_RATIO, darken),
+            tagLabel = tagLabel.adjustedForContrast(worstGround(listOf(ground, sheetBlock), dark), WCAG_TEXT_RATIO, darken),
+        )
+    }
+}
 
 val CreamLightTokens = DashTokens(
     navBackground = Color(0xFFF7F2E7),

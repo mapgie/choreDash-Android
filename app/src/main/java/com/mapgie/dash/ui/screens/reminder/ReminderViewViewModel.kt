@@ -29,6 +29,13 @@ const val REMINDER_VIEW_ROUTE = "reminder/{kind}/{id}"
 const val REMINDER_VIEW_ARG_KIND = "kind"
 const val REMINDER_VIEW_ARG_ID = "id"
 
+/**
+ * Optional: the subject as the alarm intent carried it. AlarmActivity passes it
+ * so the ringing screen has words on it the instant it appears, before (or even
+ * without) the network round trip that loads the record.
+ */
+const val REMINDER_VIEW_ARG_SUBJECT = "subject"
+
 fun reminderViewRoute(kind: ReminderViewKind, id: String): String =
     "reminder/${kind.routeArg}/${Uri.encode(id)}"
 
@@ -63,12 +70,18 @@ class ReminderViewViewModel @Inject constructor(
     private val kind: ReminderViewKind? =
         ReminderViewKind.fromRouteArg(savedStateHandle[REMINDER_VIEW_ARG_KIND])
     private val id: String? = savedStateHandle[REMINDER_VIEW_ARG_ID]
+    private val seedSubject: String? = savedStateHandle.get<String>(REMINDER_VIEW_ARG_SUBJECT)?.takeIf { it.isNotBlank() }
 
     // Task id a standalone reminder is linked to; carried across Snooze so the
     // re-fired alarm still marks the task reminded (see AlarmActionReceiver).
     private var linkedTaskId: String? = null
 
-    private val _uiState = MutableStateFlow(ReminderViewUiState())
+    // With a seeded subject the screen is content-ful from the first frame; the
+    // load below only refines it (time, next nudge) or reports the record gone.
+    private val _uiState = MutableStateFlow(
+        if (seedSubject != null) ReminderViewUiState(loading = false, kind = kind, subject = seedSubject)
+        else ReminderViewUiState()
+    )
     val uiState: StateFlow<ReminderViewUiState> = _uiState.asStateFlow()
 
     init {
@@ -100,8 +113,16 @@ class ReminderViewViewModel @Inject constructor(
             }
             val loaded = result.getOrNull()
             if (loaded == null) {
+                val failure = result.exceptionOrNull()
+                // A load failure (offline, Supabase down) with a seeded subject is
+                // not "gone": keep ringing with the words we have. Only a clean
+                // "no such record" answer, or a failure with nothing to show, is.
+                if (failure != null && seedSubject != null) {
+                    _uiState.update { it.copy(error = failure.message) }
+                    return@launch
+                }
                 _uiState.update {
-                    it.copy(loading = false, missing = true, kind = kind, error = result.exceptionOrNull()?.message)
+                    it.copy(loading = false, missing = true, kind = kind, error = failure?.message)
                 }
                 return@launch
             }

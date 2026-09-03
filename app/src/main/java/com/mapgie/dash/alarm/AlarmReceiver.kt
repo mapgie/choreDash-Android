@@ -7,7 +7,6 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.notification.NotificationHelper
-import com.mapgie.dash.notification.ReminderKind
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,18 +32,15 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Delivery mode is presentation: resolve it from the current setting at
                 // fire time so a settings change applies to already-scheduled alarms.
                 // A settings read failure must never cost the user the notification.
-                val channelId = NotificationHelper.channelId(
-                    ReminderKind.TASK_REMINDER,
-                    runCatching { settingsRepository.settings.first().deliveryMode }
-                        .getOrDefault("NOTIFICATION")
-                )
+                val deliveryMode = runCatching { settingsRepository.settings.first().deliveryMode }
+                    .getOrDefault("NOTIFICATION")
 
                 when {
                     // Check reminderId first: a task-linked reminder alarm carries BOTH extras,
                     // and must be handled as a reminder, not an old-style task alarm.
                     reminderId != null -> {
                         val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
-                        NotificationHelper.showReminderAlert(context, reminderId, subject, channelId, taskId)
+                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId)
                         try {
                             reminderRepository.markReminded(reminderId)
                             // If this reminder is linked to a task, also mark it reminded in Supabase.
@@ -55,7 +51,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                     taskId != null -> {
                         val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
-                        NotificationHelper.showTaskReminder(context, taskId, taskTitle, channelId)
+                        NotificationHelper.showTaskReminder(context, taskId, taskTitle, deliveryMode)
                         try {
                             // Mark reminded=true in Supabase so other clients know the alert was sent.
                             taskRepository.markReminded(taskId)

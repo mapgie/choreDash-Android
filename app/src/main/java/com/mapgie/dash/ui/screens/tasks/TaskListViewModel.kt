@@ -126,15 +126,6 @@ data class TaskUiState(
                 .map { (category, tasks) -> (category ?: OTHER_CATEGORY_LABEL) to tasks }
         }
 
-    /** "6 tasks · 2 hidden" for the summary bar; the hidden part is omitted at zero. */
-    val summaryLabel: String
-        get() {
-            val shown = activeTasks.size
-            val base = if (shown == 1) "1 task" else "$shown tasks"
-            val hidden = hiddenCount
-            return if (hidden > 0) "$base · $hidden hidden" else base
-        }
-
     val categories: List<String>
         get() = catalog.sorted(tasks.mapNotNull { it.category }.filter { it.isNotBlank() })
 }

@@ -245,18 +245,18 @@ private fun SettingsMainList(
                     )
                 }
 
-                SettingsSectionLabel("About")
+                SettingsSectionLabel("Help & about")
                 SettingsCard {
-                    SettingsNavRow(
-                        title = "About choreDash",
-                        subtitle = "Version, what's new, and licenses",
-                        onClick = { onNavigate(SettingsSubScreen.ABOUT) }
-                    )
-                    SettingsHairline()
                     SettingsNavRow(
                         title = "Help",
                         subtitle = "What chores, tasks and reminders are for",
                         onClick = { onNavigate(SettingsSubScreen.HELP) }
+                    )
+                    SettingsHairline()
+                    SettingsNavRow(
+                        title = "About choreDash",
+                        subtitle = "Version, what's new, and licenses",
+                        onClick = { onNavigate(SettingsSubScreen.ABOUT) }
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -881,6 +881,7 @@ private fun RemindersSubScreen(
     var exactAlarmsAllowed by remember { mutableStateOf(PermissionHelper.canScheduleExactAlarms(context)) }
     var notificationsEnabled by remember { mutableStateOf(PermissionHelper.areNotificationsEnabled(context)) }
     var dndAccessGranted by remember { mutableStateOf(PermissionHelper.isDndAccessGranted(context)) }
+    var fullScreenAllowed by remember { mutableStateOf(PermissionHelper.canUseFullScreenIntent(context)) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -888,6 +889,7 @@ private fun RemindersSubScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 exactAlarmsAllowed = PermissionHelper.canScheduleExactAlarms(context)
                 notificationsEnabled = PermissionHelper.areNotificationsEnabled(context)
+                fullScreenAllowed = PermissionHelper.canUseFullScreenIntent(context)
                 val nowDndGranted = PermissionHelper.isDndAccessGranted(context)
                 if (nowDndGranted && !dndAccessGranted) {
                     // Access just granted: recreate channels so the alarm channels are made
@@ -905,7 +907,8 @@ private fun RemindersSubScreen(
 
     val remindersFullyEnabled = notificationsEnabled &&
         (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || exactAlarmsAllowed) &&
-        dndAccessGranted
+        dndAccessGranted &&
+        fullScreenAllowed
 
     val deliveryModes = listOf("ALARM", "NOTIFICATION", "SILENT")
     val deliveryModeLabels = mapOf("ALARM" to "Alarm", "NOTIFICATION" to "Notification", "SILENT" to "Silent")
@@ -921,7 +924,7 @@ private fun RemindersSubScreen(
             )
             SettingsCaption(
                 when (currentDeliveryMode) {
-                    "ALARM" -> "Plays alarm sound, bypasses Do Not Disturb"
+                    "ALARM" -> "Rings like a clock alarm: turns the screen on, sounds and vibrates until you answer, bypasses Do Not Disturb"
                     "SILENT" -> "No sound or vibration"
                     else -> "Standard notification sound"
                 }
@@ -960,6 +963,16 @@ private fun RemindersSubScreen(
                     icon = LucideIcons.BellOff,
                     onClick = { context.startActivity(PermissionHelper.dndAccessSettingsIntent(context)) }
                 )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    SettingsHairline()
+                    PermissionRow(
+                        title = "Full-screen alarms",
+                        subtitle = "Lets the Alarm style turn the screen on and ring",
+                        granted = fullScreenAllowed,
+                        icon = LucideIcons.Lamp,
+                        onClick = { context.startActivity(PermissionHelper.fullScreenIntentSettingsIntent(context)) }
+                    )
+                }
             }
 
             Row(

@@ -30,6 +30,23 @@ object PermissionHelper {
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .isNotificationPolicyAccessGranted
 
+    /**
+     * Whether the Alarm style may turn the screen on with a full-screen alarm.
+     * Android 14+ lets the user revoke this per app; earlier versions always allow it.
+     */
+    fun canUseFullScreenIntent(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        return (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .canUseFullScreenIntent()
+    }
+
+    /** Opens this app's "Full-screen notifications" toggle (API 34+). */
+    fun fullScreenIntentSettingsIntent(context: Context): Intent =
+        Intent(
+            Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+            Uri.fromParts("package", context.packageName, null)
+        )
+
     /** Opens the per-app "Alarms & reminders" page (API 31+). */
     fun exactAlarmSettingsIntent(context: Context): Intent =
         Intent(

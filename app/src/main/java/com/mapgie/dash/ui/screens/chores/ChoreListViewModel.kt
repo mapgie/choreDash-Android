@@ -191,15 +191,6 @@ data class ChoreUiState(
     val overdueCount: Int
         get() = ownerFiltered.count { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
 
-    /** "7 chores · 1 hidden" for the summary bar; the hidden part is omitted at zero. */
-    val summaryLabel: String
-        get() {
-            val shown = displayed.size
-            val hidden = hiddenChores.size
-            val base = if (shown == 1) "1 chore" else "$shown chores"
-            return if (hidden > 0) "$base · $hidden hidden" else base
-        }
-
     val categories: List<String>
         get() = catalog.sorted(
             (active + archived).mapNotNull { it.category }.filter { it.isNotBlank() }
