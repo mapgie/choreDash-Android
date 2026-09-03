@@ -164,16 +164,6 @@ class TaskUiStateTest {
         assertEquals(listOf("Car", "Admin", "General", OTHER_CATEGORY_LABEL), state.grouped.map { it.first })
     }
 
-    @Test
-    fun `summary counts open tasks and names those hidden by the threshold`() {
-        val today = LocalDate.now()
-        val soon = task("soon", dueDate = today.plusDays(3).toString())
-        val far = task("far", dueDate = today.plusDays(30).toString())
-        val done = task("done", completedAt = "2026-08-01T10:00:00Z")
-        assertEquals("1 task · 1 hidden", TaskUiState(tasks = listOf(soon, far, done), hideThresholdDays = 7).summaryLabel)
-        assertEquals("2 tasks", TaskUiState(tasks = listOf(soon, far, done)).summaryLabel)
-    }
-
     // ── Zen rows ──────────────────────────────────────────────────────────────
 
     @Test

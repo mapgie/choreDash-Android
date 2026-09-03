@@ -934,3 +934,87 @@ The same change moved the screens' sheet target from a remembered object
 Wait for `uiState.loading` to finish before treating a missing id as "vanished",
 or a process-death restore closes the sheet (or opens it as "New") before the
 list has loaded.
+
+---
+
+## 45. A notification with an alarm sound is not an alarm: full-screen intent + your own ringer
+
+A `NotificationChannel` with `USAGE_ALARM` audio and `IMPORTANCE_HIGH` plays
+the alarm tone once, as a notification sound, and never turns the screen on.
+Users who chose "Alarm" expect the clock-app experience: screen lights up over
+the lock screen, tone loops, phone buzzes until they answer. That takes three
+pieces, and the channel is none of them:
+
+1. `setFullScreenIntent(pendingIntent, true)` on the notification, plus
+   `USE_FULL_SCREEN_INTENT` in the manifest. On Android 14+ the user can
+   revoke it per app (`NotificationManager.canUseFullScreenIntent()`,
+   `Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`), so surface it as a
+   permission row next to exact alarms and Do Not Disturb access.
+2. An activity that calls `setShowWhenLocked(true)` / `setTurnScreenOn(true)`
+   (API 27+; window flags below that), lives in its own task
+   (`taskAffinity=""`, `excludeFromRecents`) so it never drags the main app
+   over the lock screen, and is launched with `NEW_TASK | CLEAR_TASK` so a
+   second alarm replaces a still-ringing one instead of stacking.
+3. A ringer the activity owns: a looping `MediaPlayer` on
+   `AudioAttributes.USAGE_ALARM` and a repeating `VibrationEffect` under
+   `VibrationAttributes.USAGE_ALARM` (API 33+; audio attributes before). Start
+   in `onStart`, stop and `finish()` in `onStop`, and put a timeout on it: a
+   ring nobody answers must end on its own with the notification left behind.
+
+Two things Android decides, not you: the full-screen activity is only
+launched when the device is locked or the screen is off. Awake and unlocked,
+the system shows a heads-up notification instead, and the channel's own alarm
+sound is all the noise you get, so keep that channel sound in place. And a
+full-screen activity's ViewModel can be the same one the in-app screen uses:
+`hiltViewModel()` inside an `@AndroidEntryPoint` activity fills the
+`SavedStateHandle` from the activity's intent extras, so name the extras after
+the nav route's argument keys and both entry points share one ViewModel.
+Seed the subject as an extra too, so the screen has words on it before (or
+without) the network load.
+
+---
+
+## 46. A "high contrast" toggle has to reach every colour that becomes text, not just the Material roles
+
+The WCAG toggle lifted `primary` / `secondary` / `tertiary` / `onSurfaceVariant`
+in the `ColorScheme` and stopped. The redesigned screens draw most of their
+text from elsewhere: the `DashTokens` (faint captions, section counts, the
+inactive tab label, the tag gold), the per-type accent sets, and the status
+`Swatch` tones. On Zen Dark those already sat near their designed contrast, so
+flipping the toggle changed almost nothing on screen and the user reasonably
+asked whether it worked.
+
+Make the transform a property of every colour family, derived not hand-tuned,
+and pin it with a JVM test that walks every palette and brightness
+(`WcagContrastTest`): text roles at 7:1 against the palette's *worst* ground
+(the darkest surface of a light palette, the lightest of a dark one, so one
+check covers the page, the cards and the whole chip ramp), on-container text at
+7:1 on its container, outlines at 3:1. Keep the maths free of `android.*`
+(`ColorUtils.colorToHSL` calls `android.graphics.Color` stubs and throws in
+unit tests); a ten-line RGB-to-HSL in Kotlin is enough. If a toggle's whole
+effect can be measured, measure it in CI rather than trusting the eye.
+
+---
+
+## 47. Removing a behaviour removes its test in the same commit: grep the test tree for the *property name*
+
+`app/src/test` is the feature list (CLAUDE.md): each `*UiState` property the
+screens read has a test named for the behaviour. When a feature is deleted
+(the "N chores · M hidden" summary strip), its `summaryLabel` getter went, but
+the two tests that pinned it were left behind and the unit-test job failed at
+compile time, a full CI round after the push.
+
+The miss was a grep for the wrong word ("summaryText"), so the search came
+back empty and read as "no tests". Before deleting a public property or
+function, search the test tree for the exact identifier being removed (and
+its call sites), not a paraphrase:
+
+```
+grep -rn "summaryLabel" app/src/test app/src/main
+```
+
+An empty result from a *misspelt* grep looks identical to a real one. Copy
+the identifier from the declaration line rather than retyping it, and treat
+"removed a public member" as a trigger to delete its tests deliberately,
+since they describe behaviour the app no longer promises.
+

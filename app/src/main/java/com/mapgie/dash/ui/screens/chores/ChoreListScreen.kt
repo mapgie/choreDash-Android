@@ -38,7 +38,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,7 +77,6 @@ import com.mapgie.dash.ui.components.core.SectionHeaderRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortPill
 import com.mapgie.dash.ui.components.core.SortSheet
-import com.mapgie.dash.ui.components.core.SummaryBar
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -94,7 +92,6 @@ import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.util.formatAbsoluteDate
 import java.time.Instant
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +108,6 @@ fun ChoreListScreen(
     viewModel: ChoreListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
@@ -569,22 +565,6 @@ fun ChoreListScreen(
                             }
                         }
                     }
-                }
-                if (!uiState.zenMode && !searchActive) {
-                    val archivedCount = uiState.archived.size
-                    SummaryBar(
-                        summary = uiState.summaryLabel,
-                        trailingLabel = if (archivedCount > 0) "Archived" else null,
-                        onTrailingClick = if (archivedCount > 0) {
-                            {
-                                showArchivedSection = true
-                                scope.launch {
-                                    val last = listState.layoutInfo.totalItemsCount - 1
-                                    if (last >= 0) listState.animateScrollToItem(last)
-                                }
-                            }
-                        } else null,
-                    )
                 }
             }
         }
