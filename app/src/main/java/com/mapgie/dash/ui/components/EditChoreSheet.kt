@@ -183,7 +183,7 @@ fun EditChoreSheet(
     val tone = chore?.statusTone()
     val chipContainer = categorySwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
     val chipContent = categorySwatch?.textColor() ?: tone?.textColor() ?: accents.onChoreContainer
-    val canSave = label.isNotBlank() && tagId.isNotBlank()
+    val canSave = label.isNotBlank()
 
     ModalBottomSheet(
         onDismissRequest = { requestDismiss() },

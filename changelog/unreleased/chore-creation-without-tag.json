@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "fixed": ["Chores can be created without an NFC tag ID; Save no longer requires typing one"]
+}

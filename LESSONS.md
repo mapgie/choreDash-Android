@@ -934,3 +934,26 @@ The same change moved the screens' sheet target from a remembered object
 Wait for `uiState.loading` to finish before treating a missing id as "vanished",
 or a process-death restore closes the sheet (or opens it as "New") before the
 list has loaded.
+
+---
+
+## 45. A chore is a row in the `tags` table, so its `tagId` (NFC id) can't just be made optional in the UI
+
+`EditChoreSheet.kt` gated the Save button on `tagId.isNotBlank()`, which forced
+every new chore through the NFC "Tag ID" field even though a chore should be
+usable with no physical tag at all. The gate looked like an arbitrary UI
+choice, but `tags.tag_id` in `supabase/schema.sql` is `NOT NULL UNIQUE`
+(chores are stored *as* tag rows, and `scans.tag_id` is a foreign key into
+it), so relaxing only the Compose `canSave` check would have pushed a blank,
+non-unique string into an insert and failed at the repository layer for the
+second tagless chore onward.
+
+Fix without a schema change: keep `tagId` required at the data layer, but
+have the ViewModel synthesize a random unique id (`UUID.randomUUID()`, the
+same pattern as `ReminderRepository.addReminder`) when the user leaves the
+field blank, and drop `tagId` from the Compose-level `canSave` check. Before
+"just remove this required-field check" on any entity backed by a DB table,
+check the table's `NOT NULL`/`UNIQUE` constraints for that column first —
+the UI validation and the schema constraint can drift independently, and
+fixing only the visible one still fails, just one layer down and with a
+worse error message.
