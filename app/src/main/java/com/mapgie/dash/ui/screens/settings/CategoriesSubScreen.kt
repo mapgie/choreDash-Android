@@ -59,8 +59,11 @@ import androidx.compose.ui.zIndex
 import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.CategoryIcon
 import com.mapgie.dash.data.model.CategoryStyle
+import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.TagDto
+import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.NewCategoryDialog
 import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
@@ -72,6 +75,8 @@ import com.mapgie.dash.ui.theme.PillShape
 import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
+import java.time.Duration
+import java.time.Instant
 import kotlin.math.roundToInt
 
 /**
@@ -342,6 +347,20 @@ private fun CategoryRow(
     val swatch = catalog.effectiveSwatch(name)
     var draft by remember(name) { mutableStateOf(name) }
 
+    // A sample chore card so the picked icon and colour can be seen applied the
+    // way they will read in the list, matching the Colours screen's preview. The
+    // icon and swatch are passed live below, so this only supplies the label/meta.
+    val previewChore = remember(name) {
+        Chore.from(
+            tag = TagDto(
+                id = "preview_$name", tagId = "preview_$name", label = "Sample chore",
+                category = name, owner = "M", intervalDays = 7.0,
+            ),
+            lastScanned = Instant.now().minus(Duration.ofDays(2)),
+            lastScanId = null,
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -438,6 +457,17 @@ private fun CategoryRow(
                         selected = style.swatchEnum,
                         onSelect = { onStyle(style.copy(swatch = it.name)) },
                         groupLabel = "$name colour",
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel(text = "Preview", color = tokens.inkFaint)
+                    ChoreCard(
+                        chore = previewChore,
+                        showOwner = false,
+                        icon = LucideIcons.forCategory(icon),
+                        categorySwatch = swatch,
+                        showCategory = false,
+                        inset = 0.dp,
                     )
                 }
                 if (onMoveUp != null || onMoveDown != null) {

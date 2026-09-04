@@ -108,7 +108,9 @@ fun DashNavGraph(
     var pendingAddIntent by remember { mutableStateOf<AddMenuOption?>(null) }
 
     val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
-    val navItems = allNavItems.filter { it != Screen.Reminders || navUiState.hasOutstandingReminders }
+    // The Memos/Reminders slot is always present, so the five-slot bar never
+    // reshapes under the thumb (handoff: fixed Tasks · Chores · + · Memos · Settings).
+    val navItems = allNavItems
 
     fun navigateTo(route: String) {
         navController.navigate(route) {
