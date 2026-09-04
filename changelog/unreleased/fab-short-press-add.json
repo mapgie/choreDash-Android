@@ -1,0 +1,4 @@
+{
+  "bump": "minor",
+  "changed": ["The center + button now adds an item for the page you're on with a short press. Long-press it to open the full New chore / task / memo menu."]
+}

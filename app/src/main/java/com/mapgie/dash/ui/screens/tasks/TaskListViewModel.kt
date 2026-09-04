@@ -94,8 +94,17 @@ data class TaskUiState(
     val hiddenCount: Int
         get() = openTasks.count(::hiddenByThreshold)
 
+    /**
+     * The Done section, most recently completed first, so the task you just
+     * ticked sits at the top instead of being scattered by the pill's open-list
+     * order. Recency wins here regardless of the sort key chosen for the main list.
+     */
     val doneTasks: List<TaskDto>
         get() = displayed.filter { it.completedAt != null }
+            .sortedByDescending { it.completedInstant() ?: Instant.MIN }
+
+    private fun TaskDto.completedInstant(): Instant? =
+        completedAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
     /**
      * The zen list: open tasks in zen order, then anything finished today so a
@@ -105,7 +114,7 @@ data class TaskUiState(
         get() = activeTasks + doneTasks.filter { it.completedToday() }
 
     private fun TaskDto.completedToday(): Boolean {
-        val at = completedAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: return false
+        val at = completedInstant() ?: return false
         return at.atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now(ZoneId.systemDefault())
     }
 

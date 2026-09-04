@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "added": ["Marking a task done from the list now shows a brief Undo, so an accidental tap or swipe is one tap to reverse."]
+}

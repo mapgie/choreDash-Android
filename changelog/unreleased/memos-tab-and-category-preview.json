@@ -1,0 +1,5 @@
+{
+  "bump": "minor",
+  "added": ["Editing a category now shows a live preview card, so you can see the icon and colour applied the way they read in the list."],
+  "changed": ["The Memos tab is now always shown in the bottom bar, so the five slots never reshape."]
+}

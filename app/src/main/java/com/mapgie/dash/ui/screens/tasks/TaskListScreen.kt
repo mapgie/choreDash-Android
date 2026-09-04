@@ -19,8 +19,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -34,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,6 +79,7 @@ import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ZenPhrase
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -86,6 +90,7 @@ fun TaskListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     var showTaskSheet by rememberSaveable { mutableStateOf(false) }
@@ -104,6 +109,23 @@ fun TaskListScreen(
 
     fun iconFor(task: TaskDto): ImageVector =
         LucideIcons.forCategory(uiState.catalog.iconFor(task.category))
+
+    // Completion stays instant (a tap or a full swipe marks the task done), but a
+    // brief "Undo" snackbar makes an accidental one a single tap to reverse.
+    // Zen mode keeps its own affordance (the ticked row stays visible), so it is
+    // left to call markDone directly.
+    fun completeTaskWithUndo(task: TaskDto) {
+        viewModel.markDone(task.id)
+        scope.launch {
+            snackbarHost.currentSnackbarData?.dismiss()
+            val result = snackbarHost.showSnackbar(
+                message = "“${task.title}” marked done",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.markUndone(task.id)
+        }
+    }
 
     // The Edit sheet's target is kept by id and resolved from uiState so the open
     // sheet survives rotation and process death; it closes cleanly if the task
@@ -249,7 +271,7 @@ fun TaskListScreen(
                                 onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                 onToggleDone = {
                                     if (task.completedAt != null) viewModel.markUndone(task.id)
-                                    else viewModel.markDone(task.id)
+                                    else completeTaskWithUndo(task)
                                 },
                                 highlightQuery = query
                             )
@@ -306,7 +328,7 @@ fun TaskListScreen(
                                             icon = iconFor(task),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                            onToggleDone = { viewModel.markDone(task.id) },
+                                            onToggleDone = { completeTaskWithUndo(task) },
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
@@ -340,7 +362,7 @@ fun TaskListScreen(
                                         icon = iconFor(task),
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                        onToggleDone = { viewModel.markDone(task.id) },
+                                        onToggleDone = { completeTaskWithUndo(task) },
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode
@@ -497,7 +519,10 @@ private fun SwipeToCompleteCard(
             }
             false // never actually dismiss the item
         },
-        positionalThreshold = { it * 0.3f }
+        // Require a deliberate swipe most of the way across the card before a
+        // completion registers, so a stray horizontal drag while scrolling the
+        // list doesn't silently tick a task off.
+        positionalThreshold = { it * 0.6f }
     )
     SwipeToDismissBox(
         state = dismissState,

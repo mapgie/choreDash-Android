@@ -108,7 +108,9 @@ fun DashNavGraph(
     var pendingAddIntent by remember { mutableStateOf<AddMenuOption?>(null) }
 
     val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
-    val navItems = allNavItems.filter { it != Screen.Reminders || navUiState.hasOutstandingReminders }
+    // The Memos/Reminders slot is always present, so the five-slot bar never
+    // reshapes under the thumb (handoff: fixed Tasks · Chores · + · Memos · Settings).
+    val navItems = allNavItems
 
     fun navigateTo(route: String) {
         navController.navigate(route) {
@@ -191,7 +193,10 @@ fun DashNavGraph(
                         if (showFab) {
                             AddMenuButton(
                                 expanded = fabExpanded,
-                                onExpandedChange = { fabExpanded = it },
+                                // Short press: new item for the page you're on.
+                                onClick = { activeScreen?.addMenuOption?.let { pendingAddIntent = it } },
+                                // Long press: open the radial to pick any type.
+                                onLongClick = { fabExpanded = true },
                             )
                         }
                     }

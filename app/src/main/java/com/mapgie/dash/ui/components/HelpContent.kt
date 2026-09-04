@@ -76,6 +76,8 @@ fun HelpContent(
             SheetBlock {
                 HelpTip("Tap a card to log or finish it. Long-press to edit.")
                 SheetRowDivider()
+                HelpTip("Tap the + to add to the page you're on. Long-press it to pick any type from the menu.")
+                SheetRowDivider()
                 HelpTip("The sort pill above each list names its order in words. Tap it to change the key or direction.")
                 SheetRowDivider()
                 HelpTip("Zen (the target icon) hides colours and counts for a calmer list. Leave with the cross.")
