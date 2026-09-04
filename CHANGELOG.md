@@ -31,6 +31,21 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.29.0] - 2026-09-04
+
+### Added
+- The Alarm notification style now rings like a clock alarm: a reminder turns the screen on over the lock screen, plays the alarm tone and vibrates until you tap Done or Snooze (or two minutes pass), and gets through Do Not Disturb
+- Settings > Reminders & alerts shows a Full-screen alarms permission row on Android 14 and later, where the system lets you switch that off per app
+
+### Changed
+- WCAG accessible colours now lifts every colour the app draws text with to 7:1 (AAA): page ink and captions, the accent colours, section counts, inactive tabs, the tag label, badge and status text, and the Tasks, Chores and Memos tints, in every built-in palette and both brightnesses. Previously most of the screen was left at the palette's designed contrast, so on Zen Dark the toggle changed almost nothing
+- Settings lists Help above About choreDash
+- The summary strip under the Tasks and Chores lists ("6 chores, 6 hidden", Done, Archived) is gone; the Done and Archived sections already open from inside the lists
+
+### Fixed
+- Chores can be created without an NFC tag ID; Save no longer requires typing one
+
+---
 ## [0.28.0] - 2026-09-02
 
 ### Added
