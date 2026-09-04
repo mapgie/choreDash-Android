@@ -31,6 +31,22 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.30.0] - 2026-09-04
+
+### Added
+- Editing a category now shows a live preview card, so you can see the icon and colour applied the way they read in the list.
+- Marking a task done from the list now shows a brief Undo, so an accidental tap or swipe is one tap to reverse.
+
+### Changed
+- The center + button now adds an item for the page you're on with a short press. Long-press it to open the full New chore / task / memo menu.
+- The Memos tab is now always shown in the bottom bar, so the five slots never reshape.
+- The Done section on Tasks now lists the most recently completed task first, so you can see what you just ticked off.
+- Swipe-to-complete on a task now needs a more deliberate swipe across the card, to avoid accidental completions.
+
+### Fixed
+- Swiping down on a New chore, New task or reminder sheet with unsaved changes now asks before discarding, instead of closing silently and losing what you typed.
+
+---
 ## [0.29.0] - 2026-09-04
 
 ### Added

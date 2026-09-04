@@ -1,7 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "The Done section on Tasks now lists the most recently completed task first, so you can see what you just ticked off.",
-    "Swipe-to-complete on a task now needs a more deliberate swipe across the card, to avoid accidental completions."
-  ]
-}
