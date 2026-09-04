@@ -193,7 +193,10 @@ fun DashNavGraph(
                         if (showFab) {
                             AddMenuButton(
                                 expanded = fabExpanded,
-                                onExpandedChange = { fabExpanded = it },
+                                // Short press: new item for the page you're on.
+                                onClick = { activeScreen?.addMenuOption?.let { pendingAddIntent = it } },
+                                // Long press: open the radial to pick any type.
+                                onLongClick = { fabExpanded = true },
                             )
                         }
                     }

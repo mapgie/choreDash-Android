@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -70,29 +71,44 @@ private fun AddMenuOption.spec(reminderLabel: String, accents: TypeAccentColors)
 
 /**
  * The round sage add button docked in the centre slot of the bottom bar (52dp).
- * While the speed dial is open the fill flips to ink and the plus rotates 45°
- * into a cross; the same button is drawn again inside [SpeedDialOverlay] so it
- * sits above the scrim.
+ * A short press runs [onClick] (add for the current page); a long press runs
+ * [onLongClick] (open the speed dial). While the speed dial is open the fill
+ * flips to ink and the plus rotates 45° into a cross; the same button is drawn
+ * again inside [SpeedDialOverlay] (with no long press) so it sits above the scrim.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AddMenuButton(
     expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val rotation by animateFloatAsState(targetValue = if (expanded) 45f else 0f, label = "fabRotation")
-    FloatingActionButton(
-        onClick = { onExpandedChange(!expanded) },
-        shape = CircleShape,
-        containerColor = if (expanded) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.secondary,
-        contentColor = if (expanded) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSecondary,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
             .size(52.dp)
-            .semantics { contentDescription = if (expanded) "Close add menu" else "Add" },
+            .shadow(6.dp, CircleShape)
+            .clip(CircleShape)
+            .background(
+                if (expanded) MaterialTheme.colorScheme.onBackground
+                else MaterialTheme.colorScheme.secondary
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription = if (expanded) "Close add menu" else "Add"
+            }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                onLongClickLabel = if (expanded || onLongClick == null) null else "More add options",
+            ),
     ) {
         Icon(
             imageVector = LucideIcons.Plus,
             contentDescription = null,
+            tint = if (expanded) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSecondary,
             modifier = Modifier
                 .size(24.dp)
                 .graphicsLayer { rotationZ = rotation },
@@ -174,7 +190,7 @@ fun SpeedDialOverlay(
                         }
                     }
                 }
-                AddMenuButton(expanded = true, onExpandedChange = onExpandedChange)
+                AddMenuButton(expanded = true, onClick = { onExpandedChange(false) })
             }
         }
     }
