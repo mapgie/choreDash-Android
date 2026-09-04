@@ -85,6 +85,17 @@ class TaskUiStateTest {
         assertEquals(listOf("done"), ids(state.doneTasks))
     }
 
+    @Test
+    fun `done section lists most recently completed first`() {
+        // Priority sort would order these higher-normal-lower; the done section
+        // must ignore that and lead with the most recently completed task.
+        val early = task("early", completedAt = "2026-08-01T10:00:00Z", priority = "higher")
+        val late = task("late", completedAt = "2026-08-05T09:00:00Z", priority = "lower")
+        val mid = task("mid", completedAt = "2026-08-03T12:00:00Z")
+        val state = TaskUiState(tasks = listOf(early, late, mid), sort = SortOrder(TaskSortKey.PRIORITY))
+        assertEquals(listOf("late", "mid", "early"), ids(state.doneTasks))
+    }
+
     // ── Far-future hide threshold ─────────────────────────────────────────────
 
     @Test

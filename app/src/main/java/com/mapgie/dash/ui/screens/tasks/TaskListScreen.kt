@@ -497,7 +497,10 @@ private fun SwipeToCompleteCard(
             }
             false // never actually dismiss the item
         },
-        positionalThreshold = { it * 0.3f }
+        // Require a deliberate swipe most of the way across the card before a
+        // completion registers, so a stray horizontal drag while scrolling the
+        // list doesn't silently tick a task off.
+        positionalThreshold = { it * 0.6f }
     )
     SwipeToDismissBox(
         state = dismissState,
