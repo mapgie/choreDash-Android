@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.needsScheduling
+import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.notification.NotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
@@ -52,6 +55,18 @@ class AlarmScheduler @Inject constructor(
 
         val pending = buildReminderPendingIntent(reminderId, subject, taskId)
         setAlarm(remindAt, pending)
+    }
+
+    /**
+     * Makes the armed alarm match the stored record: cancels whatever is armed for
+     * it, then schedules its next ring if it still has one in the future. The one
+     * call every mutation (save, Done, ring, archive) should make afterwards.
+     */
+    fun syncReminder(reminder: ReminderDto) {
+        cancelReminder(reminder.id)
+        if (!reminder.needsScheduling()) return
+        val at = reminder.remindAtInstant() ?: return
+        if (at.isAfter(Instant.now())) scheduleReminder(reminder.id, reminder.subject, at, reminder.taskId)
     }
 
     fun cancelReminder(reminderId: String) {

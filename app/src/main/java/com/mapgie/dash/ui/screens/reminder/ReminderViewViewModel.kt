@@ -170,7 +170,7 @@ class ReminderViewViewModel @Inject constructor(
             cancelNotification(kind, id)
             runCatching {
                 when (kind) {
-                    ReminderViewKind.REMINDER -> reminderRepository.markDone(id)
+                    ReminderViewKind.REMINDER -> reminderRepository.markDone(id)?.let { alarmScheduler.syncReminder(it) }
                     ReminderViewKind.TASK -> taskRepository.markReminded(id)
                 }
             }.onFailure { e ->

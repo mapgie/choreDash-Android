@@ -145,7 +145,9 @@ fun AddReminderSheet(
         subject = subject.trim(),
         remindAt = resolvedRemindAt(),
         choreId = (linkedItem as? LinkedItem.ChoreLink)?.id,
-        taskId = (linkedItem as? LinkedItem.TaskLink)?.id
+        taskId = (linkedItem as? LinkedItem.TaskLink)?.id,
+        // The repeat picker arrives with the edit-alarm sheet; until then an edit keeps the schedule it had.
+        repeatDays = existing?.repeatDays ?: emptyList(),
     )
 
     val isDirty = subject != initialSubjectValue ||

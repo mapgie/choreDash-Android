@@ -73,7 +73,8 @@ class AlarmActionReceiver : BroadcastReceiver() {
                 val result = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        reminderRepository.markDone(reminderId)
+                        // A repeating memo's Done acknowledges this ring; its next one stays armed.
+                        reminderRepository.markDone(reminderId)?.let { alarmScheduler.syncReminder(it) }
                     } catch (_: Exception) {
                         // Non-fatal: notification already dismissed; sync will happen on next open.
                     } finally {

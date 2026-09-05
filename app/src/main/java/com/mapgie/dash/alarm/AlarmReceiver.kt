@@ -20,6 +20,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var taskRepository: TaskRepository
     @Inject lateinit var reminderRepository: ReminderRepository
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var alarmScheduler: AlarmScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
@@ -43,7 +44,9 @@ class AlarmReceiver : BroadcastReceiver() {
                         val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: featureWord
                         NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord)
                         try {
-                            reminderRepository.markReminded(reminderId)
+                            // A repeating memo comes back with its next ring armed; a
+                            // once-only one is now spent and syncReminder just clears it.
+                            reminderRepository.recordRing(reminderId)?.let { alarmScheduler.syncReminder(it) }
                             // If this reminder is linked to a task, also mark it reminded in Supabase.
                             taskId?.let { taskRepository.markReminded(it) }
                         } catch (_: Exception) {

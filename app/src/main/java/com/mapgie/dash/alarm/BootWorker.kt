@@ -68,7 +68,7 @@ class BootWorker @AssistedInject constructor(
                 NotificationHelper.showReminderAlert(
                     applicationContext, reminder.id, reminder.subject, deliveryMode, reminder.taskId, featureWord
                 )
-                reminderRepository.markReminded(reminder.id)
+                reminderRepository.recordRing(reminder.id)?.let { alarmScheduler.syncReminder(it) }
                 reminder.taskId?.let { taskRepository.markReminded(it) }
             }
         }
