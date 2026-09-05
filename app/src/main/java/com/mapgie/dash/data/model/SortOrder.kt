@@ -57,6 +57,25 @@ enum class TaskSortKey(
     }
 }
 
+/** Sort keys for the Memos list. */
+enum class ReminderSortKey(
+    override val label: String,
+    override val firstDirection: String,
+    override val secondDirection: String,
+) : SortKey {
+    /** When the memo next rings; a ring nobody has answered sorts by when it rang. */
+    NEXT_RING("next ring", "soonest first", "latest first"),
+
+    NAME("name", "A to Z", "Z to A"),
+
+    /** When the memo was added. */
+    CREATED("added", "newest first", "oldest first");
+
+    companion object {
+        fun fromName(name: String?): ReminderSortKey = entries.firstOrNull { it.name == name } ?: NEXT_RING
+    }
+}
+
 /** A chosen key plus whether it runs in its reversed direction. */
 data class SortOrder<K : SortKey>(val key: K, val reversed: Boolean = false) {
     /** "pressure · worst first", as shown on the pill. */

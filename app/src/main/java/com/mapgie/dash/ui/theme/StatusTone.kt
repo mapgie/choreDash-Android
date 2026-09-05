@@ -8,11 +8,13 @@ import androidx.compose.ui.graphics.luminance
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.ReminderScheduleText
+import com.mapgie.dash.data.model.ReminderStatus
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskUrgency
-import com.mapgie.dash.data.model.isPast
+import java.time.Instant
 import com.mapgie.dash.data.model.urgency
 
 /**
@@ -147,11 +149,17 @@ fun TaskDto.statusTone(): StatusTone = when (urgency()) {
 }
 
 /**
- * Memo tone by time-to-ring. Overdue reads as [StatusTone.CRITICAL], replacing the
- * `errorContainer`/`error` usage that `CLAUDE.md` reserves for genuine errors.
+ * Memo tone from its schedule bucket (handoff 9a): a ring nobody answered is
+ * [StatusTone.CRITICAL], a ring within 24 hours [StatusTone.ATTENTION], later
+ * rings [StatusTone.OK]; a completed once-only memo, and anything archived, is
+ * one plain muted state with no colour.
  */
-fun ReminderDto.statusTone(): StatusTone = when {
-    completedAt != null -> StatusTone.NEUTRAL
-    isPast() -> StatusTone.CRITICAL
-    else -> StatusTone.NEUTRAL
+fun ReminderDto.statusTone(now: Instant = Instant.now()): StatusTone = when {
+    archivedAt != null -> StatusTone.NONE
+    else -> when (ReminderScheduleText.status(this, now)) {
+        ReminderStatus.RANG -> StatusTone.CRITICAL
+        ReminderStatus.DUE_SOON -> StatusTone.ATTENTION
+        ReminderStatus.UPCOMING -> StatusTone.OK
+        ReminderStatus.DONE -> StatusTone.NONE
+    }
 }
