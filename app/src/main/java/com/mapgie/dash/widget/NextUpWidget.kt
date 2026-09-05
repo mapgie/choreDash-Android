@@ -51,8 +51,9 @@ import java.time.format.DateTimeFormatter
 private sealed interface NextUpData {
     data class Task(val task: TaskDto) : NextUpData
     data class ChoreItem(val chore: Chore) : NextUpData
-    data class ReminderItem(val reminder: ReminderDto) : NextUpData
-    data class Empty(val contentType: String) : NextUpData
+    /** [featureWord] is the user's name for the feature ("Reminder", "Alarm", "Memo"). */
+    data class ReminderItem(val reminder: ReminderDto, val featureWord: String) : NextUpData
+    data class Empty(val contentType: String, val featureWord: String = "reminder") : NextUpData
     data object NotConfigured : NextUpData
     data class Unavailable(val lastSyncedAt: Instant?) : NextUpData
 }
@@ -87,7 +88,8 @@ class NextUpWidget : GlanceAppWidget() {
         return runCatching {
             val data = when (settings.widgetContentType) {
                 "TASKS" -> nextTask(entryPoint, settings) ?: NextUpData.Empty("TASKS")
-                "REMINDERS" -> nextReminder(entryPoint) ?: NextUpData.Empty("REMINDERS")
+                "REMINDERS" -> nextReminder(entryPoint, settings)
+                    ?: NextUpData.Empty("REMINDERS", settings.reminderLabel.singular.lowercase())
                 else -> nextChore(entryPoint, settings) ?: NextUpData.Empty("CHORES")
             }
             entryPoint.widgetSyncStore().markSynced(WidgetSyncKey.NEXT_UP)
@@ -115,12 +117,12 @@ class NextUpWidget : GlanceAppWidget() {
         return due?.let { NextUpData.ChoreItem(it) }
     }
 
-    private suspend fun nextReminder(entryPoint: WidgetEntryPoint): NextUpData.ReminderItem? {
+    private suspend fun nextReminder(entryPoint: WidgetEntryPoint, settings: AppSettings): NextUpData.ReminderItem? {
         // Reminders carry no owner/urgency of their own, so the Priority and Whose
         // filters don't apply to this content type; just surface the soonest one due.
         val next = entryPoint.reminderRepository().pendingReminders()
             .minByOrNull { it.remindAtInstant() ?: Instant.MAX }
-        return next?.let { NextUpData.ReminderItem(it) }
+        return next?.let { NextUpData.ReminderItem(it, settings.reminderLabel.singular) }
     }
 }
 
@@ -164,8 +166,8 @@ private fun NextUpContent(data: NextUpData) {
         when (data) {
             is NextUpData.Task -> NextUpTaskContent(data.task, compact, tiny)
             is NextUpData.ChoreItem -> NextUpChoreContent(data.chore, compact, tiny)
-            is NextUpData.ReminderItem -> NextUpReminderContent(data.reminder, compact)
-            is NextUpData.Empty -> NextUpEmptyContent(data.contentType, compact)
+            is NextUpData.ReminderItem -> NextUpReminderContent(data.reminder, data.featureWord, compact)
+            is NextUpData.Empty -> NextUpEmptyContent(data.contentType, data.featureWord, compact)
             NextUpData.NotConfigured -> CenteredMessage("Connect Supabase in Settings to use this widget", WIDGET_DEST_SETTINGS)
             is NextUpData.Unavailable -> CenteredMessage(unavailableMessage(data.lastSyncedAt), WIDGET_DEST_TASKS)
         }
@@ -242,7 +244,7 @@ private fun NextUpChoreContent(chore: Chore, compact: Boolean, tiny: Boolean) {
 }
 
 @Composable
-private fun NextUpReminderContent(reminder: ReminderDto, compact: Boolean) {
+private fun NextUpReminderContent(reminder: ReminderDto, featureWord: String, compact: Boolean) {
     val context = LocalContext.current
     Column(
         modifier = GlanceModifier
@@ -252,7 +254,7 @@ private fun NextUpReminderContent(reminder: ReminderDto, compact: Boolean) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Reminder",
+            text = featureWord,
             style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp)
         )
         Text(
@@ -270,7 +272,7 @@ private fun NextUpReminderContent(reminder: ReminderDto, compact: Boolean) {
 }
 
 @Composable
-private fun NextUpEmptyContent(contentType: String, compact: Boolean) {
+private fun NextUpEmptyContent(contentType: String, featureWord: String, compact: Boolean) {
     val context = LocalContext.current
     val destination = when (contentType) {
         "TASKS" -> WIDGET_DEST_QUICK_ADD_TASK
@@ -279,7 +281,7 @@ private fun NextUpEmptyContent(contentType: String, compact: Boolean) {
     }
     val subtitle = when (contentType) {
         "TASKS" -> "Tap to add a task"
-        "REMINDERS" -> "Tap to add a reminder"
+        "REMINDERS" -> "Tap to add a $featureWord"
         else -> "Tap to add a chore"
     }
     Box(

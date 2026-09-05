@@ -32,15 +32,16 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Delivery mode is presentation: resolve it from the current setting at
                 // fire time so a settings change applies to already-scheduled alarms.
                 // A settings read failure must never cost the user the notification.
-                val deliveryMode = runCatching { settingsRepository.settings.first().deliveryMode }
-                    .getOrDefault("NOTIFICATION")
+                val settings = runCatching { settingsRepository.settings.first() }.getOrNull()
+                val deliveryMode = settings?.deliveryMode ?: "NOTIFICATION"
+                val featureWord = settings?.reminderLabel?.singular ?: "Reminder"
 
                 when {
                     // Check reminderId first: a task-linked reminder alarm carries BOTH extras,
                     // and must be handled as a reminder, not an old-style task alarm.
                     reminderId != null -> {
-                        val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: "Reminder"
-                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId)
+                        val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: featureWord
+                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord)
                         try {
                             reminderRepository.markReminded(reminderId)
                             // If this reminder is linked to a task, also mark it reminded in Supabase.

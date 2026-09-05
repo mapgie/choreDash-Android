@@ -49,6 +49,7 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -85,6 +86,8 @@ fun AddReminderSheet(
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
+    // "Reminder", "Alarm" or "Memo": whatever the user calls the feature.
+    val featureWord = LocalReminderLabel.current.singular
 
     val initialSubjectValue = remember { existing?.subject ?: initialSubject ?: "" }
     var subject by remember { mutableStateOf(initialSubjectValue) }
@@ -182,7 +185,7 @@ fun AddReminderSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = if (existing != null) "Edit Reminder" else "New Reminder",
+                text = if (existing != null) "Edit $featureWord" else "New $featureWord",
                 style = MaterialTheme.typography.titleLarge
             )
 
@@ -260,7 +263,7 @@ fun AddReminderSheet(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-                Text(if (existing != null) "Save" else "Add Reminder")
+                Text(if (existing != null) "Save" else "Add $featureWord")
             }
 
             if (existing != null && (onArchiveToggle != null || onDelete != null)) {
@@ -301,8 +304,8 @@ fun AddReminderSheet(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete reminder?") },
-            text = { Text("This reminder will be permanently removed.") },
+            title = { Text("Delete ${featureWord.lowercase()}?") },
+            text = { Text("This ${featureWord.lowercase()} will be permanently removed.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false

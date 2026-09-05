@@ -83,7 +83,11 @@ fun ReminderViewScreen(
                 .fillMaxSize()
                 .background(NudgeGround)
         ) {
-            HeaderRow(remindAt = uiState.remindAt)
+            // A task's own reminder is a "reminder" in the plain sense; a standalone
+            // nudge is whatever the user calls the feature.
+            val featureWord = if (uiState.kind == ReminderViewKind.TASK) "reminder"
+                              else uiState.featureLabel.singular.lowercase()
+            HeaderRow(remindAt = uiState.remindAt, featureWord = featureWord)
 
             Column(
                 modifier = Modifier
@@ -95,7 +99,11 @@ fun ReminderViewScreen(
             ) {
                 when {
                     uiState.loading -> Unit
-                    uiState.missing -> MissingContent(loadFailed = uiState.error != null, onBack = onBack)
+                    uiState.missing -> MissingContent(
+                        featureWord = featureWord,
+                        loadFailed = uiState.error != null,
+                        onBack = onBack,
+                    )
                     else -> NudgeContent(
                         subject = uiState.subject,
                         remindAt = uiState.remindAt,
@@ -126,7 +134,7 @@ fun ReminderViewScreen(
 }
 
 @Composable
-private fun HeaderRow(remindAt: Instant?) {
+private fun HeaderRow(remindAt: Instant?, featureWord: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -135,7 +143,7 @@ private fun HeaderRow(remindAt: Instant?) {
     ) {
         Text(
             text = buildAnnotatedString {
-                append("reminder")
+                append(featureWord)
                 withStyle(SpanStyle(color = NudgeGold)) { append(".") }
             },
             style = MaterialTheme.typography.headlineMedium,
@@ -207,9 +215,9 @@ private fun NudgeContent(
 }
 
 @Composable
-private fun MissingContent(loadFailed: Boolean, onBack: () -> Unit) {
+private fun MissingContent(featureWord: String, loadFailed: Boolean, onBack: () -> Unit) {
     Text(
-        text = "This reminder is gone",
+        text = "This $featureWord is gone",
         style = MaterialTheme.typography.headlineLarge,
         color = NudgeText,
         textAlign = TextAlign.Center,

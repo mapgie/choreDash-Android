@@ -43,6 +43,7 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
+import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 
@@ -309,10 +310,11 @@ private fun SwipeToCompleteReminderCard(
     }
 
     if (showDeleteConfirm) {
+        val featureWord = LocalReminderLabel.current.singular.lowercase()
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete reminder?") },
-            text = { Text("This reminder will be permanently removed.") },
+            title = { Text("Delete $featureWord?") },
+            text = { Text("This $featureWord will be permanently removed.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false

@@ -26,7 +26,9 @@ class BootWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = runCatching {
-        val deliveryMode = settingsRepository.settings.first().deliveryMode
+        val settings = settingsRepository.settings.first()
+        val deliveryMode = settings.deliveryMode
+        val featureWord = settings.reminderLabel.singular
         val now = Instant.now()
 
         val pendingReminders = reminderRepository.pendingReminders()
@@ -64,7 +66,7 @@ class BootWorker @AssistedInject constructor(
                 alarmScheduler.scheduleReminder(reminder.id, reminder.subject, remindAt, reminder.taskId)
             } else {
                 NotificationHelper.showReminderAlert(
-                    applicationContext, reminder.id, reminder.subject, deliveryMode, reminder.taskId
+                    applicationContext, reminder.id, reminder.subject, deliveryMode, reminder.taskId, featureWord
                 )
                 reminderRepository.markReminded(reminder.id)
                 reminder.taskId?.let { taskRepository.markReminded(it) }
