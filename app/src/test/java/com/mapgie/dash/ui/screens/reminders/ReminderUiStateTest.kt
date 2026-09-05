@@ -10,7 +10,8 @@ import org.junit.Test
 
 /**
  * What the Memos list shows for a given [ReminderUiState]: the Active / Done /
- * All split, the sort pill orders, and the "linked to" suffix. Pure state
+ * All split (a once-only memo is done once it has rung; a repeating one is
+ * never done), the sort pill orders, and the "linked to" suffix. Pure state
  * logic, no ViewModel or Android involved. Fire times are far in the past or
  * far in the future so no bucket depends on the wall clock.
  */
@@ -38,37 +39,38 @@ class ReminderUiStateTest {
     private fun ids(list: List<ReminderDto>) = list.map { it.id }
 
     private val upcoming = memo("upcoming")
-    private val rangUnanswered = memo("rang", remindAt = "2020-01-01T08:00:00Z", reminded = true, lastRangAt = "2020-01-01T08:00:00Z")
-    private val completed = memo("completed", remindAt = "2020-01-01T08:00:00Z", reminded = true, completedAt = "2020-01-01T09:00:00Z")
+    private val rang = memo("rang", remindAt = "2020-01-01T08:00:00Z", reminded = true, lastRangAt = "2020-01-01T08:00:00Z")
+    private val completed = memo("completed", remindAt = "2020-01-02T08:00:00Z", reminded = true, completedAt = "2020-01-02T09:00:00Z")
     private val archived = memo("archived", archivedAt = "2026-07-01T00:00:00Z")
     private val weekly = memo(
         "weekly", remindAt = "2099-07-13T07:00:00Z", repeatDays = listOf("MONDAY"),
         lastRangAt = "2020-01-01T07:00:00Z", acknowledgedAt = "2020-01-01T07:05:00Z",
     )
-    private val everything = listOf(upcoming, rangUnanswered, completed, archived, weekly)
+    private val everything = listOf(upcoming, rang, completed, archived, weekly)
 
     // ── Buckets ───────────────────────────────────────────────────────────────
 
     @Test
-    fun `active keeps a memo that rang and was not answered`() {
+    fun `a once-only memo that has rung is done, not active`() {
         val state = ReminderUiState(reminders = everything)
-        assertTrue("rang" in ids(state.active))
+        assertTrue("rang" !in ids(state.active))
+        assertTrue("rang" in ids(state.done))
     }
 
     @Test
-    fun `active excludes completed and archived memos`() {
+    fun `active holds unrung once-only memos and every repeating memo, never archived ones`() {
         val state = ReminderUiState(reminders = everything)
-        assertEquals(listOf("rang", "weekly", "upcoming"), ids(state.active))
+        assertEquals(listOf("weekly", "upcoming"), ids(state.active))
     }
 
     @Test
-    fun `done lists completed once-only memos only`() {
+    fun `done lists once-only memos that rang or were dismissed, soonest ring first`() {
         val state = ReminderUiState(reminders = everything, filter = ReminderFilter.DONE)
-        assertEquals(listOf("completed"), ids(state.displayed))
+        assertEquals(listOf("rang", "completed"), ids(state.displayed))
     }
 
     @Test
-    fun `a repeating memo is never done, even once acknowledged`() {
+    fun `a repeating memo is never done, even after it has rung`() {
         val state = ReminderUiState(reminders = everything)
         assertTrue("weekly" !in ids(state.done))
         assertTrue("weekly" in ids(state.active))
@@ -85,27 +87,27 @@ class ReminderUiStateTest {
     fun `active is the default filter and the chip count matches it`() {
         val state = ReminderUiState(reminders = everything)
         assertEquals(ReminderFilter.ACTIVE, state.filter)
-        assertEquals(3, state.activeCount)
+        assertEquals(2, state.activeCount)
         assertEquals(ids(state.active), ids(state.displayed))
     }
 
     // ── Sort ──────────────────────────────────────────────────────────────────
 
     @Test
-    fun `soonest first puts an unanswered ring before every upcoming ring`() {
+    fun `soonest first orders active memos by their next ring`() {
         val soon = memo("soon", remindAt = "2099-07-11T09:00:00Z")
-        val state = ReminderUiState(reminders = listOf(upcoming, soon, rangUnanswered))
-        assertEquals(listOf("rang", "soon", "upcoming"), ids(state.active))
+        val state = ReminderUiState(reminders = listOf(upcoming, soon, weekly))
+        assertEquals(listOf("soon", "weekly", "upcoming"), ids(state.active))
     }
 
     @Test
     fun `latest first reverses soonest first`() {
         val soon = memo("soon", remindAt = "2099-07-11T09:00:00Z")
         val state = ReminderUiState(
-            reminders = listOf(upcoming, soon, rangUnanswered),
+            reminders = listOf(upcoming, soon, weekly),
             sort = SortOrder(ReminderSortKey.NEXT_RING, reversed = true),
         )
-        assertEquals(listOf("upcoming", "soon", "rang"), ids(state.active))
+        assertEquals(listOf("upcoming", "weekly", "soon"), ids(state.active))
     }
 
     @Test

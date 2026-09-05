@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderScheduleText
-import com.mapgie.dash.data.model.repeats
-import com.mapgie.dash.ui.components.core.DoneToggleChip
+import com.mapgie.dash.data.model.isDone
+import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
@@ -43,7 +43,8 @@ import java.time.Instant
 
 /**
  * List card for a memo (handoff 9a), in the shared card format: a 5dp spine,
- * the 38dp bell chip that doubles as the done toggle, the title, the schedule
+ * the 38dp bell chip (a memo is not ticked; it rings and is snoozed or
+ * dismissed from the alert), the title, the schedule
  * as the meta line ("Weekdays · 8:00 PM · linked to chore", "Once · doesn't
  * repeat") and the next ring as the right-hand badge ("rings tomorrow 9 AM",
  * "rang 2h ago"). Spine, chip and badge take the memo's status tone; a done
@@ -55,13 +56,12 @@ fun ReminderCard(
     reminder: ReminderDto,
     linkedTo: String?,
     onClick: () -> Unit,
-    onToggleDone: () -> Unit,
     modifier: Modifier = Modifier,
     highlightQuery: String? = null,
     inset: Dp = Dimens.cardInset,
     now: Instant = Instant.now(),
 ) {
-    val isDone = !reminder.repeats && reminder.completedAt != null
+    val isDone = reminder.isDone
     val isArchived = reminder.archivedAt != null
     val muted = isDone || isArchived
     val tone = reminder.statusTone(now)
@@ -109,9 +109,7 @@ fun ReminderCard(
             ) {
                 // The bell keeps the memo accent while quiet; a signalling tone takes over.
                 val signalling = tone == StatusTone.CRITICAL || tone == StatusTone.ATTENTION || tone == StatusTone.OK
-                DoneToggleChip(
-                    isDone = isDone,
-                    onToggle = onToggleDone,
+                CardIconChip(
                     icon = LucideIcons.Bell,
                     containerColor = when {
                         muted -> MaterialTheme.colorScheme.surfaceContainerHigh

@@ -46,7 +46,6 @@ import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
-import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 import com.mapgie.dash.ui.components.core.HeaderIconButton
@@ -167,7 +166,6 @@ fun RemindersListScreen(
                             reminder = reminder,
                             linkedTo = uiState.linkedTo(reminder),
                             onClick = { editTargetId = reminder.id },
-                            onToggleDone = { viewModel.markDone(reminder.id) },
                             highlightQuery = query,
                         )
                     }
@@ -237,14 +235,10 @@ fun RemindersListScreen(
                 verticalArrangement = Arrangement.spacedBy(Dimens.cardGap)
             ) {
                 items(displayed, key = { it.id }) { reminder ->
-                    SwipeToCompleteReminderCard(
+                    SwipeToDeleteReminderCard(
                         reminder = reminder,
                         linkedTo = uiState.linkedTo(reminder),
                         onClick = { editTargetId = reminder.id },
-                        onToggleDone = {
-                            if (!reminder.repeats && reminder.completedAt != null) viewModel.markUndone(reminder.id)
-                            else viewModel.markDone(reminder.id)
-                        },
                         onDelete = { viewModel.deleteReminder(reminder.id) }
                     )
                 }
@@ -291,71 +285,45 @@ fun RemindersListScreen(
     }
 }
 
+/** A memo card with swipe-left-to-delete. There is no swipe-to-done: a memo rings, it is not ticked. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeToCompleteReminderCard(
+private fun SwipeToDeleteReminderCard(
     reminder: ReminderDto,
     linkedTo: String?,
     onClick: () -> Unit,
-    onToggleDone: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val isDone = !reminder.repeats && reminder.completedAt != null
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> onToggleDone()
-                SwipeToDismissBoxValue.EndToStart -> showDeleteConfirm = true
-                SwipeToDismissBoxValue.Settled -> {}
-            }
+            if (value == SwipeToDismissBoxValue.EndToStart) showDeleteConfirm = true
             false // never actually dismiss the item
         },
         positionalThreshold = { it * 0.3f }
     )
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = true,
+        enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            when (dismissState.dismissDirection) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = Dimens.cardInset)
-                            .background(
-                                MaterialTheme.colorScheme.errorContainer,
-                                shape = MaterialTheme.shapes.medium
-                            ),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        Text(
-                            "Delete",
-                            modifier = Modifier.padding(end = 24.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-                else -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = Dimens.cardInset)
-                            .background(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                shape = MaterialTheme.shapes.medium
-                            ),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Text(
-                            if (isDone) "Undo" else "Done",
-                            modifier = Modifier.padding(start = 24.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
+            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = Dimens.cardInset)
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Text(
+                        "Delete",
+                        modifier = Modifier.padding(end = 24.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 }
             }
         }
@@ -364,7 +332,6 @@ private fun SwipeToCompleteReminderCard(
             reminder = reminder,
             linkedTo = linkedTo,
             onClick = onClick,
-            onToggleDone = onToggleDone,
         )
     }
 

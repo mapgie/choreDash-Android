@@ -12,11 +12,11 @@ import java.time.ZonedDateTime
  * A memo (the user may call it a reminder or an alarm): a scheduled ring with an
  * optional day-of-week repeat, stored on-device by ReminderRepository.
  *
- * [remindAt] is always the *next* ring. A once-only memo keeps it fixed and is
- * marked [reminded] when it fires; a repeating memo advances it to the next
- * chosen weekday at the same local time each time it rings, so it is never
- * "reminded" and never "completed": its ring is either acknowledged (Done) or
- * still waiting, and the memo retires only through archiving.
+ * [remindAt] is always the *next* ring. A once-only memo keeps it fixed, is
+ * marked [reminded] when it fires, and is then done: you set it, it rings, you
+ * snooze or dismiss. A repeating memo advances it to the next chosen weekday at
+ * the same local time each time it rings, so it is never "reminded" and never
+ * "completed"; it retires only through archiving.
  */
 @Serializable
 data class ReminderDto(
@@ -36,7 +36,7 @@ data class ReminderDto(
     @SerialName("repeat_days") val repeatDays: List<String> = emptyList(),
     /** When the memo last rang; drives the "rang 2h ago" badge. */
     @SerialName("last_rang_at") val lastRangAt: String? = null,
-    /** When the user last dismissed a repeating memo's ring with Done. */
+    /** Kept for records written by 0.31.0; no longer read. */
     @SerialName("acknowledged_at") val acknowledgedAt: String? = null,
     /**
      * The ringtone this memo rings with on the Alarm delivery style, as a content
@@ -62,8 +62,6 @@ private fun parseInstant(raw: String?): Instant? =
 fun ReminderDto.remindAtInstant(): Instant? = parseInstant(remindAt)
 
 fun ReminderDto.lastRangInstant(): Instant? = parseInstant(lastRangAt)
-
-fun ReminderDto.acknowledgedInstant(): Instant? = parseInstant(acknowledgedAt)
 
 fun ReminderDto.isPast(): Boolean =
     remindAtInstant()?.isBefore(Instant.now()) ?: false
@@ -91,21 +89,15 @@ fun ReminderDto.needsScheduling(): Boolean =
     !reminded && completedAt == null && archivedAt == null && remindAtInstant() != null
 
 /**
- * When this memo last rang without the user answering, or null if nothing is
- * waiting. A once-only memo waits from its ring until Done; a repeating memo
- * waits from each ring until the next Done. Legacy once-only records that rang
- * before ring times were stored fall back to their fire time.
+ * True once a once-only memo has had its moment: it rang, or it was marked done
+ * from the notification or ring screen. A repeating memo is never done.
  */
-fun ReminderDto.unacknowledgedRing(): Instant? {
-    if (archivedAt != null) return null
-    if (!repeats) {
-        if (!reminded || completedAt != null) return null
-        return lastRangInstant() ?: remindAtInstant()
-    }
-    val rang = lastRangInstant() ?: return null
-    val acknowledged = acknowledgedInstant()
-    return if (acknowledged == null || acknowledged.isBefore(rang)) rang else null
-}
+val ReminderDto.isDone: Boolean
+    get() = !repeats && (reminded || completedAt != null)
+
+/** When a once-only memo rang, for the Done badge; legacy records fall back to their fire time. */
+fun ReminderDto.rangAt(): Instant? =
+    if (!repeats && reminded) lastRangInstant() ?: remindAtInstant() else null
 
 /**
  * The first instant strictly after [after] that falls on one of [days] at
@@ -146,10 +138,10 @@ fun ReminderDto.withScheduleAligned(now: Instant, zone: ZoneId = ZoneId.systemDe
 }
 
 /**
- * The record after it rings at [now]. A once-only memo is marked reminded. A
- * repeating memo records the ring, leaves it unacknowledged, and arms the next
- * occurrence. A snoozed re-ring arrives while [remindAt] already points at the
- * next occurrence; that one is kept rather than advanced a second time.
+ * The record after it rings at [now]. A once-only memo is marked reminded, which
+ * makes it done. A repeating memo records the ring and arms the next occurrence.
+ * A snoozed re-ring arrives while [remindAt] already points at the next
+ * occurrence; that one is kept rather than advanced a second time.
  */
 fun ReminderDto.afterRing(now: Instant, zone: ZoneId = ZoneId.systemDefault()): ReminderDto {
     val rang = now.toString()
@@ -160,20 +152,9 @@ fun ReminderDto.afterRing(now: Instant, zone: ZoneId = ZoneId.systemDefault()): 
 }
 
 /**
- * The record after Done at [now]. A once-only memo completes. A repeating memo
- * acknowledges the ring that is waiting; with nothing waiting, Done skips the
- * next ring instead, so "Done" before a weekday alarm goes off silences that
- * day only.
+ * The record after Done on the notification or ring screen at [now]. A once-only
+ * memo completes (it is also done once it has rung). A repeating memo has
+ * nothing to record: Done just dismisses this ring, and the next one stays armed.
  */
-fun ReminderDto.afterDone(now: Instant, zone: ZoneId = ZoneId.systemDefault()): ReminderDto {
-    if (!repeats) return copy(completedAt = now.toString())
-    if (unacknowledgedRing() != null) return copy(acknowledgedAt = now.toString())
-    val current = remindAtInstant() ?: return this
-    val from = if (current.isAfter(now)) current else now
-    val next = nextOccurrenceAfter(from, zone) ?: return this
-    return copy(remindAt = next.toString(), reminded = false)
-}
-
-/** Undo of Done: a once-only memo is open again; a repeating memo's last ring is waiting again. */
-fun ReminderDto.afterUndone(): ReminderDto =
-    if (!repeats) copy(completedAt = null) else copy(acknowledgedAt = null)
+fun ReminderDto.afterDone(now: Instant): ReminderDto =
+    if (!repeats) copy(completedAt = now.toString()) else this

@@ -2,6 +2,7 @@ package com.mapgie.dash.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.database.dao.CustomColorThemeDao
 import com.mapgie.dash.data.database.entities.CustomColorTheme
 import com.mapgie.dash.data.model.AddMenuOption
@@ -51,7 +52,13 @@ class SettingsViewModel @Inject constructor(
     private val choreRepository: ChoreRepository,
     private val categoryStyleStore: CategoryStyleStore,
     private val customColorThemeDao: CustomColorThemeDao,
+    private val alarmScheduler: AlarmScheduler,
 ) : ViewModel() {
+
+    /** Settings › Reminders & alerts: ring a test alarm in ten seconds through the real alarm path. */
+    fun ringTestAlarm(subject: String) {
+        alarmScheduler.scheduleTestRing(subject)
+    }
 
     /** The per-device category catalog (order, icons, colours). */
     val catalog: StateFlow<CategoryCatalog> = categoryStyleStore.catalog

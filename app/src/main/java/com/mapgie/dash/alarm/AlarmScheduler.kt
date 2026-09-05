@@ -30,6 +30,17 @@ class AlarmScheduler @Inject constructor(
 ) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+    /**
+     * Arms a test ring [seconds] from now that travels the exact path a memo
+     * does: AlarmManager, AlarmReceiver, the notification, the full-screen ring.
+     * There is no record behind [TEST_REMINDER_ID]; the receiver and the ring
+     * screen know to treat it as a stand-in.
+     */
+    fun scheduleTestRing(subject: String, seconds: Long = 10) {
+        cancelReminder(TEST_REMINDER_ID)
+        scheduleReminder(TEST_REMINDER_ID, subject, Instant.now().plusSeconds(seconds))
+    }
+
     fun scheduleTask(taskId: String, taskTitle: String, reminderAt: Instant) {
         if (reminderAt.isBefore(Instant.now())) return
 
@@ -160,4 +171,9 @@ class AlarmScheduler @Inject constructor(
 
     // Distinct request-code namespace so reminder alarms never collide with task alarms
     private fun reminderRequestCode(reminderId: String): Int = ("reminder_$reminderId").hashCode()
+
+    companion object {
+        /** The id the Settings "test alarm" rings under; no stored record carries it. */
+        const val TEST_REMINDER_ID = "test-alarm"
+    }
 }

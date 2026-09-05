@@ -43,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -83,6 +84,7 @@ import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.permission.PermissionHelper
+import android.app.NotificationManager
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
@@ -462,16 +464,12 @@ private fun AppearanceSubScreen(
                 label = { it.label },
             )
 
-            // WCAG toggle applies to the built-in palettes; custom colours are
-            // applied exactly as picked, so it is hidden while Custom is active.
-            if (selectedAppTheme != AppTheme.CUSTOM) {
-                CozyCheckboxRow(
-                    title = "WCAG accessible colours",
-                    subtitle = "Increases contrast for text and interactive elements",
-                    checked = settings?.wcagMode ?: false,
-                    onCheckedChange = { viewModel.setWcagMode(it) },
-                )
-            }
+            CozyCheckboxRow(
+                title = "WCAG accessible colours",
+                subtitle = "Lifts every text colour to 7:1 on its background, on custom palettes too",
+                checked = settings?.wcagMode ?: false,
+                onCheckedChange = { viewModel.setWcagMode(it) },
+            )
 
             SettingsSectionLabel("Colour palette")
             CompactThemePicker(
@@ -915,6 +913,22 @@ private fun RemindersSubScreen(
     val deliveryModes = listOf("ALARM", "NOTIFICATION", "SILENT")
     val deliveryModeLabels = mapOf("ALARM" to "Alarm", "NOTIFICATION" to "Notification", "SILENT" to "Silent")
 
+    // What the system actually holds for the channel this style posts on. Re-read
+    // on every resume so a change made in system settings shows straight away.
+    var channelRefresh by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) channelRefresh++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val channelStatus = remember(currentDeliveryMode, channelRefresh) {
+        NotificationHelper.channelStatus(context, currentDeliveryMode)
+    }
+    val featureWord = LocalReminderLabel.current.singular
+    var testArmedAt by remember { mutableStateOf<java.time.LocalTime?>(null) }
+
     SettingsSubScreenScaffold(title = "Reminders & alerts", onBack = onBack) { innerPadding ->
         SubScreenColumn(innerPadding) {
             SettingsSectionLabel("Notification style")
@@ -998,8 +1012,62 @@ private fun RemindersSubScreen(
                     color = tone,
                 )
             }
+
+            SettingsHairline(modifier = Modifier.padding(vertical = 4.dp))
+
+            // The two things that decide whether an alert makes a sound, on this phone.
+            SettingsSectionLabel("Sound check")
+            SettingsCard {
+                SettingsNavRow(
+                    title = "Alert channel",
+                    subtitle = channelStatusSummary(channelStatus, currentDeliveryMode),
+                    onClick = { context.startActivity(PermissionHelper.channelSettingsIntent(context, channelStatus.id)) },
+                )
+            }
+            SettingsCaption(
+                "Android fixes a channel's sound and importance when it is first created. " +
+                    "If the channel says silent, tap it and turn the sound back on in system settings."
+            )
+            AccentPillButton(
+                text = "Ring a test ${featureWord.lowercase()} in 10 seconds",
+                onClick = {
+                    viewModel.ringTestAlarm("Test ${featureWord.lowercase()}")
+                    testArmedAt = java.time.LocalTime.now().plusSeconds(10)
+                },
+            )
+            SettingsCaption(
+                testArmedAt?.let { at ->
+                    "Armed for ${at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))}. " +
+                        "It takes the same path a real ${featureWord.lowercase()} does. Lock the phone to test the " +
+                        "Alarm style's full-screen ring; leave it unlocked to hear the heads-up notification."
+                } ?: "Takes the same path a real ${featureWord.lowercase()} does: exact alarm, receiver, notification, " +
+                    "then the full-screen ring if the phone is locked.",
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
     }
+}
+
+/**
+ * Plain words for what the system holds on the alert channel: "Sound on · vibration on ·
+ * importance high · bypasses Do Not Disturb", or the reason it would be silent.
+ */
+private fun channelStatusSummary(status: NotificationHelper.ChannelStatus, deliveryMode: String): String {
+    if (deliveryMode == "SILENT") return "Silent style: no sound or vibration by design"
+    if (!status.exists) return "Not created yet; it is made when the app starts"
+    val importance = when (status.importance) {
+        NotificationManager.IMPORTANCE_HIGH, NotificationManager.IMPORTANCE_MAX -> "importance high"
+        NotificationManager.IMPORTANCE_DEFAULT -> "importance default"
+        NotificationManager.IMPORTANCE_LOW -> "importance low: shows silently"
+        NotificationManager.IMPORTANCE_MIN -> "importance minimal: shows silently"
+        else -> "blocked in system settings"
+    }
+    val parts = mutableListOf<String>()
+    parts += if (status.hasSound) "Sound on" else "Sound OFF in system settings"
+    parts += if (status.vibrates) "vibration on" else "vibration off"
+    parts += importance
+    if (deliveryMode == "ALARM") parts += if (status.bypassesDnd) "bypasses Do Not Disturb" else "does not bypass Do Not Disturb"
+    return parts.joinToString(" · ")
 }
 
 /** Settings › Widget customisation: three segmented controls (Show, Priority, Whose). */

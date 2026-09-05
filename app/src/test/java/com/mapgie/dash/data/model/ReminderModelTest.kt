@@ -101,12 +101,15 @@ class ReminderModelTest {
     }
 
     @Test
-    fun `ringing a once-only memo marks it reminded and records when`() {
-        val rang = reminder(remindAt = "2026-07-10T09:30:00Z").afterRing(now, zone)
+    fun `ringing a once-only memo marks it reminded, and that makes it done`() {
+        val fresh = reminder(remindAt = "2026-07-10T09:30:00Z")
+        assertFalse(fresh.isDone)
+        val rang = fresh.afterRing(now, zone)
         assertTrue(rang.reminded)
         assertEquals(now.toString(), rang.lastRangAt)
         assertEquals("2026-07-10T09:30:00Z", rang.remindAt)
-        assertEquals(now, rang.unacknowledgedRing())
+        assertTrue(rang.isDone)
+        assertEquals(now, rang.rangAt())
     }
 
     @Test
@@ -114,7 +117,8 @@ class ReminderModelTest {
         val rang = reminder(remindAt = "2026-07-10T09:30:00Z", repeatDays = monWedFri).afterRing(now, zone)
         assertFalse(rang.reminded)
         assertEquals("2026-07-13T09:30:00Z", rang.remindAt) // Monday
-        assertEquals(now, rang.unacknowledgedRing())
+        assertFalse(rang.isDone)
+        assertNull(rang.rangAt())
     }
 
     @Test
@@ -128,33 +132,17 @@ class ReminderModelTest {
     }
 
     @Test
-    fun `done completes a once-only memo`() {
-        val done = reminder(remindAt = "2026-07-10T07:00:00Z", reminded = true).afterDone(now, zone)
+    fun `done from the alert completes a once-only memo`() {
+        val done = reminder(remindAt = "2026-07-10T07:00:00Z", reminded = true).afterDone(now)
         assertEquals(now.toString(), done.completedAt)
-        assertNull(done.unacknowledgedRing())
+        assertTrue(done.isDone)
     }
 
     @Test
-    fun `done acknowledges a repeating memo's waiting ring and leaves its next ring alone`() {
-        val waiting = reminder(remindAt = "2026-07-13T07:00:00Z", repeatDays = monWedFri, lastRangAt = "2026-07-10T07:00:00Z")
-        val done = waiting.afterDone(now, zone)
-        assertEquals(now.toString(), done.acknowledgedAt)
-        assertEquals("2026-07-13T07:00:00Z", done.remindAt)
-        assertNull(done.completedAt)
-        assertNull(done.unacknowledgedRing())
-    }
-
-    @Test
-    fun `done with nothing waiting skips the next ring of a repeating memo`() {
-        val quiet = reminder(remindAt = "2026-07-10T19:00:00Z", repeatDays = monWedFri)
-        assertEquals("2026-07-13T19:00:00Z", quiet.afterDone(now, zone).remindAt)
-    }
-
-    @Test
-    fun `undo reopens a once-only memo and un-acknowledges a repeating one`() {
-        assertNull(reminder(completedAt = "2026-07-10T08:00:00Z").afterUndone().completedAt)
-        val ack = reminder(remindAt = "2026-07-13T07:00:00Z", repeatDays = monWedFri, lastRangAt = "2026-07-10T07:00:00Z", acknowledgedAt = "2026-07-10T07:05:00Z")
-        assertEquals(Instant.parse("2026-07-10T07:00:00Z"), ack.afterUndone().unacknowledgedRing())
+    fun `done from the alert leaves a repeating memo and its next ring untouched`() {
+        val weekly = reminder(remindAt = "2026-07-13T07:00:00Z", repeatDays = monWedFri, lastRangAt = "2026-07-10T07:00:00Z")
+        assertEquals(weekly, weekly.afterDone(now))
+        assertFalse(weekly.isDone)
     }
 
     @Test
@@ -172,6 +160,7 @@ class ReminderModelTest {
     @Test
     fun `legacy once-only records that rang before ring times were stored use the fire time`() {
         val legacy = reminder(remindAt = "2026-07-10T07:00:00Z", reminded = true)
-        assertEquals(Instant.parse("2026-07-10T07:00:00Z"), legacy.unacknowledgedRing())
+        assertTrue(legacy.isDone)
+        assertEquals(Instant.parse("2026-07-10T07:00:00Z"), legacy.rangAt())
     }
 }

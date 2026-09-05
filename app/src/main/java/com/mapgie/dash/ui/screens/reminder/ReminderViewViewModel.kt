@@ -108,6 +108,13 @@ class ReminderViewViewModel @Inject constructor(
             _uiState.update { it.copy(loading = false, missing = true) }
             return
         }
+        // The Settings test alarm has no record; it is whatever the intent said it was, ringing now.
+        if (kind == ReminderViewKind.REMINDER && id == AlarmScheduler.TEST_REMINDER_ID) {
+            _uiState.update {
+                it.copy(loading = false, kind = kind, subject = seedSubject ?: "Test alarm", remindAt = Instant.now())
+            }
+            return
+        }
         viewModelScope.launch {
             val result = runCatching {
                 when (kind) {

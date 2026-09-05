@@ -15,7 +15,7 @@ import java.util.Locale
  * list-state tests can pin the buckets.
  */
 enum class ReminderStatus {
-    /** It rang and nobody has answered yet, or a once-only ring was missed. */
+    /** Its time has passed but it has not rung yet (the device was off); it is delivered late. */
     RANG,
 
     /** Rings within the next 24 hours. */
@@ -24,7 +24,7 @@ enum class ReminderStatus {
     /** Rings later than that. */
     UPCOMING,
 
-    /** A once-only memo that was marked Done. */
+    /** A once-only memo that has rung, or was marked Done. */
     DONE,
 }
 
@@ -98,21 +98,19 @@ object ReminderScheduleText {
 
     /** Which urgency bucket the memo is in at [now]. */
     fun status(reminder: ReminderDto, now: Instant): ReminderStatus {
-        if (!reminder.repeats && reminder.completedAt != null) return ReminderStatus.DONE
-        if (reminder.unacknowledgedRing() != null) return ReminderStatus.RANG
+        if (reminder.isDone) return ReminderStatus.DONE
         val next = reminder.remindAtInstant() ?: return ReminderStatus.UPCOMING
         if (!next.isAfter(now)) return ReminderStatus.RANG
         return if (ChronoUnit.HOURS.between(now, next) < 24) ReminderStatus.DUE_SOON else ReminderStatus.UPCOMING
     }
 
     /**
-     * The card's right-hand badge: "rang 2h ago", "due 3h ago" (missed while
-     * the device was off), "rings today 8 PM", "rings tomorrow 9 AM",
-     * "rings Wed 7 AM", "rings 12 Oct 9 AM", or "done".
+     * The card's right-hand badge: "rings today 8 PM", "rings tomorrow 9 AM",
+     * "rings Wed 7 AM", "rings 12 Oct 9 AM"; "due 3h ago" for a ring the device
+     * slept through; and for a done once-only memo "rang 2h ago" or "done".
      */
     fun nextRingBadge(reminder: ReminderDto, now: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
-        if (!reminder.repeats && reminder.completedAt != null) return "done"
-        reminder.unacknowledgedRing()?.let { return "rang ${ago(it, now)}" }
+        if (reminder.isDone) return reminder.rangAt()?.let { "rang ${ago(it, now)}" } ?: "done"
         val next = reminder.remindAtInstant() ?: return "no time set"
         if (!next.isAfter(now)) return "due ${ago(next, now)}"
         return "rings " + whenLabel(next, now, zone)

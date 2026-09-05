@@ -178,15 +178,14 @@ class TaskUiStateTest {
     // ── Zen rows ──────────────────────────────────────────────────────────────
 
     @Test
-    fun `zen shows open tasks then anything finished today, never older done tasks`() {
-        // Noon today and noon three days ago cannot cross midnight during the run.
+    fun `zen shows only open tasks, so a ticked task leaves the list`() {
+        // Noon today cannot cross midnight during the run.
         val zone = ZoneId.systemDefault()
         val noonToday = LocalDate.now(zone).atTime(12, 0).atZone(zone).toInstant().toString()
-        val noonThreeDaysAgo = LocalDate.now(zone).minusDays(3).atTime(12, 0).atZone(zone).toInstant().toString()
         val open = task("open")
         val doneToday = task("done_today", completedAt = noonToday)
-        val doneEarlier = task("done_earlier", completedAt = noonThreeDaysAgo)
-        val state = TaskUiState(tasks = listOf(doneEarlier, doneToday, open), zenMode = true)
-        assertEquals(listOf("open", "done_today"), ids(state.zenRows))
+        val state = TaskUiState(tasks = listOf(doneToday, open), zenMode = true)
+        assertEquals(listOf("open"), ids(state.zenRows))
+        assertEquals(listOf("done_today"), ids(state.doneTasks))
     }
 }

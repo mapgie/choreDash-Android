@@ -59,6 +59,12 @@ object PermissionHelper {
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
 
+    /** Opens the system settings page for one of this app's notification channels. */
+    fun channelSettingsIntent(context: Context, channelId: String): Intent =
+        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
+
     /** Opens the system "Do Not Disturb access" page where this app can be allowed. */
     fun dndAccessSettingsIntent(context: Context): Intent =
         Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
