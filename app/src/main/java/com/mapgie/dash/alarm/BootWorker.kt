@@ -66,7 +66,8 @@ class BootWorker @AssistedInject constructor(
                 alarmScheduler.scheduleReminder(reminder.id, reminder.subject, remindAt, reminder.taskId)
             } else {
                 NotificationHelper.showReminderAlert(
-                    applicationContext, reminder.id, reminder.subject, deliveryMode, reminder.taskId, featureWord
+                    applicationContext, reminder.id, reminder.subject, deliveryMode, reminder.taskId, featureWord,
+                    reminder.sound,
                 )
                 reminderRepository.recordRing(reminder.id)?.let { alarmScheduler.syncReminder(it) }
                 reminder.taskId?.let { taskRepository.markReminded(it) }

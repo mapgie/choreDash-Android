@@ -1,5 +1,6 @@
 package com.mapgie.dash.alarm
 
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -8,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_SOUND
 import com.mapgie.dash.ui.screens.reminder.ReminderViewScreen
 import com.mapgie.dash.ui.theme.DashTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -57,7 +59,8 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        ringer.start()
+        // The memo's own tone when it has one; the default alarm tone otherwise.
+        ringer.start(intent.getStringExtra(REMINDER_VIEW_ARG_SOUND)?.let(Uri::parse))
     }
 
     // Leaving the screen for any reason (Done, Snooze, back, the power button,

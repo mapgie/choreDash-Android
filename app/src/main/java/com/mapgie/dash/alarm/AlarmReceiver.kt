@@ -42,7 +42,11 @@ class AlarmReceiver : BroadcastReceiver() {
                     // and must be handled as a reminder, not an old-style task alarm.
                     reminderId != null -> {
                         val subject = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_SUBJECT) ?: featureWord
-                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord)
+                        // The memo's own tone is read at fire time so a change applies to an armed alarm.
+                        val sound = runCatching {
+                            reminderRepository.loadReminders().firstOrNull { it.id == reminderId }?.sound
+                        }.getOrNull()
+                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord, sound)
                         try {
                             // A repeating memo comes back with its next ring armed; a
                             // once-only one is now spent and syncReminder just clears it.

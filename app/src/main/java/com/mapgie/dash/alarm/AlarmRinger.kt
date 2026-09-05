@@ -27,9 +27,10 @@ class AlarmRinger(private val context: Context) {
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
 
-    fun start() {
+    /** Rings with [preferred] when it can be played, else with the device defaults. */
+    fun start(preferred: Uri? = null) {
         if (player != null) return
-        startSound()
+        startSound(preferred)
         startVibration()
     }
 
@@ -43,10 +44,11 @@ class AlarmRinger(private val context: Context) {
         vibrator = null
     }
 
-    // The alarm tone first; a device with no alarm tone set falls back to the
-    // ringtone, then the notification sound, rather than ringing silently.
-    private fun startSound() {
-        val candidates = listOf(
+    // The memo's own tone first (a user-added file it can no longer read simply
+    // falls through), then the alarm tone; a device with no alarm tone set falls
+    // back to the ringtone, then the notification sound, rather than ringing silently.
+    private fun startSound(preferred: Uri?) {
+        val candidates = listOfNotNull(preferred) + listOf(
             RingtoneManager.TYPE_ALARM,
             RingtoneManager.TYPE_RINGTONE,
             RingtoneManager.TYPE_NOTIFICATION,

@@ -38,6 +38,12 @@ data class ReminderDto(
     @SerialName("last_rang_at") val lastRangAt: String? = null,
     /** When the user last dismissed a repeating memo's ring with Done. */
     @SerialName("acknowledged_at") val acknowledgedAt: String? = null,
+    /**
+     * The ringtone this memo rings with on the Alarm delivery style, as a content
+     * URI string; null means the device's default alarm tone. The Notification
+     * style plays its channel's sound regardless (Android fixes channel sounds).
+     */
+    @SerialName("sound") val sound: String? = null,
 )
 
 @Serializable
@@ -47,6 +53,7 @@ data class ReminderInsert(
     @SerialName("chore_id") val choreId: String? = null,
     @SerialName("task_id") val taskId: String? = null,
     @SerialName("repeat_days") val repeatDays: List<String> = emptyList(),
+    @SerialName("sound") val sound: String? = null,
 )
 
 private fun parseInstant(raw: String?): Instant? =

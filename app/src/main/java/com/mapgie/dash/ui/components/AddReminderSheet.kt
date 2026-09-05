@@ -1,5 +1,11 @@
 package com.mapgie.dash.ui.components
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +59,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.IntentCompat
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDraft
 import com.mapgie.dash.data.model.ReminderDto
@@ -157,6 +165,8 @@ fun AddReminderSheet(
     var repeatDaysRaw by rememberSaveable { mutableStateOf(opened.repeatDays.joinToString(",")) }
     var choreId by rememberSaveable { mutableStateOf(opened.choreId) }
     var taskId by rememberSaveable { mutableStateOf(opened.taskId) }
+    // Ringtone URI for the Alarm style; blank is the device's default alarm tone.
+    var sound by rememberSaveable { mutableStateOf(opened.sound) }
 
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -186,6 +196,7 @@ fun AddReminderSheet(
         repeatDays = effectiveDays.sorted().map { it.name },
         choreId = choreId,
         taskId = taskId,
+        sound = sound,
     )
     val isDirty = currentDraft.differsFrom(opened)
     val canSave = subject.isNotBlank() && !(repeatOn && days.isEmpty())
@@ -202,6 +213,7 @@ fun AddReminderSheet(
         repeatDaysRaw = restored.repeatDays.joinToString(",")
         choreId = restored.choreId
         taskId = restored.taskId
+        sound = restored.sound
         offeredDraft = null
     }
 
@@ -239,6 +251,7 @@ fun AddReminderSheet(
         choreId = choreId.ifBlank { null },
         taskId = taskId.ifBlank { null },
         repeatDays = effectiveDays.sorted().map { it.name },
+        sound = sound.ifBlank { null },
     )
 
     fun setDays(next: Set<DayOfWeek>) {
@@ -251,6 +264,35 @@ fun AddReminderSheet(
         chores.isNotEmpty() && tasks.isEmpty() -> "Linked chore"
         tasks.isNotEmpty() && chores.isEmpty() -> "Linked task"
         else -> "Linked to"
+    }
+    val context = LocalContext.current
+    val defaultAlarmUri = remember { RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) }
+    // The system picker, limited to alarm tones with the default offered and no
+    // Silent entry (silence is the Silent delivery style, not a per-memo choice).
+    val soundPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val data = result.data ?: return@rememberLauncherForActivityResult
+        val picked = IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        sound = if (picked == null || picked == defaultAlarmUri) "" else picked.toString()
+    }
+    val soundTitle = remember(sound) {
+        if (sound.isBlank()) "Default"
+        else runCatching { RingtoneManager.getRingtone(context, Uri.parse(sound))?.getTitle(context) }
+            .getOrNull()?.takeIf { it.isNotBlank() } ?: "Custom"
+    }
+    fun openSoundPicker() {
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "$featureWord sound")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, defaultAlarmUri)
+            putExtra(
+                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                if (sound.isBlank()) defaultAlarmUri else Uri.parse(sound),
+            )
+        }
+        runCatching { soundPicker.launch(intent) }
     }
     val timeText = ReminderScheduleText.time(ringAt.toLocalTime())
     val dateText = ringAt.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
@@ -385,9 +427,17 @@ fun AddReminderSheet(
                 }
             }
 
-            // What the memo hangs off. (The Sound row of the design arrives with per-memo sounds.)
-            if (chores.isNotEmpty() || tasks.isNotEmpty()) {
-                SheetBlock {
+            // Sound, then what the memo hangs off.
+            SheetBlock {
+                SettingsRow(icon = LucideIcons.Volume2, label = "Sound") {
+                    ValueChip(
+                        text = soundTitle,
+                        onClick = { openSoundPicker() },
+                        contentDescription = "Sound: $soundTitle. Change sound",
+                    )
+                }
+                if (chores.isNotEmpty() || tasks.isNotEmpty()) {
+                    SheetRowDivider()
                     SettingsRow(icon = LucideIcons.Home, label = linkLabel) {
                         Box {
                             ValueChip(
@@ -417,6 +467,12 @@ fun AddReminderSheet(
                     }
                 }
             }
+            Text(
+                text = "The sound plays with the Alarm style. The Notification style uses its channel's sound.",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = tokens.inkFaint,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
 
             NextRingBanner(nextRing = nextRing, now = now, zone = zone, repeating = repeatOn)
 
