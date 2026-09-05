@@ -13,9 +13,8 @@ import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.remindAtInstant
-import com.mapgie.dash.data.model.repeats
-import com.mapgie.dash.data.model.unacknowledgedRing
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -40,11 +39,10 @@ enum class ReminderFilter(val label: String) {
  * What the Memos list shows. Pure state so `ReminderUiStateTest` can pin the
  * buckets and orders without a ViewModel or Android.
  *
- * Active means "still has a ring to give or a ring to answer": a memo that rang
- * and was not answered stays here (badge "rang 2h ago"), and a repeating memo
- * is always here until archived. Done holds completed once-only memos. All is
- * everything, archived included; there is no Archived tab (archiving lives in
- * the edit sheet).
+ * Active means "still has a ring to give": a once-only memo until it rings, a
+ * repeating memo until it is archived. Done holds once-only memos that have rung
+ * (or were dismissed as done). All is everything, archived included; there is
+ * no Archived tab (archiving lives in the edit sheet).
  */
 data class ReminderUiState(
     val loading: Boolean = true,
@@ -56,13 +54,11 @@ data class ReminderUiState(
     val filter: ReminderFilter = ReminderFilter.ACTIVE,
     val sort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
 ) {
-    private fun ReminderDto.isDone(): Boolean = !repeats && completedAt != null
-
     val active: List<ReminderDto>
-        get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone() })
+        get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone })
 
     val done: List<ReminderDto>
-        get() = sorted(reminders.filter { it.archivedAt == null && it.isDone() })
+        get() = sorted(reminders.filter { it.archivedAt == null && it.isDone })
 
     val all: List<ReminderDto>
         get() = sorted(reminders)
@@ -95,8 +91,7 @@ data class ReminderUiState(
 
     private fun sorted(list: List<ReminderDto>): List<ReminderDto> {
         val ordered = when (sort.key) {
-            // A ring that is waiting sorts by when it rang, so it heads the list.
-            ReminderSortKey.NEXT_RING -> list.sortedBy { it.unacknowledgedRing() ?: it.remindAtInstant() ?: Instant.MAX }
+            ReminderSortKey.NEXT_RING -> list.sortedBy { it.remindAtInstant() ?: Instant.MAX }
             ReminderSortKey.NAME -> list.sortedBy { it.subject.lowercase() }
             ReminderSortKey.CREATED -> list.sortedByDescending { it.createdAt }
         }
@@ -162,29 +157,6 @@ class RemindersListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 alarmScheduler.syncReminder(reminderRepository.addReminder(insert))
-                load()
-            }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
-            }
-        }
-    }
-
-    fun markDone(id: String) {
-        viewModelScope.launch {
-            runCatching {
-                // A repeating memo comes back with its next ring still armed.
-                reminderRepository.markDone(id)?.let { alarmScheduler.syncReminder(it) }
-                load()
-            }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
-            }
-        }
-    }
-
-    fun markUndone(id: String) {
-        viewModelScope.launch {
-            runCatching {
-                reminderRepository.markUndone(id)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }

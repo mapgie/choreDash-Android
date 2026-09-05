@@ -101,15 +101,15 @@ class ReminderScheduleTest {
     // ── Status bucket ─────────────────────────────────────────────────────────
 
     @Test
-    fun `a ring nobody answered is RANG`() {
+    fun `a once-only memo that rang is DONE, a repeating one that rang is judged by its next ring`() {
         val once = memo("2026-07-10T07:30:00Z", reminded = true, lastRangAt = "2026-07-10T07:30:00Z")
-        assertEquals(ReminderStatus.RANG, ReminderScheduleText.status(once, now))
+        assertEquals(ReminderStatus.DONE, ReminderScheduleText.status(once, now))
         val repeating = memo("2026-07-13T07:00:00Z", names(monWedFri), lastRangAt = "2026-07-10T07:00:00Z")
-        assertEquals(ReminderStatus.RANG, ReminderScheduleText.status(repeating, now))
+        assertEquals(ReminderStatus.UPCOMING, ReminderScheduleText.status(repeating, now))
     }
 
     @Test
-    fun `a missed once-only ring the device slept through is RANG`() {
+    fun `a once-only ring the device slept through is RANG until it is delivered`() {
         assertEquals(ReminderStatus.RANG, ReminderScheduleText.status(memo("2026-07-10T06:30:00Z"), now))
     }
 
@@ -117,15 +117,6 @@ class ReminderScheduleTest {
     fun `within 24 hours is DUE_SOON, beyond it UPCOMING`() {
         assertEquals(ReminderStatus.DUE_SOON, ReminderScheduleText.status(memo("2026-07-10T21:30:00Z"), now))
         assertEquals(ReminderStatus.UPCOMING, ReminderScheduleText.status(memo("2026-07-11T21:30:00Z"), now))
-    }
-
-    @Test
-    fun `an acknowledged repeating ring is judged by its next ring`() {
-        val m = memo(
-            "2026-07-13T07:00:00Z", names(monWedFri),
-            lastRangAt = "2026-07-10T07:00:00Z", acknowledgedAt = "2026-07-10T07:05:00Z",
-        )
-        assertEquals(ReminderStatus.UPCOMING, ReminderScheduleText.status(m, now))
     }
 
     @Test
@@ -137,9 +128,11 @@ class ReminderScheduleTest {
     // ── Badge ─────────────────────────────────────────────────────────────────
 
     @Test
-    fun `badge says how long ago an unanswered ring was`() {
-        val m = memo("2026-07-13T07:00:00Z", names(monWedFri), lastRangAt = "2026-07-10T07:30:00Z")
+    fun `a done once-only memo's badge says when it rang`() {
+        val m = memo("2026-07-10T07:30:00Z", reminded = true, lastRangAt = "2026-07-10T07:30:00Z")
         assertEquals("rang 2h ago", ReminderScheduleText.nextRingBadge(m, now, zone))
+        val repeating = memo("2026-07-13T07:00:00Z", names(monWedFri), lastRangAt = "2026-07-10T07:30:00Z")
+        assertEquals("rings Mon 7 AM", ReminderScheduleText.nextRingBadge(repeating, now, zone))
     }
 
     @Test
@@ -152,10 +145,10 @@ class ReminderScheduleTest {
     }
 
     @Test
-    fun `badge says due when a once-only ring was missed and done once completed`() {
+    fun `badge says due when a once-only ring was missed, and done when dismissed before ringing`() {
         assertEquals("due 3h ago", ReminderScheduleText.nextRingBadge(memo("2026-07-10T06:30:00Z"), now, zone))
-        val done = memo("2026-07-10T06:30:00Z", reminded = true, completedAt = "2026-07-10T07:00:00Z")
-        assertEquals("done", ReminderScheduleText.nextRingBadge(done, now, zone))
+        val dismissed = memo("2026-07-11T06:30:00Z", completedAt = "2026-07-10T07:00:00Z")
+        assertEquals("done", ReminderScheduleText.nextRingBadge(dismissed, now, zone))
     }
 
     // ── Sheet banner ──────────────────────────────────────────────────────────

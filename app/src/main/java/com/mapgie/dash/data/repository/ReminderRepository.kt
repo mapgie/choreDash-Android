@@ -11,7 +11,6 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.afterDone
 import com.mapgie.dash.data.model.afterRing
-import com.mapgie.dash.data.model.afterUndone
 import com.mapgie.dash.data.model.needsScheduling
 import com.mapgie.dash.data.model.withScheduleAligned
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -73,15 +72,12 @@ class ReminderRepository @Inject constructor(
     }
 
     /**
-     * Done. A once-only memo completes; a repeating one acknowledges its waiting
-     * ring or, with nothing waiting, skips its next ring (see [afterDone]). The
-     * returned record's alarm must be re-synced by the caller.
+     * Done from the notification or ring screen. A once-only memo completes; a
+     * repeating one is unchanged, its next ring stays armed (see [afterDone]).
+     * The returned record's alarm must be re-synced by the caller.
      */
     suspend fun markDone(id: String): ReminderDto? =
         update(id) { it.afterDone(Instant.now()) }
-
-    suspend fun markUndone(id: String): ReminderDto? =
-        update(id) { it.afterUndone() }
 
     /**
      * Records that the memo just rang. A repeating memo comes back with its
