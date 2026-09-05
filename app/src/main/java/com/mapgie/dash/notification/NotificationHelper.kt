@@ -108,6 +108,35 @@ object NotificationHelper {
     private fun alarmIdFor(baseId: String, dndActive: Boolean): String =
         if (dndActive) baseId + ALARM_DND_SUFFIX else baseId
 
+    /**
+     * What Android currently holds for the channel a delivery mode posts memos and
+     * task reminders on. Channel settings are the system's once created (LESSONS
+     * #17), so this is the only honest answer to "why was that silent".
+     */
+    data class ChannelStatus(
+        val id: String,
+        val exists: Boolean,
+        val importance: Int,
+        val hasSound: Boolean,
+        val vibrates: Boolean,
+        val bypassesDnd: Boolean,
+    )
+
+    fun channelStatus(context: Context, deliveryMode: String): ChannelStatus {
+        val id = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = nm.getNotificationChannel(id)
+            ?: return ChannelStatus(id, exists = false, importance = 0, hasSound = false, vibrates = false, bypassesDnd = false)
+        return ChannelStatus(
+            id = id,
+            exists = true,
+            importance = channel.importance,
+            hasSound = channel.sound != null,
+            vibrates = channel.shouldVibrate(),
+            bypassesDnd = channel.canBypassDnd(),
+        )
+    }
+
     fun channelId(kind: ReminderKind, deliveryMode: String): String {
         val style = styleForDeliveryMode(deliveryMode)
         val base = channelDefs.first { it.kind == kind && it.style == style }.id
