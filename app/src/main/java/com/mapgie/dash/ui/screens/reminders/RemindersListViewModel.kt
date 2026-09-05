@@ -9,7 +9,6 @@ import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.isPast
-import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
 import javax.inject.Inject
 
 data class ReminderUiState(
@@ -91,10 +89,7 @@ class RemindersListViewModel @Inject constructor(
     fun addReminder(insert: ReminderInsert) {
         viewModelScope.launch {
             runCatching {
-                val reminder = reminderRepository.addReminder(insert)
-                reminder.remindAtInstant()?.let { at ->
-                    alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
-                }
+                alarmScheduler.syncReminder(reminderRepository.addReminder(insert))
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
@@ -105,8 +100,8 @@ class RemindersListViewModel @Inject constructor(
     fun markDone(id: String) {
         viewModelScope.launch {
             runCatching {
-                alarmScheduler.cancelReminder(id)
-                reminderRepository.markDone(id)
+                // A repeating memo comes back with its next ring still armed.
+                reminderRepository.markDone(id)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
@@ -117,14 +112,7 @@ class RemindersListViewModel @Inject constructor(
     fun markUndone(id: String) {
         viewModelScope.launch {
             runCatching {
-                reminderRepository.markUndone(id)
-                _uiState.value.reminders.find { it.id == id }?.let { reminder ->
-                    reminder.remindAtInstant()?.let { at ->
-                        if (at.isAfter(Instant.now())) {
-                            alarmScheduler.scheduleReminder(id, reminder.subject, at)
-                        }
-                    }
-                }
+                reminderRepository.markUndone(id)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
@@ -135,15 +123,7 @@ class RemindersListViewModel @Inject constructor(
     fun editReminder(id: String, insert: ReminderInsert) {
         viewModelScope.launch {
             runCatching {
-                alarmScheduler.cancelReminder(id)
-                val reminder = reminderRepository.updateReminder(id, insert)
-                if (reminder.completedAt == null) {
-                    reminder.remindAtInstant()?.let { at ->
-                        if (at.isAfter(Instant.now())) {
-                            alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
-                        }
-                    }
-                }
+                alarmScheduler.syncReminder(reminderRepository.updateReminder(id, insert))
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
@@ -154,20 +134,8 @@ class RemindersListViewModel @Inject constructor(
     fun archiveReminder(id: String, archived: Boolean) {
         viewModelScope.launch {
             runCatching {
-                if (archived) {
-                    alarmScheduler.cancelReminder(id)
-                } else {
-                    _uiState.value.reminders.find { it.id == id }?.let { reminder ->
-                        if (reminder.completedAt == null) {
-                            reminder.remindAtInstant()?.let { at ->
-                                if (at.isAfter(Instant.now())) {
-                                    alarmScheduler.scheduleReminder(id, reminder.subject, at)
-                                }
-                            }
-                        }
-                    }
-                }
-                reminderRepository.archiveReminder(id, archived)
+                // Archiving disarms the alarm; unarchiving re-arms whatever is still pending.
+                reminderRepository.archiveReminder(id, archived)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }

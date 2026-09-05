@@ -1081,3 +1081,32 @@ General rule: any callback handed to a Material component that the component
 may `remember` (nested-scroll connections, gesture detectors, dialog wrappers)
 must read mutable decisions through `State`, not through values captured at
 creation. A computed `val isDirty` is exactly the kind of value that goes stale.
+
+---
+
+## 50. A repeating alarm's "next ring" must survive its own snooze: never advance it twice
+
+Memos gained a weekly repeat (turn 9a). The obvious model is "when it rings,
+move `remindAt` to the next chosen weekday and arm that". It has a hole: the
+notification's Snooze re-arms the *same* PendingIntent (same request code, same
+URI) fifteen minutes out, so the snoozed re-ring arrives with `remindAt`
+already pointing at the next occurrence. Advancing again on that second fire
+skips a whole day, and there is no error, just a missing alarm.
+
+Rule: on a ring, advance only when the stored ring is in the past. If
+`remindAt` is already in the future, this fire was a re-ring (snooze), so keep
+it and let the caller re-arm it (`ReminderDto.afterRing`, pinned by
+`a snoozed re-ring keeps the next ring that is already armed`). The same shape
+applies to any "recurring alarm + snooze on the same PendingIntent" pair.
+
+Two companions from the same change:
+- Keep one entry point for arming (`AlarmScheduler.syncReminder`): cancel, then
+  schedule if the record still has a future ring. Every mutation (save, Done,
+  ring, archive, undo) calls it with the record it just produced. The four
+  hand-rolled cancel/schedule sequences in the list ViewModel each had a
+  slightly different idea of when to re-arm.
+- Decide what "Done" means for a recurring item before building the list around
+  it. Here: Done acknowledges the ring that is waiting; with nothing waiting it
+  skips the next ring. A repeating memo is never "completed"; it retires
+  through Archive. Writing that down first is what made the badge logic
+  ("rang 2h ago" vs "rings Wed 7 AM") a pure function.
