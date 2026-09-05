@@ -1,9 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "Memos can now carry a weekly repeat schedule: a repeating memo re-arms itself for the next chosen day after it rings, and Done acknowledges the ring that is waiting instead of retiring the memo"
-  ],
-  "fixed": [
-    "Snoozing a memo, then answering it, no longer risks the alarm being re-armed inconsistently: every save, Done, ring and archive now re-syncs the alarm the same way"
-  ]
-}

@@ -31,6 +31,29 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.31.0] - 2026-09-05
+
+### Added
+- Memos can repeat on chosen days of the week: the edit sheet has a Repeat toggle, S M T W T F S day cells and Weekdays / Weekends / Every day shortcuts, and a Next ring banner shows when it will go off
+- Memos can now carry a weekly repeat schedule: a repeating memo re-arms itself for the next chosen day after it rings, and Done acknowledges the ring that is waiting instead of retiring the memo
+- Each memo can have its own alarm sound: a Sound row in the memo sheet opens the device's alarm-tone picker, and the Alarm style rings with the chosen tone (the Notification style keeps its channel sound)
+
+### Changed
+- Settings > Colours now sets the spine and due badge and the round icon independently: each can follow severity or the category colour, so the default shows urgency on the spine and what the chore is on the icon
+- The Colours preview shows three real cards (overdue, due soon, fresh) with the current choice named, and a swatch row to try a category colour against the severity tints
+- An existing "colour chores by" choice carries over to both elements, so nothing changes until you touch the new setting
+- The memo sheet now uses the same layout as the chore and task sheets: the title is the input, the time is a large serif value, and Archive and Delete are centred links under Cancel and Save
+- Unsaved memo edits survive rotation and process death and are offered back when the sheet is reopened, like chore and task edits
+- The Memos list now uses the same layout as Chores and Tasks: a search action in the header, Active / Done / All filter chips (Active by default, with a count) and a sort pill (next ring, name, or added)
+- Memo cards show the schedule as their caption ("Weekdays · 8:00 PM", "Once · doesn't repeat") and the next ring as their badge ("rings tomorrow 9 AM"), coloured rose, amber or sage by how soon it is
+- A memo that has rung stays in the Active list with a "rang 2h ago" badge until you mark it done, instead of dropping straight into Done
+- The collapsible Archived section is gone; archived memos appear, muted, under the All chip, and archiving still lives in the edit sheet
+
+### Fixed
+- The name chosen for the reminders feature (Reminders, Alarms or Memos) is now used everywhere it is named: the add and edit sheet, delete confirmations, the notification title, the ringing screen, the Next Up widget and the Settings captions
+- Snoozing a memo, then answering it, no longer risks the alarm being re-armed inconsistently: every save, Done, ring and archive now re-syncs the alarm the same way
+
+---
 ## [0.30.0] - 2026-09-04
 
 ### Added

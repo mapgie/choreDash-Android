@@ -1,9 +1,0 @@
-{
-  "bump": "minor",
-  "changed": [
-    "The Memos list now uses the same layout as Chores and Tasks: a search action in the header, Active / Done / All filter chips (Active by default, with a count) and a sort pill (next ring, name, or added)",
-    "Memo cards show the schedule as their caption (\"Weekdays · 8:00 PM\", \"Once · doesn't repeat\") and the next ring as their badge (\"rings tomorrow 9 AM\"), coloured rose, amber or sage by how soon it is",
-    "A memo that has rung stays in the Active list with a \"rang 2h ago\" badge until you mark it done, instead of dropping straight into Done",
-    "The collapsible Archived section is gone; archived memos appear, muted, under the All chip, and archiving still lives in the edit sheet"
-  ]
-}

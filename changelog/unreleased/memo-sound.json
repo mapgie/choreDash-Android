@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "Each memo can have its own alarm sound: a Sound row in the memo sheet opens the device's alarm-tone picker, and the Alarm style rings with the chosen tone (the Notification style keeps its channel sound)"
-  ]
-}

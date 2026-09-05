@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "The name chosen for the reminders feature (Reminders, Alarms or Memos) is now used everywhere it is named: the add and edit sheet, delete confirmations, the notification title, the ringing screen, the Next Up widget and the Settings captions"
-  ]
-}
