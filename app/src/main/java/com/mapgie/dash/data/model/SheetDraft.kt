@@ -122,3 +122,47 @@ data class TaskDraft(
         }
     }
 }
+
+/**
+ * Everything the edit-alarm sheet can change, as plain values. The ring is
+ * epoch millis at whole-minute precision; [repeatDays] holds [java.time.DayOfWeek]
+ * names, sorted, and is empty for a once-only memo. Blank link ids mean "none".
+ */
+@Serializable
+data class ReminderDraft(
+    val subject: String = "",
+    val ringAtEpochMillis: Long = 0L,
+    val repeatDays: List<String> = emptyList(),
+    val choreId: String = "",
+    val taskId: String = "",
+) {
+    /** True when any field differs from [opened], the values the sheet started with. */
+    fun differsFrom(opened: ReminderDraft): Boolean = this != opened
+
+    /** The name to say when offering this draft back: the title typed so far, if any. */
+    fun displayName(): String? = subject.trim().ifBlank { null }
+
+    companion object {
+        /**
+         * The values the sheet opens with: [existing]'s own fields, or the New memo
+         * defaults (the seeded subject and link from a chore or task's Remind
+         * button, ringing this time tomorrow) when [existing] is null.
+         */
+        fun of(
+            existing: ReminderDto?,
+            initialSubject: String? = null,
+            initialChoreId: String? = null,
+            initialTaskId: String? = null,
+            now: Instant = Instant.now(),
+        ): ReminderDraft {
+            val ringAt = existing?.remindAtInstant() ?: now.plus(1, ChronoUnit.DAYS)
+            return ReminderDraft(
+                subject = existing?.subject ?: initialSubject ?: "",
+                ringAtEpochMillis = ringAt.truncatedTo(ChronoUnit.MINUTES).toEpochMilli(),
+                repeatDays = (existing?.repeatDaySet() ?: emptySet()).sorted().map { it.name },
+                choreId = existing?.choreId ?: initialChoreId ?: "",
+                taskId = existing?.taskId ?: initialTaskId ?: "",
+            )
+        }
+    }
+}

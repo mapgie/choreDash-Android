@@ -1,9 +1,12 @@
 package com.mapgie.dash.ui.screens.reminders
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.DraftStore
+import com.mapgie.dash.data.model.ReminderDraft
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ReminderLabelStyle
@@ -103,6 +106,7 @@ data class ReminderUiState(
 
 @HiltViewModel
 class RemindersListViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val reminderRepository: ReminderRepository,
     private val choreRepository: ChoreRepository,
     private val taskRepository: TaskRepository,
@@ -112,6 +116,13 @@ class RemindersListViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ReminderUiState())
     val uiState: StateFlow<ReminderUiState> = _uiState.asStateFlow()
+
+    /**
+     * Unsaved edit-alarm sheet drafts by memo id (or NEW_DRAFT_KEY for the New
+     * sheet), kept in saved state so they outlive rotation and process death
+     * within the session. The sheet offers them back; it never auto-applies.
+     */
+    val reminderDrafts = DraftStore(savedStateHandle, "reminder_drafts", ReminderDraft.serializer())
 
     init {
         viewModelScope.launch {

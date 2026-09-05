@@ -347,6 +347,23 @@ object LucideIcons {
         )
     }
 
+    /** Clock face: the Time row of the edit-alarm sheet. */
+    val Clock: ImageVector by lazy {
+        lucide("Clock", listOf(circle(12f, 12f, 10f), "M12 6v6l4 2"))
+    }
+
+    /** Speaker with two sound waves: the Sound row of the edit-alarm sheet. */
+    val Volume2: ImageVector by lazy {
+        lucide(
+            "Volume2",
+            listOf(
+                "M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z",
+                "M16 9a5 5 0 0 1 0 6",
+                "M19.4 18.4a9 9 0 0 0 0-12.7",
+            ),
+        )
+    }
+
     /** Resolves the drawable for a persisted [CategoryIcon]. */
     fun forCategory(icon: CategoryIcon): ImageVector = when (icon) {
         CategoryIcon.DROPLET -> Droplet
