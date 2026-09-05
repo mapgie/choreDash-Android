@@ -36,6 +36,7 @@ fun DashTheme(
     severitySwatches: Map<Severity, Swatch> = Severity.defaults,
     content:   @Composable () -> Unit,
 ) {
+    // The WCAG lift is a transform on any scheme, so a custom palette takes it too.
     val colorScheme = if (appTheme == AppTheme.CUSTOM && customHSL != null) {
         buildCustomColorScheme(
             primaryH   = customHSL.primaryH,
@@ -50,7 +51,7 @@ fun DashTheme(
             darkTheme  = darkTheme,
             backgroundArgb = if (darkTheme) customHSL.darkBackgroundArgb
                              else customHSL.lightBackgroundArgb,
-        )
+        ).let { if (wcag) it.withWcagContrast(darkTheme) else it }
     } else {
         colorSchemeFor(appTheme, darkTheme, wcag)
     }
@@ -88,13 +89,13 @@ fun DashTheme(
         else -> derivedTokens(colorScheme, darkTheme)
     }
 
-    // The WCAG toggle only applies to the built-in palettes (custom colours are
-    // applied exactly as picked). It reaches every colour the screens actually
-    // draw text with, not just the Material roles: the design tokens (faint
-    // captions, section counts, inactive tabs, the tag gold, the outlined pill)
-    // and the content-type accents lift alongside the scheme; the status
-    // swatches read LocalWcagContrast and lift themselves in StatusTone.kt.
-    val wcagActive = wcag && appTheme != AppTheme.CUSTOM
+    // The WCAG toggle reaches every colour the screens actually draw text with,
+    // not just the Material roles: the design tokens (faint captions, section
+    // counts, inactive tabs, the tag gold, the outlined pill) and the
+    // content-type accents lift alongside the scheme; the status swatches read
+    // LocalWcagContrast and lift themselves in StatusTone.kt. A custom palette
+    // is lifted the same way, from the colours as picked.
+    val wcagActive = wcag
     val tokens = if (wcagActive) baseTokens.withWcagContrast(colorScheme, darkTheme) else baseTokens
     val typeAccents = if (wcagActive) baseTypeAccents.withWcagContrast(darkTheme) else baseTypeAccents
 

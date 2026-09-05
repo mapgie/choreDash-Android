@@ -462,16 +462,12 @@ private fun AppearanceSubScreen(
                 label = { it.label },
             )
 
-            // WCAG toggle applies to the built-in palettes; custom colours are
-            // applied exactly as picked, so it is hidden while Custom is active.
-            if (selectedAppTheme != AppTheme.CUSTOM) {
-                CozyCheckboxRow(
-                    title = "WCAG accessible colours",
-                    subtitle = "Increases contrast for text and interactive elements",
-                    checked = settings?.wcagMode ?: false,
-                    onCheckedChange = { viewModel.setWcagMode(it) },
-                )
-            }
+            CozyCheckboxRow(
+                title = "WCAG accessible colours",
+                subtitle = "Lifts every text colour to 7:1 on its background, on custom palettes too",
+                checked = settings?.wcagMode ?: false,
+                onCheckedChange = { viewModel.setWcagMode(it) },
+            )
 
             SettingsSectionLabel("Colour palette")
             CompactThemePicker(
