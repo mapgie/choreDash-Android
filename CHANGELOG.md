@@ -31,6 +31,21 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.32.0] - 2026-09-05
+
+### Added
+- Settings > Reminders & alerts has a Sound check: it shows what Android holds for the alert channel (sound, vibration, importance, Do Not Disturb bypass) with a tap through to the system page, and a button that rings a test alarm in ten seconds through the real alarm path
+
+### Changed
+- A memo that has rung is done: it moves to the Done list with "rang 2h ago" instead of waiting to be ticked, and memo cards are no longer tickable or swipe-to-done. Repeating memos always show their next ring
+- Leaving zen mode is the same target icon that entered it, in place of the LEAVE label
+- A task ticked in the zen list moves to Done straight away rather than lingering struck through
+- The WCAG accessible colours toggle is available on custom palettes too, and lifts their text the same way
+
+### Fixed
+- The Settings tab shows a gear again instead of a sun, and the Chores tab's house is drawn at the same size as the other tab icons
+
+---
 ## [0.31.0] - 2026-09-05
 
 ### Added
