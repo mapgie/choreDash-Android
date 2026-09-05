@@ -83,6 +83,7 @@ import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.permission.PermissionHelper
+import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.ui.theme.CompactThemePicker
@@ -170,6 +171,7 @@ fun SettingsScreen(
 private fun SettingsMainList(
     onNavigate: (SettingsSubScreen) -> Unit,
 ) {
+    val featureName = LocalReminderLabel.current.displayName.lowercase()
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -216,7 +218,7 @@ private fun SettingsMainList(
                     SettingsHairline()
                     SettingsNavRow(
                         title = "Quick add button",
-                        subtitle = "Reorder the + menu, rename reminders",
+                        subtitle = "Reorder the + menu, rename $featureName",
                         onClick = { onNavigate(SettingsSubScreen.QUICK_ADD) }
                     )
                     SettingsHairline()
@@ -249,7 +251,7 @@ private fun SettingsMainList(
                 SettingsCard {
                     SettingsNavRow(
                         title = "Help",
-                        subtitle = "What chores, tasks and reminders are for",
+                        subtitle = "What chores, tasks and $featureName are for",
                         onClick = { onNavigate(SettingsSubScreen.HELP) }
                     )
                     SettingsHairline()
@@ -1012,7 +1014,11 @@ private fun WidgetSubScreen(
     val ownerFilter = settings?.widgetOwnerFilter ?: "EVERYBODY"
 
     val contentTypes = listOf("CHORES", "TASKS", "REMINDERS")
-    val contentTypeLabels = mapOf("CHORES" to "Chores", "TASKS" to "Tasks", "REMINDERS" to "Reminders")
+    val contentTypeLabels = mapOf(
+        "CHORES" to "Chores",
+        "TASKS" to "Tasks",
+        "REMINDERS" to LocalReminderLabel.current.displayName,
+    )
 
     val priorityFilters = listOf("ALL", "RED", "AMBER")
     val priorityFilterLabels = mapOf("ALL" to "All", "RED" to "Red", "AMBER" to "Amber")

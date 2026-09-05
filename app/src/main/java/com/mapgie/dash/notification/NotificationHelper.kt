@@ -260,7 +260,15 @@ object NotificationHelper {
     }
 
     @SuppressLint("MissingPermission")
-    fun showReminderAlert(context: Context, reminderId: String, subject: String, deliveryMode: String = "NOTIFICATION", taskId: String? = null) {
+    /** [title] is the user's word for the feature ("Reminder", "Alarm", "Memo"); callers read it from settings. */
+    fun showReminderAlert(
+        context: Context,
+        reminderId: String,
+        subject: String,
+        deliveryMode: String = "NOTIFICATION",
+        taskId: String? = null,
+        title: String = "Reminder",
+    ) {
         val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val notifyId = ("reminder_$reminderId").hashCode()
         val openIntent = PendingIntent.getActivity(
@@ -295,7 +303,7 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("Reminder")
+            .setContentTitle(title)
             .setContentText(subject)
             .setContentIntent(openIntent)
             .setAutoCancel(true)

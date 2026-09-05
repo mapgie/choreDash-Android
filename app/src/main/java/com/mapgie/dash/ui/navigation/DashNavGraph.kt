@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,7 @@ import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
 import com.mapgie.dash.ui.components.WelcomeSheet
+import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_ID
@@ -167,126 +169,129 @@ fun DashNavGraph(
     }
     val showFab = activeScreen?.addMenuOption != null
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            bottomBar = {
-                val typeAccents = LocalTypeAccents.current
-                val tabs = navItems.map { screen ->
-                    val accent = screen.accentColors(typeAccents)
-                    DashTab(
-                        label = if (screen == Screen.Reminders) {
-                            navUiState.reminderLabel.displayName
-                        } else {
-                            screen.label
-                        },
-                        icon = screen.icon,
-                        selected = currentDestination?.hierarchy
-                            ?.any { it.route == screen.route } == true,
-                        activeContainer = accent?.first ?: MaterialTheme.colorScheme.secondaryContainer,
-                        activeContent = accent?.second ?: MaterialTheme.colorScheme.onSecondaryContainer,
-                        onClick = { navigateTo(screen.route) },
+    // Every screen below names the reminders feature by the user's chosen word.
+    CompositionLocalProvider(LocalReminderLabel provides navUiState.reminderLabel) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                bottomBar = {
+                    val typeAccents = LocalTypeAccents.current
+                    val tabs = navItems.map { screen ->
+                        val accent = screen.accentColors(typeAccents)
+                        DashTab(
+                            label = if (screen == Screen.Reminders) {
+                                navUiState.reminderLabel.displayName
+                            } else {
+                                screen.label
+                            },
+                            icon = screen.icon,
+                            selected = currentDestination?.hierarchy
+                                ?.any { it.route == screen.route } == true,
+                            activeContainer = accent?.first ?: MaterialTheme.colorScheme.secondaryContainer,
+                            activeContent = accent?.second ?: MaterialTheme.colorScheme.onSecondaryContainer,
+                            onClick = { navigateTo(screen.route) },
+                        )
+                    }
+                    DashBottomBar(
+                        tabs = tabs,
+                        centerContent = {
+                            if (showFab) {
+                                AddMenuButton(
+                                    expanded = fabExpanded,
+                                    // Short press: new item for the page you're on.
+                                    onClick = { activeScreen?.addMenuOption?.let { pendingAddIntent = it } },
+                                    // Long press: open the radial to pick any type.
+                                    onLongClick = { fabExpanded = true },
+                                )
+                            }
+                        }
                     )
                 }
-                DashBottomBar(
-                    tabs = tabs,
-                    centerContent = {
-                        if (showFab) {
-                            AddMenuButton(
-                                expanded = fabExpanded,
-                                // Short press: new item for the page you're on.
-                                onClick = { activeScreen?.addMenuOption?.let { pendingAddIntent = it } },
-                                // Long press: open the radial to pick any type.
-                                onLongClick = { fabExpanded = true },
-                            )
+            ) { innerPadding ->
+                // The tab screens have Scaffolds of their own (for snackbars). Consume
+                // the system-bar insets here once, or each of them pads for the status
+                // and navigation bars a second time and the header floats 30dp below
+                // the strip with a matching dead band above the bottom bar.
+                NavHost(
+                    navController = navController,
+                    startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding)
+                ) {
+                    composable(Screen.Chores.route) {
+                        ChoreListScreen(
+                            pendingNfcTagId = pendingNfcTagId,
+                            onNfcConsumed = onNfcConsumed,
+                            nfcWriteRequest = nfcWriteRequest,
+                            nfcWriteResult = nfcWriteResult,
+                            onStartNfcWrite = onStartNfcWrite,
+                            onCancelNfcWrite = onCancelNfcWrite,
+                            onNfcWriteResultConsumed = onNfcWriteResultConsumed,
+                            pendingAddIntent = pendingAddIntent,
+                            onPendingAddIntentConsumed = { pendingAddIntent = null }
+                        )
+                    }
+                    composable(Screen.Tasks.route) {
+                        TaskListScreen(
+                            pendingAddIntent = pendingAddIntent,
+                            onPendingAddIntentConsumed = { pendingAddIntent = null }
+                        )
+                    }
+                    composable(Screen.Reminders.route) {
+                        RemindersListScreen(
+                            pendingAddIntent = pendingAddIntent,
+                            onPendingAddIntentConsumed = { pendingAddIntent = null }
+                        )
+                    }
+                    composable(Screen.Settings.route) {
+                        SettingsScreen(
+                            onNavigateToLicenses = { navController.navigate("licenses") },
+                        )
+                    }
+                    composable("licenses") {
+                        LicensesScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable(
+                        route = REMINDER_VIEW_ROUTE,
+                        arguments = listOf(
+                            navArgument(REMINDER_VIEW_ARG_KIND) { type = NavType.StringType },
+                            navArgument(REMINDER_VIEW_ARG_ID) { type = NavType.StringType },
+                        ),
+                    ) {
+                        ReminderViewScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+            }
+
+            // First run: the chores / tasks / memos explanation, shown once.
+            if (navUiState.showWelcome) {
+                WelcomeSheet(
+                    reminderLabel = navUiState.reminderLabel.displayName,
+                    onDismiss = { navViewModel.markWelcomeSeen() },
+                )
+            }
+
+            // The speed dial covers the whole screen, bar included, so it sits
+            // outside the Scaffold. Picking an item opens the matching sheet in
+            // "new" mode on its own tab.
+            if (showFab) {
+                SpeedDialOverlay(
+                    expanded = fabExpanded,
+                    onExpandedChange = { fabExpanded = it },
+                    order = navUiState.fabOrder,
+                    activeOption = activeScreen?.addMenuOption,
+                    reminderLabel = navUiState.reminderLabel.singular.lowercase(),
+                    onSelect = { option ->
+                        pendingAddIntent = option
+                        val targetRoute = when (option) {
+                            AddMenuOption.CHORE -> Screen.Chores.route
+                            AddMenuOption.TASK -> Screen.Tasks.route
+                            AddMenuOption.REMINDER -> Screen.Reminders.route
                         }
+                        navigateTo(targetRoute)
                     }
                 )
             }
-        ) { innerPadding ->
-            // The tab screens have Scaffolds of their own (for snackbars). Consume
-            // the system-bar insets here once, or each of them pads for the status
-            // and navigation bars a second time and the header floats 30dp below
-            // the strip with a matching dead band above the bottom bar.
-            NavHost(
-                navController = navController,
-                startDestination = if (startOnSettings) Screen.Settings.route else Screen.Tasks.route,
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding)
-            ) {
-                composable(Screen.Chores.route) {
-                    ChoreListScreen(
-                        pendingNfcTagId = pendingNfcTagId,
-                        onNfcConsumed = onNfcConsumed,
-                        nfcWriteRequest = nfcWriteRequest,
-                        nfcWriteResult = nfcWriteResult,
-                        onStartNfcWrite = onStartNfcWrite,
-                        onCancelNfcWrite = onCancelNfcWrite,
-                        onNfcWriteResultConsumed = onNfcWriteResultConsumed,
-                        pendingAddIntent = pendingAddIntent,
-                        onPendingAddIntentConsumed = { pendingAddIntent = null }
-                    )
-                }
-                composable(Screen.Tasks.route) {
-                    TaskListScreen(
-                        pendingAddIntent = pendingAddIntent,
-                        onPendingAddIntentConsumed = { pendingAddIntent = null }
-                    )
-                }
-                composable(Screen.Reminders.route) {
-                    RemindersListScreen(
-                        pendingAddIntent = pendingAddIntent,
-                        onPendingAddIntentConsumed = { pendingAddIntent = null }
-                    )
-                }
-                composable(Screen.Settings.route) {
-                    SettingsScreen(
-                        onNavigateToLicenses = { navController.navigate("licenses") },
-                    )
-                }
-                composable("licenses") {
-                    LicensesScreen(onBack = { navController.popBackStack() })
-                }
-                composable(
-                    route = REMINDER_VIEW_ROUTE,
-                    arguments = listOf(
-                        navArgument(REMINDER_VIEW_ARG_KIND) { type = NavType.StringType },
-                        navArgument(REMINDER_VIEW_ARG_ID) { type = NavType.StringType },
-                    ),
-                ) {
-                    ReminderViewScreen(onBack = { navController.popBackStack() })
-                }
-            }
-        }
-
-        // First run: the chores / tasks / memos explanation, shown once.
-        if (navUiState.showWelcome) {
-            WelcomeSheet(
-                reminderLabel = navUiState.reminderLabel.displayName,
-                onDismiss = { navViewModel.markWelcomeSeen() },
-            )
-        }
-
-        // The speed dial covers the whole screen, bar included, so it sits
-        // outside the Scaffold. Picking an item opens the matching sheet in
-        // "new" mode on its own tab.
-        if (showFab) {
-            SpeedDialOverlay(
-                expanded = fabExpanded,
-                onExpandedChange = { fabExpanded = it },
-                order = navUiState.fabOrder,
-                activeOption = activeScreen?.addMenuOption,
-                reminderLabel = navUiState.reminderLabel.singular.lowercase(),
-                onSelect = { option ->
-                    pendingAddIntent = option
-                    val targetRoute = when (option) {
-                        AddMenuOption.CHORE -> Screen.Chores.route
-                        AddMenuOption.TASK -> Screen.Tasks.route
-                        AddMenuOption.REMINDER -> Screen.Reminders.route
-                    }
-                    navigateTo(targetRoute)
-                }
-            )
         }
     }
 }

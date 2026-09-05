@@ -7,8 +7,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
+import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
+import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +52,8 @@ data class ReminderViewUiState(
     /** Set once Done or Snooze has been applied; the screen pops back. */
     val finished: Boolean = false,
     val error: String? = null,
+    /** The user's word for the reminders feature; names a standalone nudge on screen. */
+    val featureLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
 )
 
 /**
@@ -64,6 +68,7 @@ class ReminderViewViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val taskRepository: TaskRepository,
     private val alarmScheduler: AlarmScheduler,
+    private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -85,6 +90,11 @@ class ReminderViewViewModel @Inject constructor(
     val uiState: StateFlow<ReminderViewUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _uiState.update { it.copy(featureLabel = settings.reminderLabel) }
+            }
+        }
         load()
     }
 
@@ -179,7 +189,7 @@ class ReminderViewViewModel @Inject constructor(
         when (kind) {
             ReminderViewKind.REMINDER -> alarmScheduler.scheduleReminder(
                 id,
-                subject.ifBlank { "Reminder" },
+                subject.ifBlank { _uiState.value.featureLabel.singular },
                 fireAt,
                 linkedTaskId
             )
