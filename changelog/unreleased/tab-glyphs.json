@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "The Settings tab shows a gear again instead of a sun, and the Chores tab's house is drawn at the same size as the other tab icons"
+  ]
+}

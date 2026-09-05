@@ -75,8 +75,19 @@ object LucideIcons {
     }
 
     /** House outline with a check inside: the Chores tab glyph. */
+    /**
+     * The Chores tab glyph: Lucide's house shell with a check inside. The shell
+     * spans the full 24-grid height like the other tab glyphs; the earlier
+     * hand-drawn roof-and-box sat four units shorter and read as a smaller icon.
+     */
     val HouseCheck: ImageVector by lazy {
-        lucide("HouseCheck", listOf("M3 11 12 4l9 7", "M5 10v10h14V10", "m9 15 2 2 4-4"))
+        lucide(
+            "HouseCheck",
+            listOf(
+                "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+                "m9 14 2 2 4-4",
+            ),
+        )
     }
 
     val Car: ImageVector by lazy {
@@ -198,12 +209,13 @@ object LucideIcons {
         lucide("Bell", listOf("M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0"))
     }
 
+    /** Lucide's gear. (The 9a artboard's nav used the `sun` glyph here by mistake; the README says `settings`.) */
     val Settings: ImageVector by lazy {
         lucide(
             "Settings",
             listOf(
                 circle(12f, 12f, 3f),
-                "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
+                "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
             ),
         )
     }
