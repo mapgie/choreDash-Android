@@ -465,7 +465,8 @@ private fun CategoryRow(
                         chore = previewChore,
                         showOwner = false,
                         icon = LucideIcons.forCategory(icon),
-                        categorySwatch = swatch,
+                        spineSwatch = swatch,
+                        iconSwatch = swatch,
                         showCategory = false,
                         inset = 0.dp,
                     )

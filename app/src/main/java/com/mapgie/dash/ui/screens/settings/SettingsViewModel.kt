@@ -240,8 +240,12 @@ class SettingsViewModel @Inject constructor(
 
     // ── Colours ───────────────────────────────────────────────────────────────
 
-    fun setColourChoresBy(mode: ColourChoresBy) {
-        viewModelScope.launch { settingsRepository.setColourChoresBy(mode) }
+    fun setColourSpineBy(mode: ColourChoresBy) {
+        viewModelScope.launch { settingsRepository.setColourSpineBy(mode) }
+    }
+
+    fun setColourIconBy(mode: ColourChoresBy) {
+        viewModelScope.launch { settingsRepository.setColourIconBy(mode) }
     }
 
     fun setSeveritySwatch(severity: Severity, swatch: Swatch) {

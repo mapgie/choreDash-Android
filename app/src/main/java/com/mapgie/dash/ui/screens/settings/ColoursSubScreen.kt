@@ -20,18 +20,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.Swatch
@@ -39,6 +45,7 @@ import com.mapgie.dash.data.model.TagDto
 import com.mapgie.dash.ui.components.ChoreCard
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.StatusBadge
+import com.mapgie.dash.ui.components.sheet.SegmentPill
 import com.mapgie.dash.ui.components.sheet.SheetBlock
 import com.mapgie.dash.ui.components.sheet.SheetRowDivider
 import com.mapgie.dash.ui.theme.LocalDashTokens
@@ -49,9 +56,15 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Settings › Colours (handoff 5a): a segmented "Colour chores by: Severity |
- * Category" control, three severity rows each with the six-swatch palette
- * (selected swatch wears a 2dp ink ring), and a live preview card.
+ * Settings › Colours (handoff 9a). Two independent axes in one grouped card,
+ * COLOUR EACH ELEMENT BY: "Spine + badge" (the left bar and due pill, default
+ * Severity) and "Icon" (the round category glyph, default Category), each a
+ * two-cell Severity | Category pill. Below it the three SEVERITY COLOURS rows
+ * with the six-swatch palette (selected swatch wears a 2dp ink ring), then a
+ * PREVIEW of three real cards (overdue / due soon / fresh) rendered with the
+ * current axes, captioned "spine severity · icon category", with a swatch row
+ * above them to try the icon's category colour against the severity spine.
+ * That row is preview-only; it changes no category's real colour.
  */
 @Composable
 internal fun ColoursSubScreen(
@@ -60,20 +73,21 @@ internal fun ColoursSubScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val catalog by viewModel.catalog.collectAsState()
-    val colourBy = settings?.colourChoresBy ?: ColourChoresBy.SEVERITY
+    val axes = settings?.colourAxes ?: ChoreColourAxes()
     val severitySwatches = settings?.severitySwatches ?: Severity.defaults
     val tokens = LocalDashTokens.current
 
-    val previewChore = remember {
-        Chore.from(
-            tag = TagDto(
-                id = "preview", tagId = "preview", label = "Water softener",
-                category = "House", owner = "M", intervalDays = 30.0,
-            ),
-            lastScanned = Instant.now().minus(Duration.ofDays(49)),
-            lastScanId = null,
+    // Three real cards, one per severity: intervals and last-done times chosen
+    // mid-window so the badges read "35d over", "1d left" and "12d left" all day.
+    val previews = remember {
+        listOf(
+            previewChore("overdue", "Water softener", intervalDays = 30.0, doneHoursAgo = 65 * 24 + 6),
+            previewChore("soon", "Trash & recycling", intervalDays = 7.0, doneHoursAgo = 5 * 24 + 18),
+            previewChore("fresh", "Vacuum living room", intervalDays = 14.0, doneHoursAgo = 24 + 18),
         )
     }
+    var previewSwatch by rememberSaveable { mutableStateOf(catalog.effectiveSwatch("House").name) }
+    val contrastSwatch = Swatch.fromName(previewSwatch) ?: Swatch.GOLD
 
     SettingsSubScreenScaffold(title = "Colours", onBack = onBack) { innerPadding ->
         Column(
@@ -85,16 +99,25 @@ internal fun ColoursSubScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(text = "Colour chores by", modifier = Modifier.padding(horizontal = 6.dp))
-                CozySegmented(
-                    options = ColourChoresBy.entries,
-                    selected = colourBy,
-                    onSelect = { viewModel.setColourChoresBy(it) },
-                    label = { it.label },
-                )
+                SectionLabel(text = "Colour each element by", modifier = Modifier.padding(horizontal = 6.dp))
+                SheetBlock {
+                    AxisRow(
+                        title = "Spine + badge",
+                        subtitle = "the left bar & due pill",
+                        selected = axes.spineAndBadge,
+                        onSelect = { viewModel.setColourSpineBy(it) },
+                    )
+                    SheetRowDivider()
+                    AxisRow(
+                        title = "Icon",
+                        subtitle = "the round category glyph",
+                        selected = axes.icon,
+                        onSelect = { viewModel.setColourIconBy(it) },
+                    )
+                }
                 Text(
-                    "Severity tints the spine, icon and badge by how overdue a chore is. " +
-                        "Category uses each category's own colour instead.",
+                    "Set the spine & badge and the icon independently. For example, spine by severity " +
+                        "to show urgency, icon by category to show what it is.",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     color = tokens.inkFaint,
                     modifier = Modifier.padding(horizontal = 6.dp),
@@ -140,21 +163,97 @@ internal fun ColoursSubScreen(
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(text = "Preview", modifier = Modifier.padding(horizontal = 6.dp))
-                ChoreCard(
-                    chore = previewChore,
-                    showOwner = true,
-                    icon = LucideIcons.Droplet,
-                    inset = 0.dp,
-                    categorySwatch = if (colourBy == ColourChoresBy.CATEGORY)
-                        catalog.effectiveSwatch(previewChore.category) else null,
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp),
+                ) {
+                    SectionLabel(text = "Preview")
+                    Text(
+                        text = axes.caption,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = tokens.inkFaint,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+                Text(
+                    "Contrast icon category colour",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 6.dp),
                 )
+                SwatchRow(
+                    swatches = Swatch.categoryPalette,
+                    selected = contrastSwatch,
+                    onSelect = { previewSwatch = it.name },
+                    groupLabel = "Preview category",
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    previews.forEach { chore ->
+                        ChoreCard(
+                            chore = chore,
+                            showOwner = false,
+                            icon = LucideIcons.Droplet,
+                            inset = 0.dp,
+                            spineSwatch = axes.spineSwatch(contrastSwatch),
+                            iconSwatch = axes.iconSwatch(contrastSwatch),
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
         }
     }
 }
+
+/** One axis of the COLOUR EACH ELEMENT BY card: title and caption, then the Severity | Category pill. */
+@Composable
+private fun AxisRow(
+    title: String,
+    subtitle: String,
+    selected: ColourChoresBy,
+    onSelect: (ColourChoresBy) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                color = LocalDashTokens.current.inkFaint,
+            )
+        }
+        SegmentPill(
+            options = ColourChoresBy.entries,
+            selected = selected,
+            label = { it.label },
+            onSelect = onSelect,
+        )
+    }
+}
+
+private fun previewChore(id: String, label: String, intervalDays: Double, doneHoursAgo: Long): Chore =
+    Chore.from(
+        tag = TagDto(
+            id = "preview-$id", tagId = "preview-$id", label = label,
+            category = "House", owner = null, intervalDays = intervalDays,
+        ),
+        lastScanned = Instant.now().minus(Duration.ofHours(doneHoursAgo)),
+        lastScanId = null,
+    )
 
 /**
  * A row of 30dp colour swatches; the selected one wears a 2dp ink ring with a

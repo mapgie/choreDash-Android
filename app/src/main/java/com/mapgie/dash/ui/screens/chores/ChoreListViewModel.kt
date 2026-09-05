@@ -11,7 +11,7 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
-import com.mapgie.dash.data.model.ColourChoresBy
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
@@ -82,7 +82,7 @@ data class ChoreUiState(
     // Off until settings load so chores aren't hidden with unconfigured lead times
     val smartVisibility: Boolean = false,
     val choreLeadDays: Map<CadenceBucket, Int> = emptyMap(),
-    val colourChoresBy: ColourChoresBy = ColourChoresBy.SEVERITY,
+    val colourAxes: ChoreColourAxes = ChoreColourAxes(),
     val catalog: CategoryCatalog = CategoryCatalog(),
     val pendingNfcTagId: String? = null,
     val recentScan: RecentScan? = null,
@@ -285,7 +285,7 @@ class ChoreListViewModel @Inject constructor(
                         groupByCategory = settings.groupChoresByCategory,
                         smartVisibility = settings.smartChoreVisibility,
                         choreLeadDays = settings.choreLeadDays,
-                        colourChoresBy = settings.colourChoresBy,
+                        colourAxes = settings.colourAxes,
                     )
                 }
             }

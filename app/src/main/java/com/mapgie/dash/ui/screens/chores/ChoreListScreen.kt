@@ -57,7 +57,6 @@ import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ChoreSortKey
-import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.nfc.NfcWriteResult
@@ -135,9 +134,12 @@ fun ChoreListScreen(
     fun iconFor(chore: Chore): ImageVector =
         LucideIcons.forCategory(uiState.catalog.iconFor(chore.category))
 
-    fun swatchFor(chore: Chore): Swatch? =
-        if (uiState.colourChoresBy == ColourChoresBy.CATEGORY) uiState.catalog.effectiveSwatch(chore.category)
-        else null
+    // Settings › Colours: the spine+badge and the icon each follow severity or the category colour.
+    fun spineSwatchFor(chore: Chore): Swatch? =
+        uiState.colourAxes.spineSwatch(uiState.catalog.effectiveSwatch(chore.category))
+
+    fun iconSwatchFor(chore: Chore): Swatch? =
+        uiState.colourAxes.iconSwatch(uiState.catalog.effectiveSwatch(chore.category))
 
     // The Edit sheet's target is kept by id and resolved from uiState so the open
     // sheet survives rotation and process death; it closes cleanly if the chore
@@ -336,7 +338,8 @@ fun ChoreListScreen(
                             SwipeToLogCard(
                                 chore = chore,
                                 icon = iconFor(chore),
-                                categorySwatch = swatchFor(chore),
+                                spineSwatch = spineSwatchFor(chore),
+                                iconSwatch = iconSwatchFor(chore),
                                 showOwner = uiState.ownerFilter.showsOwner,
                                 zenMode = false,
                                 showCategory = true,
@@ -436,7 +439,8 @@ fun ChoreListScreen(
                                             SwipeToLogCard(
                                                 chore = chore,
                                                 icon = iconFor(chore),
-                                                categorySwatch = swatchFor(chore),
+                                                spineSwatch = spineSwatchFor(chore),
+                                iconSwatch = iconSwatchFor(chore),
                                                 showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showCategory = false,
@@ -471,7 +475,8 @@ fun ChoreListScreen(
                                         SwipeToLogCard(
                                             chore = chore,
                                             icon = iconFor(chore),
-                                            categorySwatch = swatchFor(chore),
+                                            spineSwatch = spineSwatchFor(chore),
+                                iconSwatch = iconSwatchFor(chore),
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
                                             showCategory = !uiState.groupByCategory,
@@ -507,7 +512,8 @@ fun ChoreListScreen(
                                             SwipeToLogCard(
                                                 chore = chore,
                                                 icon = iconFor(chore),
-                                                categorySwatch = swatchFor(chore),
+                                                spineSwatch = spineSwatchFor(chore),
+                                iconSwatch = iconSwatchFor(chore),
                                                 showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showCategory = !uiState.groupByCategory,
@@ -545,7 +551,8 @@ fun ChoreListScreen(
                                             ChoreCard(
                                                 chore = chore,
                                                 icon = iconFor(chore),
-                                                categorySwatch = swatchFor(chore),
+                                                spineSwatch = spineSwatchFor(chore),
+                                iconSwatch = iconSwatchFor(chore),
                                                 showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showCategory = !uiState.groupByCategory,
@@ -589,7 +596,8 @@ fun ChoreListScreen(
         ChoreOverviewSheet(
             chore = chore,
             icon = iconFor(chore),
-            categorySwatch = swatchFor(chore),
+            badgeSwatch = spineSwatchFor(chore),
+            iconSwatch = iconSwatchFor(chore),
             isPinned = chore.id == uiState.pinnedChoreId,
             scanHistory = uiState.scanHistory,
             sheetState = logSheetState,
@@ -632,7 +640,8 @@ fun ChoreListScreen(
         EditChoreSheet(
             chore = chore,
             icon = iconFor(chore),
-            categorySwatch = swatchFor(chore),
+            badgeSwatch = spineSwatchFor(chore),
+            iconSwatch = iconSwatchFor(chore),
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = editSheetState,
@@ -689,7 +698,8 @@ fun ChoreListScreen(
             chore = null,
             initialTagId = addSheetTagId,
             icon = LucideIcons.HouseCheck,
-            categorySwatch = null,
+            badgeSwatch = null,
+            iconSwatch = null,
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = addSheetState,
@@ -733,7 +743,8 @@ fun ChoreListScreen(
 private fun SwipeToLogCard(
     chore: Chore,
     icon: ImageVector,
-    categorySwatch: Swatch?,
+    spineSwatch: Swatch?,
+    iconSwatch: Swatch?,
     showOwner: Boolean,
     zenMode: Boolean,
     showCategory: Boolean,
@@ -795,7 +806,8 @@ private fun SwipeToLogCard(
         ChoreCard(
             chore = chore,
             icon = icon,
-            categorySwatch = categorySwatch,
+            spineSwatch = spineSwatch,
+            iconSwatch = iconSwatch,
             showOwner = showOwner,
             zenMode = zenMode,
             showCategory = showCategory,

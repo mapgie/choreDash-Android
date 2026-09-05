@@ -197,7 +197,7 @@ private fun SettingsMainList(
                     SettingsHairline()
                     SettingsNavRow(
                         title = "Colours",
-                        subtitle = "Colour chores by severity or category, and pick the tints",
+                        subtitle = "Colour the spine, badge and icon by severity or category, and pick the tints",
                         onClick = { onNavigate(SettingsSubScreen.COLOURS) }
                     )
                     SettingsHairline()
