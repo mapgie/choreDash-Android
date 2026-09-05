@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
+import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.repeats
@@ -80,11 +81,13 @@ fun RemindersListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
 
-    var showAddSheet by remember { mutableStateOf(false) }
+    var showAddSheet by rememberSaveable { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var editTarget by remember { mutableStateOf<ReminderDto?>(null) }
+    // The id, not the record, so the open sheet survives process death and
+    // always shows the freshest copy after a reload.
+    var editTargetId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(pendingAddIntent) {
         if (pendingAddIntent == AddMenuOption.REMINDER) {
@@ -163,7 +166,7 @@ fun RemindersListScreen(
                         ReminderCard(
                             reminder = reminder,
                             linkedTo = uiState.linkedTo(reminder),
-                            onClick = { editTarget = reminder },
+                            onClick = { editTargetId = reminder.id },
                             onToggleDone = { viewModel.markDone(reminder.id) },
                             highlightQuery = query,
                         )
@@ -237,7 +240,7 @@ fun RemindersListScreen(
                     SwipeToCompleteReminderCard(
                         reminder = reminder,
                         linkedTo = uiState.linkedTo(reminder),
-                        onClick = { editTarget = reminder },
+                        onClick = { editTargetId = reminder.id },
                         onToggleDone = {
                             if (!reminder.repeats && reminder.completedAt != null) viewModel.markUndone(reminder.id)
                             else viewModel.markDone(reminder.id)
@@ -264,10 +267,14 @@ fun RemindersListScreen(
             chores = uiState.chores,
             tasks = uiState.tasks,
             onSave = { insert -> viewModel.addReminder(insert) },
-            onDismiss = { showAddSheet = false }
+            onDismiss = { showAddSheet = false },
+            draft = remember { viewModel.reminderDrafts.get(NEW_DRAFT_KEY) },
+            onDraftChange = { viewModel.reminderDrafts.put(NEW_DRAFT_KEY, it) },
+            onDraftClear = { viewModel.reminderDrafts.clear(NEW_DRAFT_KEY) },
         )
     }
 
+    val editTarget = editTargetId?.let { id -> uiState.reminders.find { it.id == id } }
     editTarget?.let { reminder ->
         AddReminderSheet(
             chores = uiState.chores,
@@ -276,7 +283,10 @@ fun RemindersListScreen(
             onSave = { insert -> viewModel.editReminder(reminder.id, insert) },
             onArchiveToggle = { archived -> viewModel.archiveReminder(reminder.id, archived) },
             onDelete = { viewModel.deleteReminder(reminder.id) },
-            onDismiss = { editTarget = null }
+            onDismiss = { editTargetId = null },
+            draft = remember(reminder.id) { viewModel.reminderDrafts.get(reminder.id) },
+            onDraftChange = { viewModel.reminderDrafts.put(reminder.id, it) },
+            onDraftClear = { viewModel.reminderDrafts.clear(reminder.id) },
         )
     }
 }
