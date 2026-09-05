@@ -107,16 +107,11 @@ data class TaskUiState(
         completedAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
     /**
-     * The zen list: open tasks in zen order, then anything finished today so a
-     * tick stays visible (struck through, faded) instead of vanishing mid-breath.
+     * The zen list: open tasks in zen order. A ticked task moves to Done straight
+     * away (the Undo snackbar covers a slip), rather than lingering struck through.
      */
     val zenRows: List<TaskDto>
-        get() = activeTasks + doneTasks.filter { it.completedToday() }
-
-    private fun TaskDto.completedToday(): Boolean {
-        val at = completedInstant() ?: return false
-        return at.atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now(ZoneId.systemDefault())
-    }
+        get() = activeTasks
 
     /**
      * [activeTasks] split into category groups in catalog order (user order,

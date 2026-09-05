@@ -80,7 +80,6 @@ import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.LocalDashTokens
-import com.mapgie.dash.ui.components.LeaveZenButton
 import com.mapgie.dash.ui.components.ZenRow
 import com.mapgie.dash.ui.components.ZenScopeToggle
 import com.mapgie.dash.data.model.OwnerFilter
@@ -271,7 +270,14 @@ fun ChoreListScreen(
                                     "Sorted: most overdue first" else "Sorted: recently done first",
                                 onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
                             )
-                            LeaveZenButton(onClick = { viewModel.setZenMode(false) })
+                            // Zen is a mode, not a place: the same target glyph that entered it leaves it.
+                            HeaderIconButton(
+                                icon = LucideIcons.Target,
+                                contentDescription = "Leave zen mode",
+                                onClick = { viewModel.setZenMode(false) },
+                                active = true,
+                                activeTint = choreAccent,
+                            )
                         } else {
                             // Same row as Tasks: search, owner, zen, group/flat.
                             HeaderIconButton(

@@ -72,7 +72,6 @@ import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.LocalDashTokens
-import com.mapgie.dash.ui.components.LeaveZenButton
 import com.mapgie.dash.ui.components.ZenRow
 import com.mapgie.dash.ui.components.ZenScopeToggle
 import com.mapgie.dash.data.model.OwnerFilter
@@ -200,7 +199,14 @@ fun TaskListScreen(
                                     "Sorted: most urgent first" else "Sorted: least urgent first",
                                 onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
                             )
-                            LeaveZenButton(onClick = { viewModel.setZenMode(false) })
+                            // Zen is a mode, not a place: the same target glyph that entered it leaves it.
+                            HeaderIconButton(
+                                icon = LucideIcons.Target,
+                                contentDescription = "Leave zen mode",
+                                onClick = { viewModel.setZenMode(false) },
+                                active = true,
+                                activeTint = taskAccent,
+                            )
                         } else {
                             // Same row as Chores: search, owner, zen, group/flat.
                             HeaderIconButton(
@@ -344,7 +350,7 @@ fun TaskListScreen(
                                         sub = ZenPhrase.forTask(task.category, task.urgency(), task.priorityEnum(), zenDone),
                                         done = zenDone,
                                         onToggle = {
-                                            if (zenDone) viewModel.markUndone(task.id) else viewModel.markDone(task.id)
+                                            if (zenDone) viewModel.markUndone(task.id) else completeTaskWithUndo(task)
                                         },
                                         modifier = Modifier
                                             .padding(horizontal = Dimens.cardInset)

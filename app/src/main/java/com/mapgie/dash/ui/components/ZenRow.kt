@@ -177,37 +177,3 @@ private fun ZenScopeCell(label: String, selected: Boolean, onClick: () -> Unit) 
     }
 }
 
-/** "LEAVE ✕": exits zen. Letterspaced 12sp label with the cross glyph, 44dp tall. */
-@Composable
-fun LeaveZenButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val tokens = LocalDashTokens.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier
-            .heightIn(min = 44.dp)
-            .clip(PillShape)
-            .semantics {
-                role = Role.Button
-                contentDescription = "Leave zen"
-            }
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
-    ) {
-        Text(
-            "LEAVE",
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp,
-            ),
-            color = tokens.inkFaint,
-        )
-        Icon(
-            imageVector = LucideIcons.X,
-            contentDescription = null,
-            tint = tokens.inkFaint,
-            modifier = Modifier.size(16.dp),
-        )
-    }
-}
