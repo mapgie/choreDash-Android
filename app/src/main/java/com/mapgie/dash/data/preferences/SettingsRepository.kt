@@ -10,6 +10,7 @@ import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskSortKey
@@ -41,6 +42,7 @@ data class AppSettings(
     // Sort pill state for each list, persisted so it survives restarts
     val choreSort: SortOrder<ChoreSortKey> = SortOrder(ChoreSortKey.PRESSURE),
     val taskSort: SortOrder<TaskSortKey> = SortOrder(TaskSortKey.PRIORITY),
+    val reminderSort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
     // Settings › Colours: what tints a chore card, and which swatch each severity wears
     val colourChoresBy: ColourChoresBy = ColourChoresBy.SEVERITY,
     val severitySwatches: Map<Severity, Swatch> = Severity.defaults,
@@ -101,6 +103,8 @@ class SettingsRepository @Inject constructor(
         val CHORE_SORT_REVERSED            = booleanPreferencesKey("chore_sort_reversed")
         val TASK_SORT_KEY                  = stringPreferencesKey("task_sort_key")
         val TASK_SORT_REVERSED             = booleanPreferencesKey("task_sort_reversed")
+        val REMINDER_SORT_KEY              = stringPreferencesKey("reminder_sort_key")
+        val REMINDER_SORT_REVERSED         = booleanPreferencesKey("reminder_sort_reversed")
         val COLOUR_CHORES_BY               = stringPreferencesKey("colour_chores_by")
         val APP_THEME                      = stringPreferencesKey("app_theme")
         val CUSTOM_PRIMARY_HUE             = floatPreferencesKey("custom_primary_hue")
@@ -159,6 +163,10 @@ class SettingsRepository @Inject constructor(
                 taskSort                    = SortOrder(
                     key = TaskSortKey.fromName(prefs[Keys.TASK_SORT_KEY]),
                     reversed = prefs[Keys.TASK_SORT_REVERSED] ?: false,
+                ),
+                reminderSort                = SortOrder(
+                    key = ReminderSortKey.fromName(prefs[Keys.REMINDER_SORT_KEY]),
+                    reversed = prefs[Keys.REMINDER_SORT_REVERSED] ?: false,
                 ),
                 colourChoresBy              = ColourChoresBy.fromName(prefs[Keys.COLOUR_CHORES_BY]),
                 severitySwatches            = Severity.entries.associateWith { severity ->
@@ -252,6 +260,13 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit {
             it[Keys.TASK_SORT_KEY] = order.key.name
             it[Keys.TASK_SORT_REVERSED] = order.reversed
+        }
+    }
+
+    suspend fun setReminderSort(order: SortOrder<ReminderSortKey>) {
+        context.dataStore.edit {
+            it[Keys.REMINDER_SORT_KEY] = order.key.name
+            it[Keys.REMINDER_SORT_REVERSED] = order.reversed
         }
     }
 

@@ -20,58 +20,68 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.ReminderDto
-import com.mapgie.dash.data.model.isPast
-import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.ReminderScheduleText
+import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.ui.components.core.DoneToggleChip
-import com.mapgie.dash.ui.components.core.MetaLabel
+import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.StatusBadge
+import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.StatusTone
+import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.statusTone
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.mapgie.dash.ui.theme.textColor
+import java.time.Instant
 
 /**
- * List card for a reminder/memo: same shell as the Task card, with the circular
- * done-toggle chip (bell glyph) on the reminder accent and an "Overdue" badge
- * (rose on tint, per the shared status scale) instead of the reserved error colours.
+ * List card for a memo (handoff 9a), in the shared card format: a 5dp spine,
+ * the 38dp bell chip that doubles as the done toggle, the title, the schedule
+ * as the meta line ("Weekdays · 8:00 PM · linked to chore", "Once · doesn't
+ * repeat") and the next ring as the right-hand badge ("rings tomorrow 9 AM",
+ * "rang 2h ago"). Spine, chip and badge take the memo's status tone; a done
+ * or archived memo is one plain muted state with no colour and no strikethrough.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderCard(
     reminder: ReminderDto,
-    linkedLabel: String?,
+    linkedTo: String?,
     onClick: () -> Unit,
     onToggleDone: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    highlightQuery: String? = null,
+    inset: Dp = Dimens.cardInset,
+    now: Instant = Instant.now(),
 ) {
-    val isDone = reminder.completedAt != null
-    val isOverdue = reminder.isPast() && !isDone
-    val tone = reminder.statusTone()
+    val isDone = !reminder.repeats && reminder.completedAt != null
+    val isArchived = reminder.archivedAt != null
+    val muted = isDone || isArchived
+    val tone = reminder.statusTone(now)
     val accents = LocalTypeAccents.current
     val dark = isDarkScheme()
 
-    val formatter = remember(reminder.remindAt) {
-        DateTimeFormatter.ofPattern("d MMM yyyy 'at' HH:mm")
+    val scheduleLine = remember(reminder, linkedTo) {
+        ReminderScheduleText.scheduleLine(reminder, linkedTo = linkedTo)
     }
-    val whenLabel = reminder.remindAtInstant()
-        ?.atZone(ZoneId.systemDefault())
-        ?.format(formatter)
+    val badgeText = remember(reminder, now) {
+        if (isArchived) "archived" else ReminderScheduleText.nextRingBadge(reminder, now)
+    }
 
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = inset),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDone)
+            containerColor = if (muted)
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             else
                 MaterialTheme.colorScheme.surfaceVariant
@@ -79,12 +89,11 @@ fun ReminderCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Spine signals only overdue; quiet states stay quiet.
             Box(
                 modifier = Modifier
                     .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
-                    .background(if (isOverdue) tone.barColor() else Color.Transparent)
+                    .background(tone.barColor())
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -98,52 +107,40 @@ fun ReminderCard(
                         bottom = Dimens.cardVerticalPadding - 3.dp,
                     )
             ) {
+                // The bell keeps the memo accent while quiet; a signalling tone takes over.
+                val signalling = tone == StatusTone.CRITICAL || tone == StatusTone.ATTENTION || tone == StatusTone.OK
                 DoneToggleChip(
                     isDone = isDone,
                     onToggle = onToggleDone,
                     icon = LucideIcons.Bell,
-                    containerColor = if (isDone) MaterialTheme.colorScheme.surfaceContainerHigh
-                                     else accents.reminderContainer,
-                    contentColor = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant
-                                   else accents.onReminderContainer,
+                    containerColor = when {
+                        muted -> MaterialTheme.colorScheme.surfaceContainerHigh
+                        signalling -> tone.badgeContainerColor() ?: accents.reminderContainer
+                        else -> accents.reminderContainer
+                    },
+                    contentColor = when {
+                        muted -> MaterialTheme.colorScheme.onSurfaceVariant
+                        signalling -> tone.textColor()
+                        else -> accents.onReminderContainer
+                    },
                 )
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = reminder.subject,
+                        text = highlightedText(reminder.subject, highlightQuery),
                         style = MaterialTheme.typography.titleMedium,
-                        textDecoration = if (isDone) TextDecoration.LineThrough else null,
-                        color = if (isDone)
+                        color = if (muted)
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         else
                             MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        whenLabel?.let {
-                            MetaLabel(
-                                text = it,
-                                color = if (isDone)
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                        linkedLabel?.let {
-                            MetaLabel(text = it, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                    MetaCaption(text = scheduleLine, uppercase = false)
                 }
-                if (isOverdue) {
-                    StatusBadge(text = "overdue", tone = StatusTone.CRITICAL)
-                }
+                StatusBadge(text = badgeText, tone = if (muted) StatusTone.NEUTRAL else tone)
             }
         }
     }

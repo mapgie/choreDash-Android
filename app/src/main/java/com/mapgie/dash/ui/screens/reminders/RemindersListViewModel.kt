@@ -7,8 +7,12 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.ReminderSortKey
+import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
-import com.mapgie.dash.data.model.isPast
+import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.repeats
+import com.mapgie.dash.data.model.unacknowledgedRing
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -19,8 +23,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 
+/** The filter-chip row on the Memos list (handoff 9a): Active by default, one plain Done state, All. */
+enum class ReminderFilter(val label: String) {
+    ACTIVE("Active"),
+    DONE("Done"),
+    ALL("All"),
+}
+
+/**
+ * What the Memos list shows. Pure state so `ReminderUiStateTest` can pin the
+ * buckets and orders without a ViewModel or Android.
+ *
+ * Active means "still has a ring to give or a ring to answer": a memo that rang
+ * and was not answered stays here (badge "rang 2h ago"), and a repeating memo
+ * is always here until archived. Done holds completed once-only memos. All is
+ * everything, archived included; there is no Archived tab (archiving lives in
+ * the edit sheet).
+ */
 data class ReminderUiState(
     val loading: Boolean = true,
     val error: String? = null,
@@ -28,24 +50,54 @@ data class ReminderUiState(
     val chores: List<Chore> = emptyList(),
     val tasks: List<TaskDto> = emptyList(),
     val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
+    val filter: ReminderFilter = ReminderFilter.ACTIVE,
+    val sort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
 ) {
+    private fun ReminderDto.isDone(): Boolean = !repeats && completedAt != null
+
     val active: List<ReminderDto>
-        get() = reminders.filter {
-            it.archivedAt == null && it.completedAt == null && !it.isPast()
-        }.sortedBy { it.remindAt }
+        get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone() })
 
     val done: List<ReminderDto>
-        get() = reminders.filter {
-            it.archivedAt == null && (it.completedAt != null || it.isPast())
-        }.sortedByDescending { it.remindAt }
+        get() = sorted(reminders.filter { it.archivedAt == null && it.isDone() })
 
-    val archived: List<ReminderDto>
-        get() = reminders.filter { it.archivedAt != null }.sortedByDescending { it.remindAt }
+    val all: List<ReminderDto>
+        get() = sorted(reminders)
 
+    /** The list under the selected chip. */
+    val displayed: List<ReminderDto>
+        get() = when (filter) {
+            ReminderFilter.ACTIVE -> active
+            ReminderFilter.DONE -> done
+            ReminderFilter.ALL -> all
+        }
+
+    /** For the "Active · N" chip. */
+    val activeCount: Int
+        get() = active.size
+
+    /** "chore" or "task" for the card's "linked to …" suffix, or null when standalone. */
+    fun linkedTo(reminder: ReminderDto): String? = when {
+        reminder.choreId != null -> "chore"
+        reminder.taskId != null -> "task"
+        else -> null
+    }
+
+    /** The linked chore's or task's name, for the sheet. */
     fun linkedLabel(reminder: ReminderDto): String? {
         reminder.choreId?.let { id -> chores.find { it.id == id }?.let { return "Chore: ${it.label}" } }
         reminder.taskId?.let { id -> tasks.find { it.id == id }?.let { return "Task: ${it.title}" } }
         return null
+    }
+
+    private fun sorted(list: List<ReminderDto>): List<ReminderDto> {
+        val ordered = when (sort.key) {
+            // A ring that is waiting sorts by when it rang, so it heads the list.
+            ReminderSortKey.NEXT_RING -> list.sortedBy { it.unacknowledgedRing() ?: it.remindAtInstant() ?: Instant.MAX }
+            ReminderSortKey.NAME -> list.sortedBy { it.subject.lowercase() }
+            ReminderSortKey.CREATED -> list.sortedByDescending { it.createdAt }
+        }
+        return if (sort.reversed) ordered.asReversed() else ordered
     }
 }
 
@@ -64,7 +116,7 @@ class RemindersListViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
-                _uiState.update { it.copy(reminderLabel = settings.reminderLabel) }
+                _uiState.update { it.copy(reminderLabel = settings.reminderLabel, sort = settings.reminderSort) }
             }
         }
         load()
@@ -84,6 +136,15 @@ class RemindersListViewModel @Inject constructor(
                 _uiState.update { it.copy(loading = false, error = e.message) }
             }
         }
+    }
+
+    fun setFilter(filter: ReminderFilter) {
+        _uiState.update { it.copy(filter = filter) }
+    }
+
+    fun setSort(order: SortOrder<ReminderSortKey>) {
+        _uiState.update { it.copy(sort = order) }
+        viewModelScope.launch { settingsRepository.setReminderSort(order) }
     }
 
     fun addReminder(insert: ReminderInsert) {
