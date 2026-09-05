@@ -34,6 +34,8 @@ class ReminderDraftTest {
         assertEquals(listOf("MONDAY", "WEDNESDAY", "FRIDAY"), opened.repeatDays)
         assertEquals("chore-9", opened.choreId)
         assertEquals("", opened.taskId)
+        assertEquals("", opened.sound)
+        assertEquals("content://x/1", ReminderDraft.of(plants.copy(sound = "content://x/1"), now = now).sound)
     }
 
     @Test

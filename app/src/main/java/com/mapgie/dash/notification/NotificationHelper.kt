@@ -16,6 +16,7 @@ import com.mapgie.dash.alarm.AlarmActionReceiver
 import com.mapgie.dash.alarm.AlarmActivity
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_ID
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_KIND
+import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_SOUND
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_SUBJECT
 import com.mapgie.dash.ui.screens.reminder.ReminderViewKind
 
@@ -183,6 +184,7 @@ object NotificationHelper {
         id: String,
         subject: String,
         requestCode: Int,
+        soundUri: String? = null,
     ): PendingIntent = PendingIntent.getActivity(
         context, requestCode,
         Intent(context, AlarmActivity::class.java).apply {
@@ -190,6 +192,7 @@ object NotificationHelper {
             putExtra(REMINDER_VIEW_ARG_KIND, kind.routeArg)
             putExtra(REMINDER_VIEW_ARG_ID, id)
             putExtra(REMINDER_VIEW_ARG_SUBJECT, subject)
+            soundUri?.let { putExtra(REMINDER_VIEW_ARG_SOUND, it) }
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -268,6 +271,7 @@ object NotificationHelper {
         deliveryMode: String = "NOTIFICATION",
         taskId: String? = null,
         title: String = "Reminder",
+        soundUri: String? = null,
     ) {
         val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val notifyId = ("reminder_$reminderId").hashCode()
@@ -309,7 +313,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .styledFor(deliveryMode) {
-                fullScreenIntent(context, ReminderViewKind.REMINDER, reminderId, subject, "fullscreen_reminder_$reminderId".hashCode())
+                fullScreenIntent(context, ReminderViewKind.REMINDER, reminderId, subject, "fullscreen_reminder_$reminderId".hashCode(), soundUri)
             }
             .addAction(0, "Snooze 15 min", snoozePI)
             .addAction(0, "Done", donePI)

@@ -38,6 +38,9 @@ const val REMINDER_VIEW_ARG_ID = "id"
  */
 const val REMINDER_VIEW_ARG_SUBJECT = "subject"
 
+/** Optional: the memo's own ringtone URI, so AlarmActivity rings with it (default alarm tone when absent). */
+const val REMINDER_VIEW_ARG_SOUND = "sound"
+
 fun reminderViewRoute(kind: ReminderViewKind, id: String): String =
     "reminder/${kind.routeArg}/${Uri.encode(id)}"
 

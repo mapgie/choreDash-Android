@@ -66,6 +66,7 @@ class ReminderRepository @Inject constructor(
             taskId = insert.taskId,
             createdAt = now.toString(),
             repeatDays = insert.repeatDays,
+            sound = insert.sound,
         ).withScheduleAligned(now)
         saveAll(loadReminders() + reminder)
         return reminder
@@ -98,6 +99,7 @@ class ReminderRepository @Inject constructor(
                 choreId = insert.choreId,
                 taskId = insert.taskId,
                 repeatDays = insert.repeatDays,
+                sound = insert.sound,
                 reminded = false,
             ).withScheduleAligned(now)
         }
