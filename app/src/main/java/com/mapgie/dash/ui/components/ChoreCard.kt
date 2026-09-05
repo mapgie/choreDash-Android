@@ -52,10 +52,11 @@ import java.time.Instant
  * row of owner avatar then due badge, so dates line up for scanning. No progress
  * bar. Light cards keep a soft shadow; dark cards have none.
  *
- * Colour is driven by severity (spine, chip and badge take the status tone) or,
- * when [categorySwatch] is given, by the category's own colour with the badge
- * text kept neutral. Either way the badge words and the meta line restate the
- * state, so colour is never the only signal.
+ * Colour follows Settings › Colours' two axes: the spine and badge take
+ * [spineSwatch] (the category colour, badge text neutral) or, when it is null,
+ * the status tone; the icon chip does the same with [iconSwatch]. Either way
+ * the badge words and the meta line restate the state, so colour is never the
+ * only signal.
  *
  * A snoozed chore ([snoozedUntil] set) swaps the chip glyph for a muted bell on
  * a neutral tint and replaces the badge with "Snoozed until <date>"; the spine
@@ -69,7 +70,8 @@ fun ChoreCard(
     modifier: Modifier = Modifier,
     zenMode: Boolean = false,
     showCategory: Boolean = true,
-    categorySwatch: Swatch? = null,
+    spineSwatch: Swatch? = null,
+    iconSwatch: Swatch? = null,
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
     inset: Dp = Dimens.cardInset,
@@ -81,18 +83,18 @@ fun ChoreCard(
 
     val spine: Color = when {
         zenMode -> Color.Transparent
-        categorySwatch != null -> categorySwatch.spineColor()
+        spineSwatch != null -> spineSwatch.spineColor()
         else -> tone.barColor()
     }
     val chipContainer: Color = when {
         zenMode -> Color.Transparent
         snoozed -> MaterialTheme.colorScheme.surfaceContainerHigh
-        categorySwatch != null -> categorySwatch.tintColor()
+        iconSwatch != null -> iconSwatch.tintColor()
         else -> tone.badgeContainerColor() ?: accents.choreContainer
     }
     val chipContent: Color = when {
         zenMode || snoozed -> MaterialTheme.colorScheme.onSurfaceVariant
-        categorySwatch != null -> categorySwatch.textColor()
+        iconSwatch != null -> iconSwatch.textColor()
         else -> tone.textColor()
     }
 
@@ -166,8 +168,8 @@ fun ChoreCard(
                                 StatusBadge(
                                     text = chore.dueBadgeText(),
                                     tone = tone,
-                                    containerOverride = categorySwatch?.tintColor(),
-                                    textOverride = if (categorySwatch != null)
+                                    containerOverride = spineSwatch?.tintColor(),
+                                    textOverride = if (spineSwatch != null)
                                         MaterialTheme.colorScheme.onSurfaceVariant else null,
                                 )
                             }

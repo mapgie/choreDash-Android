@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.ChoreSortKey
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.Severity
@@ -43,8 +44,8 @@ data class AppSettings(
     val choreSort: SortOrder<ChoreSortKey> = SortOrder(ChoreSortKey.PRESSURE),
     val taskSort: SortOrder<TaskSortKey> = SortOrder(TaskSortKey.PRIORITY),
     val reminderSort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
-    // Settings › Colours: what tints a chore card, and which swatch each severity wears
-    val colourChoresBy: ColourChoresBy = ColourChoresBy.SEVERITY,
+    // Settings › Colours: what tints a chore card's spine+badge and its icon, and which swatch each severity wears
+    val colourAxes: ChoreColourAxes = ChoreColourAxes(),
     val severitySwatches: Map<Severity, Swatch> = Severity.defaults,
     // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
     val appTheme: String = "CREAM",
@@ -105,7 +106,10 @@ class SettingsRepository @Inject constructor(
         val TASK_SORT_REVERSED             = booleanPreferencesKey("task_sort_reversed")
         val REMINDER_SORT_KEY              = stringPreferencesKey("reminder_sort_key")
         val REMINDER_SORT_REVERSED         = booleanPreferencesKey("reminder_sort_reversed")
+        // Pre-9a single switch; still read so an existing choice carries over to both axes.
         val COLOUR_CHORES_BY               = stringPreferencesKey("colour_chores_by")
+        val COLOUR_SPINE_BY                = stringPreferencesKey("colour_spine_by")
+        val COLOUR_ICON_BY                 = stringPreferencesKey("colour_icon_by")
         val APP_THEME                      = stringPreferencesKey("app_theme")
         val CUSTOM_PRIMARY_HUE             = floatPreferencesKey("custom_primary_hue")
         val CUSTOM_PRIMARY_SATURATION      = floatPreferencesKey("custom_primary_saturation")
@@ -168,7 +172,11 @@ class SettingsRepository @Inject constructor(
                     key = ReminderSortKey.fromName(prefs[Keys.REMINDER_SORT_KEY]),
                     reversed = prefs[Keys.REMINDER_SORT_REVERSED] ?: false,
                 ),
-                colourChoresBy              = ColourChoresBy.fromName(prefs[Keys.COLOUR_CHORES_BY]),
+                colourAxes                  = ChoreColourAxes.fromStored(
+                    legacy = prefs[Keys.COLOUR_CHORES_BY],
+                    spine = prefs[Keys.COLOUR_SPINE_BY],
+                    icon = prefs[Keys.COLOUR_ICON_BY],
+                ),
                 severitySwatches            = Severity.entries.associateWith { severity ->
                     Swatch.fromName(prefs[Keys.severitySwatch(severity)]) ?: severity.defaultSwatch
                 },
@@ -270,8 +278,12 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    suspend fun setColourChoresBy(mode: ColourChoresBy) {
-        context.dataStore.edit { it[Keys.COLOUR_CHORES_BY] = mode.name }
+    suspend fun setColourSpineBy(mode: ColourChoresBy) {
+        context.dataStore.edit { it[Keys.COLOUR_SPINE_BY] = mode.name }
+    }
+
+    suspend fun setColourIconBy(mode: ColourChoresBy) {
+        context.dataStore.edit { it[Keys.COLOUR_ICON_BY] = mode.name }
     }
 
     suspend fun setSeveritySwatch(severity: Severity, swatch: Swatch) {

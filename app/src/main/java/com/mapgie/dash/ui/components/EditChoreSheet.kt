@@ -89,7 +89,10 @@ import kotlinx.coroutines.launch
 fun EditChoreSheet(
     chore: Chore?,
     icon: ImageVector,
-    categorySwatch: Swatch?,
+    /** Category colour for the category value chip (spine+badge axis), or null. */
+    badgeSwatch: Swatch?,
+    /** Category colour for the header icon chip (icon axis), or null to follow severity. */
+    iconSwatch: Swatch?,
     owners: List<String>,
     categories: List<String>,
     sheetState: SheetState,
@@ -188,8 +191,8 @@ fun EditChoreSheet(
     )
 
     val tone = chore?.statusTone()
-    val chipContainer = categorySwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
-    val chipContent = categorySwatch?.textColor() ?: tone?.textColor() ?: accents.onChoreContainer
+    val chipContainer = iconSwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
+    val chipContent = iconSwatch?.textColor() ?: tone?.textColor() ?: accents.onChoreContainer
     val canSave = label.isNotBlank()
 
     ModalBottomSheet(
@@ -241,8 +244,8 @@ fun EditChoreSheet(
                             text = category.ifBlank { "None" },
                             onClick = { categoryMenuOpen = true },
                             contentDescription = "Category: ${category.ifBlank { "none" }}. Change category",
-                            container = categorySwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
-                            content = categorySwatch?.textColor() ?: MaterialTheme.colorScheme.onSurface,
+                            container = badgeSwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+                            content = badgeSwatch?.textColor() ?: MaterialTheme.colorScheme.onSurface,
                         )
                         CategoryMenu(
                             expanded = categoryMenuOpen,

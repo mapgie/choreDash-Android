@@ -1,0 +1,8 @@
+{
+  "bump": "minor",
+  "changed": [
+    "Settings > Colours now sets the spine and due badge and the round icon independently: each can follow severity or the category colour, so the default shows urgency on the spine and what the chore is on the icon",
+    "The Colours preview shows three real cards (overdue, due soon, fresh) with the current choice named, and a swatch row to try a category colour against the severity tints",
+    "An existing \"colour chores by\" choice carries over to both elements, so nothing changes until you touch the new setting"
+  ]
+}

@@ -89,7 +89,10 @@ import java.time.temporal.ChronoUnit
 fun ChoreOverviewSheet(
     chore: Chore,
     icon: ImageVector,
-    categorySwatch: Swatch?,
+    /** Category colour for the badge (Settings › Colours spine+badge axis), or null to follow severity. */
+    badgeSwatch: Swatch?,
+    /** Category colour for the icon chip (icon axis), or null to follow severity. */
+    iconSwatch: Swatch?,
     isPinned: Boolean,
     scanHistory: List<ScanDto>,
     sheetState: SheetState,
@@ -129,8 +132,8 @@ fun ChoreOverviewSheet(
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
 
-    val chipContainer = categorySwatch?.tintColor() ?: (tone.badgeContainerColor() ?: MaterialTheme.colorScheme.secondaryContainer)
-    val chipContent = categorySwatch?.textColor() ?: tone.textColor()
+    val chipContainer = iconSwatch?.tintColor() ?: (tone.badgeContainerColor() ?: MaterialTheme.colorScheme.secondaryContainer)
+    val chipContent = iconSwatch?.textColor() ?: tone.textColor()
 
     ModalBottomSheet(
         onDismissRequest = { hideAndDismiss() },
@@ -171,8 +174,8 @@ fun ChoreOverviewSheet(
                     StatusBadge(
                         text = chore.dueBadgeText(),
                         tone = tone,
-                        containerOverride = categorySwatch?.tintColor(),
-                        textOverride = if (categorySwatch != null) MaterialTheme.colorScheme.onSurfaceVariant else null,
+                        containerOverride = badgeSwatch?.tintColor(),
+                        textOverride = if (badgeSwatch != null) MaterialTheme.colorScheme.onSurfaceVariant else null,
                     )
                     Text(
                         text = lastDoneText(chore.lastScanned),
