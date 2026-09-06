@@ -74,6 +74,9 @@ fun CompactThemePicker(
     customLightBackgroundArgb: Int = 0,
     customDarkBackgroundArgb: Int = 0,
     onCustomBackgroundArgbsChange: (Int, Int) -> Unit = { _, _ -> },
+    customLightCardFaceArgb: Int = 0,
+    customDarkCardFaceArgb: Int = 0,
+    onCustomCardFaceArgbsChange: (Int, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     // All entries are shown as palette cards (including CUSTOM).
@@ -130,6 +133,11 @@ fun CompactThemePicker(
                 darkBackgroundArgb  = customDarkBackgroundArgb,
                 autoLightBackground = Color.hsl(customPrimaryHue, 0.10f, 0.98f),
                 autoDarkBackground  = Color.hsl(customPrimaryHue, 0.10f, 0.10f),
+                lightCardFaceArgb   = customLightCardFaceArgb,
+                darkCardFaceArgb    = customDarkCardFaceArgb,
+                autoLightCardFace   = Color.hsl(customPrimaryHue, 0.04f, 0.90f),
+                autoDarkCardFace    = Color.hsl(customPrimaryHue, 0.04f, 0.17f),
+                onCardFaceArgbsChange = onCustomCardFaceArgbsChange,
                 onPrimaryChange   = { h, s, l -> onCustomHSLChange(h, s, l, customSecondaryHue, customSecondarySaturation, customSecondaryLightness, customTertiaryHue, customTertiarySaturation, customTertiaryLightness) },
                 onSecondaryChange = { h, s, l -> onCustomHSLChange(customPrimaryHue, customPrimarySaturation, customPrimaryLightness, h, s, l, customTertiaryHue, customTertiarySaturation, customTertiaryLightness) },
                 onTertiaryChange  = { h, s, l -> onCustomHSLChange(customPrimaryHue, customPrimarySaturation, customPrimaryLightness, customSecondaryHue, customSecondarySaturation, customSecondaryLightness, h, s, l) },
@@ -240,10 +248,15 @@ private fun CustomColorControls(
     darkBackgroundArgb: Int,
     autoLightBackground: Color,
     autoDarkBackground: Color,
+    lightCardFaceArgb: Int,
+    darkCardFaceArgb: Int,
+    autoLightCardFace: Color,
+    autoDarkCardFace: Color,
     onPrimaryChange: (Float, Float, Float) -> Unit,
     onSecondaryChange: (Float, Float, Float) -> Unit,
     onTertiaryChange: (Float, Float, Float) -> Unit,
     onBackgroundArgbsChange: (Int, Int) -> Unit,
+    onCardFaceArgbsChange: (Int, Int) -> Unit,
 ) {
     // The role colours are stored as HSL, so picked ARGBs are converted back
     // before persisting; the round trip preserves the exact colour.
@@ -289,6 +302,20 @@ private fun CustomColorControls(
                 autoFallback = autoDarkBackground,
                 onArgbChange = { argb -> onBackgroundArgbsChange(lightBackgroundArgb, argb) },
                 onReset      = { onBackgroundArgbsChange(lightBackgroundArgb, 0) },
+            )
+            CustomColorRow(
+                label        = "Card face (light)",
+                color        = if (lightCardFaceArgb != 0) Color(lightCardFaceArgb) else null,
+                autoFallback = autoLightCardFace,
+                onArgbChange = { argb -> onCardFaceArgbsChange(argb, darkCardFaceArgb) },
+                onReset      = { onCardFaceArgbsChange(0, darkCardFaceArgb) },
+            )
+            CustomColorRow(
+                label        = "Card face (dark)",
+                color        = if (darkCardFaceArgb != 0) Color(darkCardFaceArgb) else null,
+                autoFallback = autoDarkCardFace,
+                onArgbChange = { argb -> onCardFaceArgbsChange(lightCardFaceArgb, argb) },
+                onReset      = { onCardFaceArgbsChange(lightCardFaceArgb, 0) },
             )
         }
     }

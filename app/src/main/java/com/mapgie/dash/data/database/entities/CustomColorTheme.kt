@@ -15,6 +15,9 @@ import androidx.room.PrimaryKey
  *
  * Columns added in version 3:
  * - lightBackgroundArgb, darkBackgroundArgb (ARGB; 0 = derived from primary hue)
+ *
+ * Columns added in version 4:
+ * - lightCardFaceArgb, darkCardFaceArgb (ARGB; 0 = derived neutral surface as before)
  */
 @Entity(tableName = "custom_color_themes")
 data class CustomColorTheme(
@@ -32,4 +35,6 @@ data class CustomColorTheme(
     val tertiaryLightness: Float = 0.4f,
     val lightBackgroundArgb: Int = 0,
     val darkBackgroundArgb: Int = 0,
+    val lightCardFaceArgb: Int = 0,
+    val darkCardFaceArgb: Int = 0,
 )

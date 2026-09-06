@@ -43,6 +43,13 @@ class TaskModelTest {
     }
 
     @Test
+    fun `eventually is a due period with no urgency`() {
+        // "Eventually" is a deliberate soft due: it carries no pressure (so it sorts
+        // and buckets like an undated task) but is a distinct choice from no due.
+        assertEquals(TaskUrgency.NONE, task(duePeriod = "eventually").urgency())
+    }
+
+    @Test
     fun `a due date wins over a due period`() {
         assertEquals(
             TaskUrgency.OVERDUE,

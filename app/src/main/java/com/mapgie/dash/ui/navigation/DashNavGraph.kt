@@ -167,7 +167,9 @@ fun DashNavGraph(
     val activeScreen = allNavItems.firstOrNull { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
     }
-    val showFab = activeScreen?.addMenuOption != null
+    // The add button now lives on every main tab, Settings included: a single tap
+    // opens the radial (no long press), which is where any type can be added.
+    val showFab = activeScreen != null
 
     // Every screen below names the reminders feature by the user's chosen word.
     CompositionLocalProvider(LocalReminderLabel provides navUiState.reminderLabel) {
@@ -197,10 +199,9 @@ fun DashNavGraph(
                             if (showFab) {
                                 AddMenuButton(
                                     expanded = fabExpanded,
-                                    // Short press: new item for the page you're on.
-                                    onClick = { activeScreen?.addMenuOption?.let { pendingAddIntent = it } },
-                                    // Long press: open the radial to pick any type.
-                                    onLongClick = { fabExpanded = true },
+                                    // A single tap opens the radial to pick any type;
+                                    // no long press (its delay felt sluggish).
+                                    onClick = { fabExpanded = true },
                                 )
                             }
                         }

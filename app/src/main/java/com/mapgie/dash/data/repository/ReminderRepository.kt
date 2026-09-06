@@ -80,6 +80,14 @@ class ReminderRepository @Inject constructor(
         update(id) { it.afterDone(Instant.now()) }
 
     /**
+     * Reverses a once-only memo's Done (from a swipe's Undo): clears the completed
+     * mark and the rung flag so it counts as active again. The caller re-syncs the
+     * alarm. A repeating memo has no Done to reverse.
+     */
+    suspend fun markUndone(id: String): ReminderDto? =
+        update(id) { it.copy(completedAt = null, reminded = false) }
+
+    /**
      * Records that the memo just rang. A repeating memo comes back with its
      * next occurrence armed in [ReminderDto.remindAt]; the caller schedules it.
      */

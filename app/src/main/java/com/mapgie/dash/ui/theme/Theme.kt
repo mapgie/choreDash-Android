@@ -22,6 +22,8 @@ data class CustomHSL(
     val tertiaryH: Float,  val tertiaryS: Float,  val tertiaryL: Float,
     val lightBackgroundArgb: Int = 0,
     val darkBackgroundArgb: Int = 0,
+    val lightCardFaceArgb: Int = 0,
+    val darkCardFaceArgb: Int = 0,
 )
 
 // TypeAccentColors, LightTypeAccents, DarkTypeAccents, LocalTypeAccents and
@@ -51,6 +53,8 @@ fun DashTheme(
             darkTheme  = darkTheme,
             backgroundArgb = if (darkTheme) customHSL.darkBackgroundArgb
                              else customHSL.lightBackgroundArgb,
+            cardFaceArgb = if (darkTheme) customHSL.darkCardFaceArgb
+                           else customHSL.lightCardFaceArgb,
         ).let { if (wcag) it.withWcagContrast(darkTheme) else it }
     } else {
         colorSchemeFor(appTheme, darkTheme, wcag)

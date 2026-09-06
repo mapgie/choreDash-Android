@@ -71,10 +71,10 @@ private fun AddMenuOption.spec(reminderLabel: String, accents: TypeAccentColors)
 
 /**
  * The round sage add button docked in the centre slot of the bottom bar (52dp).
- * A short press runs [onClick] (add for the current page); a long press runs
- * [onLongClick] (open the speed dial). While the speed dial is open the fill
- * flips to ink and the plus rotates 45° into a cross; the same button is drawn
- * again inside [SpeedDialOverlay] (with no long press) so it sits above the scrim.
+ * A tap runs [onClick], which opens the speed dial. [onLongClick] is optional and
+ * unused by the bar itself. While the speed dial is open the fill flips to ink and
+ * the plus rotates 45° into a cross; the same button is drawn again inside
+ * [SpeedDialOverlay] so it sits above the scrim.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
