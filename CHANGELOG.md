@@ -31,6 +31,24 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.33.0] - 2026-09-06
+
+### Added
+- Set a task's due to "Eventually" for something with no deadline.
+- Custom colour schemes can now pick a fourth colour, the card face, which also carries the scheme into Task Zen Mode.
+- Pinned tasks and chores now show a pin icon in the list.
+- Swipe a memo left to mark it done, or right to delete it, with an Undo for done.
+
+### Changed
+- The add button now opens the radial menu on a single tap and appears on the Settings screen too.
+- Tap a category heading on the Tasks list to collapse or expand that group.
+- The sort control is now two buttons: one flips the direction, the other picks what to sort by.
+
+### Fixed
+- Custom colour schemes now reach Task Zen Mode once a card face colour is set.
+- The quick-add widget icons now match the app's own task and chore glyphs.
+
+---
 ## [0.32.0] - 2026-09-05
 
 ### Added
