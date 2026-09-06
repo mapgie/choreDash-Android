@@ -201,12 +201,28 @@ object NotificationHelper {
     fun isAlarmStyle(deliveryMode: String): Boolean =
         styleForDeliveryMode(deliveryMode) == ChannelStyle.ALARM
 
-    // The Alarm style's full-screen intent: AlarmActivity turns the screen on over
-    // the lock screen and rings (AlarmRinger) until answered. Android only launches
-    // it when the device is locked or asleep; awake and unlocked it shows the
-    // heads-up notification instead, and the channel's alarm sound carries that.
-    // CLEAR_TASK replaces a still-ringing alarm with the newer one rather than
-    // stacking two ringing screens.
+    // The Alarm style's ring screen: AlarmActivity turns the screen on over the lock
+    // screen and rings (AlarmRinger, USAGE_ALARM) until answered. This same intent is
+    // used two ways: as the notification's full-screen intent (below), and started
+    // directly by AlarmReceiver when the alarm fires (startAlarmRingScreen). CLEAR_TASK
+    // replaces a still-ringing alarm with the newer one rather than stacking two ringing
+    // screens; AlarmActivity is launchMode="singleInstance" so a redundant launch (both
+    // paths firing when the phone is locked) reuses the one instance instead of double-ringing.
+    fun alarmActivityIntent(
+        context: Context,
+        kind: ReminderViewKind,
+        id: String,
+        subject: String,
+        soundUri: String? = null,
+    ): Intent = Intent(context, AlarmActivity::class.java).apply {
+        setPackage(context.packageName)
+        putExtra(REMINDER_VIEW_ARG_KIND, kind.routeArg)
+        putExtra(REMINDER_VIEW_ARG_ID, id)
+        putExtra(REMINDER_VIEW_ARG_SUBJECT, subject)
+        soundUri?.let { putExtra(REMINDER_VIEW_ARG_SOUND, it) }
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+
     private fun fullScreenIntent(
         context: Context,
         kind: ReminderViewKind,
@@ -216,16 +232,39 @@ object NotificationHelper {
         soundUri: String? = null,
     ): PendingIntent = PendingIntent.getActivity(
         context, requestCode,
-        Intent(context, AlarmActivity::class.java).apply {
-            setPackage(context.packageName)
-            putExtra(REMINDER_VIEW_ARG_KIND, kind.routeArg)
-            putExtra(REMINDER_VIEW_ARG_ID, id)
-            putExtra(REMINDER_VIEW_ARG_SUBJECT, subject)
-            soundUri?.let { putExtra(REMINDER_VIEW_ARG_SOUND, it) }
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        },
+        alarmActivityIntent(context, kind, id, subject, soundUri),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
+
+    /**
+     * Brings up the Alarm style's full-screen ring the moment the alarm fires, so it
+     * sounds on the alarm stream via [com.mapgie.dash.alarm.AlarmRinger] regardless of
+     * lock state. A no-op unless [deliveryMode] is the Alarm style.
+     *
+     * Why this is needed on top of the notification's full-screen intent: Android
+     * launches a full-screen intent only when the phone is locked or asleep. Awake and
+     * unlocked it shows a heads-up instead, and a posted notification's sound plays on
+     * the notification stream on most devices, whatever USAGE_ALARM the channel declares
+     * (LESSONS #52). That stream can be muted while the alarm stream is up, so the Alarm
+     * style would ring silently. Starting the activity ourselves runs AlarmRinger, which
+     * plays a MediaPlayer under USAGE_ALARM and therefore always uses the alarm stream.
+     *
+     * Only call this from a real-time alarm delivery (AlarmReceiver): a background
+     * activity start is granted only for a short window after an exact alarm fires. The
+     * runCatching keeps a denied start (e.g. an OEM that ignores the exemption) from
+     * costing the notification, which still carries the full-screen intent as a fallback.
+     */
+    fun startAlarmRingScreen(
+        context: Context,
+        deliveryMode: String,
+        kind: ReminderViewKind,
+        id: String,
+        subject: String,
+        soundUri: String? = null,
+    ) {
+        if (!isAlarmStyle(deliveryMode)) return
+        runCatching { context.startActivity(alarmActivityIntent(context, kind, id, subject, soundUri)) }
+    }
 
     /**
      * Applies the per-style presentation: the Alarm style is an alarm to the

@@ -1,5 +1,6 @@
 package com.mapgie.dash.alarm
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -61,6 +62,16 @@ class AlarmActivity : ComponentActivity() {
         super.onStart()
         // The memo's own tone when it has one; the default alarm tone otherwise.
         ringer.start(intent.getStringExtra(REMINDER_VIEW_ARG_SOUND)?.let(Uri::parse))
+    }
+
+    // singleInstance activity: a redundant launch for the same ring (the notification's
+    // full-screen intent and AlarmReceiver's direct start both fire when the phone is
+    // locked) arrives here instead of creating a second instance. The ring is already
+    // going (AlarmRinger.start no-ops while a player is live), so this just keeps the
+    // extras current; nothing to restart.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     // Leaving the screen for any reason (Done, Snooze, back, the power button,
