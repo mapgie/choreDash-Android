@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.33.1] - 2026-09-06
+
+### Fixed
+- Alarm style reminders now ring on the alarm stream even when the phone is unlocked, instead of falling silent because the notification stream was muted.
+
+---
 ## [0.33.0] - 2026-09-06
 
 ### Added
