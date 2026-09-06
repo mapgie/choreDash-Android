@@ -74,7 +74,7 @@ import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionHeaderRow
 import com.mapgie.dash.ui.components.core.SectionLabel
-import com.mapgie.dash.ui.components.core.SortPill
+import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
@@ -354,6 +354,7 @@ fun ChoreListScreen(
                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
                                 snoozedUntil = uiState.snoozedUntil(chore),
+                                isPinned = chore.id == uiState.pinnedChoreId,
                                 highlightQuery = query
                             )
                         }
@@ -402,7 +403,11 @@ fun ChoreListScreen(
                                 )
                             }
                             Spacer(Modifier.weight(1f))
-                            SortPill(order = uiState.sort, onClick = { showSortSheet = true })
+                            SortControls(
+                                order = uiState.sort,
+                                onOrderChange = { viewModel.setSort(it) },
+                                onPickKey = { showSortSheet = true },
+                            )
                         }
                     }
 
@@ -454,7 +459,8 @@ fun ChoreListScreen(
                                                 onLongPress = { editTargetId = it.id; showEditSheet = true },
                                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
-                                                snoozedUntil = uiState.snoozedUntil(chore)
+                                                snoozedUntil = uiState.snoozedUntil(chore),
+                                                isPinned = chore.id == uiState.pinnedChoreId
                                             )
                                         }
                                     }
@@ -490,7 +496,8 @@ fun ChoreListScreen(
                                             onLongPress = { editTargetId = it.id; showEditSheet = true },
                                             onSwipeLog = { viewModel.logChore(it.tagId) },
                                             onSwipeSnooze = { viewModel.toggleSnooze(it) },
-                                            snoozedUntil = uiState.snoozedUntil(chore)
+                                            snoozedUntil = uiState.snoozedUntil(chore),
+                                            isPinned = chore.id == uiState.pinnedChoreId
                                         )
                                     }
                                 }
@@ -527,7 +534,8 @@ fun ChoreListScreen(
                                                 onLongPress = { editTargetId = it.id; showEditSheet = true },
                                                 onSwipeLog = { viewModel.logChore(it.tagId) },
                                                 onSwipeSnooze = { viewModel.toggleSnooze(it) },
-                                                snoozedUntil = uiState.snoozedUntil(chore)
+                                                snoozedUntil = uiState.snoozedUntil(chore),
+                                                isPinned = chore.id == uiState.pinnedChoreId
                                             )
                                         }
                                     }
@@ -759,6 +767,7 @@ private fun SwipeToLogCard(
     onSwipeLog: (Chore) -> Unit,
     onSwipeSnooze: (Chore) -> Unit,
     snoozedUntil: Instant? = null,
+    isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
     // Swipe right (start to end) logs the chore; swipe left (end to start)
@@ -819,6 +828,7 @@ private fun SwipeToLogCard(
             showCategory = showCategory,
             highlightQuery = highlightQuery,
             snoozedUntil = snoozedUntil,
+            isPinned = isPinned,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

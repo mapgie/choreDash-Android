@@ -245,7 +245,7 @@ object NotificationHelper {
      * launches a full-screen intent only when the phone is locked or asleep. Awake and
      * unlocked it shows a heads-up instead, and a posted notification's sound plays on
      * the notification stream on most devices, whatever USAGE_ALARM the channel declares
-     * (LESSONS #51). That stream can be muted while the alarm stream is up, so the Alarm
+     * (LESSONS #52). That stream can be muted while the alarm stream is up, so the Alarm
      * style would ring silently. Starting the activity ourselves runs AlarmRinger, which
      * plays a MediaPlayer under USAGE_ALARM and therefore always uses the alarm stream.
      *

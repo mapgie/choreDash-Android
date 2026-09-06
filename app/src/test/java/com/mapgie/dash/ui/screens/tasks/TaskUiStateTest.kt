@@ -145,6 +145,14 @@ class TaskUiStateTest {
     }
 
     @Test
+    fun `eventually tasks trail dated ones under the due sort, like undated`() {
+        val overdue = task("overdue", dueDate = LocalDate.now().minusDays(1).toString())
+        val eventually = TaskDto(id = "eventually", title = "eventually", duePeriod = "eventually")
+        val state = TaskUiState(tasks = listOf(eventually, overdue), sort = SortOrder(TaskSortKey.DUE))
+        assertEquals(listOf("overdue", "eventually"), ids(state.displayed))
+    }
+
+    @Test
     fun `priority lowest first flips the priority order`() {
         val state = TaskUiState(
             tasks = listOf(task("higher", priority = "higher"), task("lower", priority = "lower"), task("normal")),

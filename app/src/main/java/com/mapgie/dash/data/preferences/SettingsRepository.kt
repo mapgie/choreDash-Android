@@ -62,6 +62,9 @@ data class AppSettings(
     // Custom background overrides per mode (ARGB; 0 = derived from primary hue)
     val customLightBackgroundArgb: Int = 0,
     val customDarkBackgroundArgb: Int = 0,
+    // Custom card face overrides per mode (ARGB; 0 = derived neutral surface)
+    val customLightCardFaceArgb: Int = 0,
+    val customDarkCardFaceArgb: Int = 0,
     // ID of the active saved custom colour profile (-1 = none)
     val customActiveProfileId: Long = -1L,
     // Widget customisation
@@ -122,6 +125,8 @@ class SettingsRepository @Inject constructor(
         val CUSTOM_TERTIARY_LIGHTNESS      = floatPreferencesKey("custom_tertiary_lightness")
         val CUSTOM_LIGHT_BG_ARGB           = intPreferencesKey("custom_light_bg_argb")
         val CUSTOM_DARK_BG_ARGB            = intPreferencesKey("custom_dark_bg_argb")
+        val CUSTOM_LIGHT_CARD_ARGB         = intPreferencesKey("custom_light_card_argb")
+        val CUSTOM_DARK_CARD_ARGB          = intPreferencesKey("custom_dark_card_argb")
         val CUSTOM_ACTIVE_PROFILE_ID       = longPreferencesKey("custom_active_profile_id")
         val WIDGET_CONTENT_TYPE            = stringPreferencesKey("widget_content_type")
         val WIDGET_PRIORITY_FILTER         = stringPreferencesKey("widget_priority_filter")
@@ -198,6 +203,8 @@ class SettingsRepository @Inject constructor(
                 customTertiaryLightness     = prefs[Keys.CUSTOM_TERTIARY_LIGHTNESS] ?: 0.4f,
                 customLightBackgroundArgb   = prefs[Keys.CUSTOM_LIGHT_BG_ARGB] ?: 0,
                 customDarkBackgroundArgb    = prefs[Keys.CUSTOM_DARK_BG_ARGB] ?: 0,
+                customLightCardFaceArgb     = prefs[Keys.CUSTOM_LIGHT_CARD_ARGB] ?: 0,
+                customDarkCardFaceArgb      = prefs[Keys.CUSTOM_DARK_CARD_ARGB] ?: 0,
                 customActiveProfileId       = prefs[Keys.CUSTOM_ACTIVE_PROFILE_ID] ?: -1L,
                 widgetContentType           = prefs[Keys.WIDGET_CONTENT_TYPE] ?: "CHORES",
                 widgetPriorityFilter        = prefs[Keys.WIDGET_PRIORITY_FILTER] ?: "ALL",
@@ -320,6 +327,13 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[Keys.CUSTOM_LIGHT_BG_ARGB] = lightArgb
             prefs[Keys.CUSTOM_DARK_BG_ARGB]  = darkArgb
+        }
+    }
+
+    suspend fun setCustomCardFaceArgbs(lightArgb: Int, darkArgb: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.CUSTOM_LIGHT_CARD_ARGB] = lightArgb
+            prefs[Keys.CUSTOM_DARK_CARD_ARGB]  = darkArgb
         }
     }
 

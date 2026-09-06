@@ -11,7 +11,7 @@ import com.mapgie.dash.data.database.entities.CustomColorTheme
 
 @Database(
     entities = [CustomColorTheme::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -63,6 +63,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 4: adds per-mode card face override columns (ARGB; 0 = "Auto",
+         * the derived neutral surface used before).
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE custom_color_themes ADD COLUMN lightCardFaceArgb INTEGER NOT NULL DEFAULT 0"
+                )
+                database.execSQL(
+                    "ALTER TABLE custom_color_themes ADD COLUMN darkCardFaceArgb INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -71,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "dash.db",
                 )
                     // No fallbackToDestructiveMigration — add explicit migrations for future versions.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { INSTANCE = it }
             }

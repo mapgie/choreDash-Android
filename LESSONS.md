@@ -1113,7 +1113,30 @@ Two companions from the same change:
 
 ---
 
-## 51. A posted notification's sound plays on the notification stream, not the alarm stream, even with `USAGE_ALARM` on the channel
+## 51. `SwipeToDismissBoxValue.StartToEnd` is a swipe to the RIGHT, `EndToStart` to the LEFT
+
+When a card handles two swipe directions (memos: left marks done, right deletes),
+the enum names read backwards from the gesture and are trivial to invert. In an
+LTR layout the content moves in the swipe direction, so:
+
+- `StartToEnd` = finger drags rightward = the *right* swipe.
+- `EndToStart` = finger drags leftward = the *left* swipe.
+
+Two consequences that must agree with that mapping or the background is drawn on
+the wrong edge:
+
+- The revealed background sits on the side the content came *from*: a
+  `StartToEnd` (right) swipe exposes the *left* edge, so align its label
+  `CenterStart`; an `EndToStart` (left) swipe aligns `CenterEnd`.
+- `enableDismissFromStartToEnd` / `enableDismissFromEndToStart` gate the two
+  directions independently; enable both for a two-action card.
+
+Cross-check the direction against the spec ("slide left = done") in words, not by
+the enum name, before wiring the action.
+
+---
+
+## 52. A posted notification's sound plays on the notification stream, not the alarm stream, even with `USAGE_ALARM` on the channel
 
 The Alarm delivery mode promised "rings like a clock alarm" but was silent for a
 user whose **Notifications** volume was muted while their **Alarm** volume was up,
