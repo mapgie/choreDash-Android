@@ -1110,3 +1110,46 @@ Two companions from the same change:
   skips the next ring. A repeating memo is never "completed"; it retires
   through Archive. Writing that down first is what made the badge logic
   ("rang 2h ago" vs "rings Wed 7 AM") a pure function.
+
+---
+
+## 51. A posted notification's sound plays on the notification stream, not the alarm stream, even with `USAGE_ALARM` on the channel
+
+The Alarm delivery mode promised "rings like a clock alarm" but was silent for a
+user whose **Notifications** volume was muted while their **Alarm** volume was up,
+on an unlocked phone. Two facts combine into the bug:
+
+1. A notification's sound, when the system plays it, goes out on the notification
+   volume stream on most devices (Samsung especially), regardless of the
+   `AudioAttributes` usage set on the `NotificationChannel`. Setting
+   `setSound(alarmUri, USAGE_ALARM)` on the channel mainly influences Do Not
+   Disturb grouping, not which volume slider governs the sound. So the channel
+   the system shows can even display a *notification* tone.
+2. The only sound that reliably plays on the **alarm** stream is one the app plays
+   itself with a `MediaPlayer`/`Ringtone` under `USAGE_ALARM` (here `AlarmRinger`,
+   inside `AlarmActivity`). But `AlarmActivity` was launched only by the
+   notification's **full-screen intent**, and Android launches a full-screen intent
+   only when the phone is **locked or asleep**. Awake and unlocked, it shows a
+   heads-up instead, so `AlarmRinger` never ran and the only sound was the
+   notification on the (muted) notification stream.
+
+Fix: when a real-time alarm fires, `AlarmReceiver` starts `AlarmActivity` itself
+(`NotificationHelper.startAlarmRingScreen`) for the Alarm style, so the alarm-stream
+ring plays whether the phone is locked or not. This is allowed because an app that
+receives an **exact-alarm** broadcast gets a short background-activity-launch grant
+(the app holds `USE_EXACT_ALARM` and schedules with `setExactAndAllowWhileIdle`).
+The notification keeps its full-screen intent as the locked-phone path and as a
+fallback if the background start is denied.
+
+Two things that keep the double path from double-ringing or missing its window:
+- `AlarmActivity` is `launchMode="singleInstance"`. When the phone is locked both
+  the full-screen intent and the direct start fire; the second arrives as
+  `onNewIntent` on the one instance instead of creating a second ringer.
+  `AlarmRinger.start()` also no-ops while a player is live.
+- Resolve the sound from a *local* read before starting (reminders live in
+  DataStore, not Supabase), so the launch stays inside the exact-alarm grant window.
+  Don't gate a background activity start behind a network call.
+
+Don't "fix" a silent alarm channel by only re-tuning the channel's sound/usage: the
+channel is immutable after creation (LESSONS #17) and, even fresh, its sound is not
+guaranteed to use the alarm stream. Play the alarm yourself under `USAGE_ALARM`.

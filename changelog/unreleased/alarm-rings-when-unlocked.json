@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Alarm style reminders now ring on the alarm stream even when the phone is unlocked, instead of falling silent because the notification stream was muted."
+  ]
+}

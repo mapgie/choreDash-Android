@@ -1037,11 +1037,15 @@ private fun RemindersSubScreen(
             )
             SettingsCaption(
                 testArmedAt?.let { at ->
-                    "Armed for ${at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))}. " +
-                        "It takes the same path a real ${featureWord.lowercase()} does. Lock the phone to test the " +
-                        "Alarm style's full-screen ring; leave it unlocked to hear the heads-up notification."
+                    val armed = "Armed for ${at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))}. " +
+                        "It takes the same path a real ${featureWord.lowercase()} does. "
+                    armed + when (currentDeliveryMode) {
+                        "ALARM" -> "The Alarm style rings on the alarm stream and shows its full-screen screen whether the phone is locked or unlocked."
+                        "SILENT" -> "The Silent style posts quietly: no sound or vibration by design."
+                        else -> "Watch for the heads-up notification and its sound."
+                    }
                 } ?: "Takes the same path a real ${featureWord.lowercase()} does: exact alarm, receiver, notification, " +
-                    "then the full-screen ring if the phone is locked.",
+                    "and, for the Alarm style, the full-screen ring, whether the phone is locked or not.",
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
