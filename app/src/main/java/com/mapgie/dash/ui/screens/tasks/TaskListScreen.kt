@@ -2,6 +2,7 @@ package com.mapgie.dash.ui.screens.tasks
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,7 +68,7 @@ import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionHeaderRow
 import com.mapgie.dash.ui.components.core.SectionLabel
-import com.mapgie.dash.ui.components.core.SortPill
+import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
@@ -95,6 +97,9 @@ fun TaskListScreen(
     var showTaskSheet by rememberSaveable { mutableStateOf(false) }
     var editingTaskId by rememberSaveable { mutableStateOf<String?>(null) }
     var doneExpanded by remember { mutableStateOf(false) }
+    // Category groups the user has tapped to collapse (by category label). Held in
+    // composition, like doneExpanded, so it is per-visit rather than persisted.
+    val collapsedCategories = remember { mutableStateListOf<String>() }
     var showSortSheet by remember { mutableStateOf(false) }
     var reminderTargetTask by remember { mutableStateOf<TaskDto?>(null) }
 
@@ -279,6 +284,7 @@ fun TaskListScreen(
                                     if (task.completedAt != null) viewModel.markUndone(task.id)
                                     else completeTaskWithUndo(task)
                                 },
+                                isPinned = task.id == uiState.pinnedTaskId,
                                 highlightQuery = query
                             )
                         }
@@ -294,7 +300,11 @@ fun TaskListScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Spacer(Modifier.weight(1f))
-                            SortPill(order = uiState.sort, onClick = { showSortSheet = true })
+                            SortControls(
+                                order = uiState.sort,
+                                onOrderChange = { viewModel.setSort(it) },
+                                onPickKey = { showSortSheet = true },
+                            )
                         }
                     }
 
@@ -318,17 +328,24 @@ fun TaskListScreen(
                         ) {
                             if (uiState.groupByCategory && !uiState.zenMode) {
                                 uiState.grouped.forEach { (cat, tasks) ->
+                                    val collapsed = cat in collapsedCategories
                                     stickyHeader(key = "group_$cat") {
                                         SectionHeaderRow(
                                             text = cat,
                                             count = tasks.size,
+                                            collapsed = collapsed,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.background)
+                                                .semantics { role = Role.Button }
+                                                .clickable {
+                                                    if (collapsed) collapsedCategories.remove(cat)
+                                                    else collapsedCategories.add(cat)
+                                                }
                                                 .padding(horizontal = 24.dp, vertical = 6.dp)
                                         )
                                     }
-                                    items(tasks, key = { it.id }) { task ->
+                                    if (!collapsed) items(tasks, key = { it.id }) { task ->
                                         SwipeToCompleteCard(
                                             task = task,
                                             icon = iconFor(task),
@@ -337,7 +354,8 @@ fun TaskListScreen(
                                             onToggleDone = { completeTaskWithUndo(task) },
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
-                                            zenMode = uiState.zenMode
+                                            zenMode = uiState.zenMode,
+                                            isPinned = task.id == uiState.pinnedTaskId
                                         )
                                     }
                                 }
@@ -371,7 +389,8 @@ fun TaskListScreen(
                                         onToggleDone = { completeTaskWithUndo(task) },
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
-                                        zenMode = uiState.zenMode
+                                        zenMode = uiState.zenMode,
+                                        isPinned = task.id == uiState.pinnedTaskId
                                     )
                                 }
                             }
@@ -515,6 +534,7 @@ private fun SwipeToCompleteCard(
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
+    isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
@@ -563,6 +583,7 @@ private fun SwipeToCompleteCard(
             showCategory = showCategory,
             showOwner = showOwner,
             zenMode = zenMode,
+            isPinned = isPinned,
             highlightQuery = highlightQuery,
             modifier = Modifier
                 .semantics { role = Role.Button }

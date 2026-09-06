@@ -493,6 +493,11 @@ private fun AppearanceSubScreen(
                 onCustomBackgroundArgbsChange = { light, dark ->
                     viewModel.setCustomBackgroundArgbs(light, dark)
                 },
+                customLightCardFaceArgb = settings?.customLightCardFaceArgb ?: 0,
+                customDarkCardFaceArgb = settings?.customDarkCardFaceArgb ?: 0,
+                onCustomCardFaceArgbsChange = { light, dark ->
+                    viewModel.setCustomCardFaceArgbs(light, dark)
+                },
             )
 
             // Save section, only while the custom palette is active.

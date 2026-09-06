@@ -645,6 +645,7 @@ fun buildCustomColorScheme(
     tertiaryH: Float,  tertiaryS: Float,  tertiaryL: Float,
     darkTheme: Boolean,
     backgroundArgb: Int = 0,
+    cardFaceArgb: Int = 0,
 ): ColorScheme {
     val primary   = Color.hsl(primaryH,   primaryS,   primaryL)
     val secondary = Color.hsl(secondaryH, secondaryS, secondaryL)
@@ -670,17 +671,42 @@ fun buildCustomColorScheme(
     val onBackground     = contrastingOn(background)
     val onSurface        = contrastingOn(surface)
 
-    val surfaceContainerLowest  = if (bgIsLight) neutral(0.99f) else neutral(0.06f)
-    val surfaceContainerLow     = if (bgIsLight) neutral(0.97f) else neutral(0.10f)
-    val surfaceContainer        = if (bgIsLight) neutral(0.95f) else neutral(0.12f)
-    val surfaceContainerHigh    = if (bgIsLight) neutral(0.93f) else neutral(0.15f)
-    val surfaceContainerHighest = if (bgIsLight) neutral(0.91f) else neutral(0.17f)
-    val surfaceVariant          = if (bgIsLight) neutral(0.90f) else neutral(0.17f)
-    val surfaceBright           = if (bgIsLight) neutral(0.99f) else neutral(0.24f)
-    val surfaceDim              = if (bgIsLight) neutral(0.87f) else neutral(0.06f)
-    val onSurfaceVariant        = if (bgIsLight) neutral(0.30f) else neutral(0.80f)
+    // The card face colour, when the user has picked one, becomes the exact face of
+    // the list cards (surfaceVariant) and of zen mode's surface (surfaceContainerLow),
+    // with the rest of the surface ramp nudged around it in the same hue so sheets,
+    // the nav bar and the zen "done" chip still read as distinct steps. Without a pick
+    // the ramp stays the background-hue neutrals as before. This is what carries a
+    // custom scheme into zen mode, whose surfaces are otherwise near-grey neutrals.
+    val cardHsl = cardFaceArgb.takeIf { it != 0 }?.let { Color(it).toHsl() }
+    val useCard = cardHsl != null
+    val cardIsLight = if (useCard) Color(cardFaceArgb).luminance() > 0.35f else bgIsLight
+    // Off [delta] from the card's own lightness when a card face is set, else the
+    // fixed per-mode neutral stop.
+    fun face(delta: Float, lightStop: Float, darkStop: Float): Color =
+        if (cardHsl != null) Color.hsl(cardHsl[0], cardHsl[1], (cardHsl[2] + delta).coerceIn(0f, 1f))
+        else Color.hsl(bgHue, 0.04f, if (bgIsLight) lightStop else darkStop)
+
+    val surfaceContainerLowest  = face(if (cardIsLight) 0.03f else -0.03f, 0.99f, 0.06f)
+    val surfaceContainerLow     = face(0f, 0.97f, 0.10f)
+    val surfaceContainer        = face(if (cardIsLight) -0.02f else 0.02f, 0.95f, 0.12f)
+    val surfaceContainerHigh    = face(if (cardIsLight) -0.04f else 0.04f, 0.93f, 0.15f)
+    val surfaceContainerHighest = face(if (cardIsLight) -0.06f else 0.06f, 0.91f, 0.17f)
+    val surfaceVariant          = face(0f, 0.90f, 0.17f)
+    val surfaceBright           = face(if (cardIsLight) 0.04f else 0.08f, 0.99f, 0.24f)
+    val surfaceDim              = face(if (cardIsLight) -0.08f else -0.03f, 0.87f, 0.06f)
+    val onSurfaceVariant        = when {
+        useCard && cardIsLight -> Color.hsl(cardHsl!![0], (cardHsl[1] * 0.7f).coerceAtMost(0.35f), 0.28f)
+        useCard                -> Color.hsl(cardHsl!![0], (cardHsl[1] * 0.5f).coerceAtMost(0.25f), 0.82f)
+        bgIsLight              -> neutral(0.30f)
+        else                   -> neutral(0.80f)
+    }
     val outline                 = if (bgIsLight) neutral(0.50f) else neutral(0.55f)
-    val outlineVariant          = if (bgIsLight) neutral(0.80f) else neutral(0.30f)
+    val outlineVariant          = when {
+        useCard && cardIsLight -> face(-0.12f, 0.80f, 0.30f)
+        useCard                -> face(0.16f, 0.80f, 0.30f)
+        bgIsLight              -> neutral(0.80f)
+        else                   -> neutral(0.30f)
+    }
     val inverseSurface          = if (bgIsLight) neutral(0.20f) else neutral(0.90f)
     val inverseOnSurface        = if (bgIsLight) neutral(0.95f) else neutral(0.10f)
 

@@ -1110,3 +1110,26 @@ Two companions from the same change:
   skips the next ring. A repeating memo is never "completed"; it retires
   through Archive. Writing that down first is what made the badge logic
   ("rang 2h ago" vs "rings Wed 7 AM") a pure function.
+
+---
+
+## 51. `SwipeToDismissBoxValue.StartToEnd` is a swipe to the RIGHT, `EndToStart` to the LEFT
+
+When a card handles two swipe directions (memos: left marks done, right deletes),
+the enum names read backwards from the gesture and are trivial to invert. In an
+LTR layout the content moves in the swipe direction, so:
+
+- `StartToEnd` = finger drags rightward = the *right* swipe.
+- `EndToStart` = finger drags leftward = the *left* swipe.
+
+Two consequences that must agree with that mapping or the background is drawn on
+the wrong edge:
+
+- The revealed background sits on the side the content came *from*: a
+  `StartToEnd` (right) swipe exposes the *left* edge, so align its label
+  `CenterStart`; an `EndToStart` (left) swipe aligns `CenterEnd`.
+- `enableDismissFromStartToEnd` / `enableDismissFromEndToStart` gate the two
+  directions independently; enable both for a two-action card.
+
+Cross-check the direction against the spec ("slide left = done") in words, not by
+the enum name, before wiring the action.

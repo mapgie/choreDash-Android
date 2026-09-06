@@ -15,6 +15,7 @@ import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -180,6 +181,31 @@ class RemindersListViewModel @Inject constructor(
             runCatching {
                 // Archiving disarms the alarm; unarchiving re-arms whatever is still pending.
                 reminderRepository.archiveReminder(id, archived)?.let { alarmScheduler.syncReminder(it) }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    /**
+     * Marks a memo done from a swipe (or undoes it). A once-only memo completes;
+     * a repeating memo has no Done, so it is archived (turned off) instead. Either
+     * way its alarm is cancelled, or re-armed on undo.
+     */
+    fun setReminderDone(id: String, done: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                val repeats = _uiState.value.reminders.find { it.id == id }?.repeats == true
+                if (done) {
+                    alarmScheduler.cancelReminder(id)
+                    if (repeats) reminderRepository.archiveReminder(id, true)
+                    else reminderRepository.markDone(id)
+                } else {
+                    val restored = if (repeats) reminderRepository.archiveReminder(id, false)
+                                   else reminderRepository.markUndone(id)
+                    restored?.let { alarmScheduler.syncReminder(it) }
+                }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }

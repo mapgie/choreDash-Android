@@ -115,6 +115,8 @@ class MainActivity : ComponentActivity() {
                     tertiaryL  = it.customTertiaryLightness,
                     lightBackgroundArgb = it.customLightBackgroundArgb,
                     darkBackgroundArgb  = it.customDarkBackgroundArgb,
+                    lightCardFaceArgb   = it.customLightCardFaceArgb,
+                    darkCardFaceArgb    = it.customDarkCardFaceArgb,
                 )
             }
             DashTheme(

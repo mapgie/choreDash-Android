@@ -141,6 +141,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Persists the custom card face overrides (ARGB; 0 = Auto) to DataStore. */
+    fun setCustomCardFaceArgbs(lightArgb: Int, darkArgb: Int) {
+        viewModelScope.launch {
+            settingsRepository.setCustomCardFaceArgbs(lightArgb, darkArgb)
+        }
+    }
+
     /**
      * Saves the current custom colours as a new named theme profile, recording
      * the active brightness mode so loading restores the same look.
@@ -163,6 +170,8 @@ class SettingsViewModel @Inject constructor(
                 mode                 = s.themeMode.name,
                 lightBackgroundArgb  = s.customLightBackgroundArgb,
                 darkBackgroundArgb   = s.customDarkBackgroundArgb,
+                lightCardFaceArgb    = s.customLightCardFaceArgb,
+                darkCardFaceArgb     = s.customDarkCardFaceArgb,
             )
             val id = customColorThemeDao.upsert(theme)
             settingsRepository.setCustomActiveProfileId(id)
@@ -183,6 +192,9 @@ class SettingsViewModel @Inject constructor(
             )
             settingsRepository.setCustomBackgroundArgbs(
                 theme.lightBackgroundArgb, theme.darkBackgroundArgb,
+            )
+            settingsRepository.setCustomCardFaceArgbs(
+                theme.lightCardFaceArgb, theme.darkCardFaceArgb,
             )
             runCatching { ThemeMode.valueOf(theme.mode) }.getOrNull()
                 ?.let { settingsRepository.setThemeMode(it) }
@@ -240,6 +252,8 @@ class SettingsViewModel @Inject constructor(
                     mode                = s.themeMode.name,
                     lightBackgroundArgb = s.customLightBackgroundArgb,
                     darkBackgroundArgb  = s.customDarkBackgroundArgb,
+                    lightCardFaceArgb   = s.customLightCardFaceArgb,
+                    darkCardFaceArgb    = s.customDarkCardFaceArgb,
                 )
             )
         }

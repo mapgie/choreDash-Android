@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,6 +76,7 @@ fun ChoreCard(
     iconSwatch: Swatch? = null,
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
+    isPinned: Boolean = false,
     inset: Dp = Dimens.cardInset,
 ) {
     val tone = chore.statusTone()
@@ -137,12 +140,26 @@ fun ChoreCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        highlightedText(chore.label, highlightQuery),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            highlightedText(chore.label, highlightQuery),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (isPinned) {
+                            Icon(
+                                imageVector = LucideIcons.PinFilled,
+                                contentDescription = "Pinned to widget",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                     if (zenMode) {
                         chore.lastScanned?.let {
                             MetaLabel(text = formatAbsoluteDate(it), style = MaterialTheme.typography.bodySmall)

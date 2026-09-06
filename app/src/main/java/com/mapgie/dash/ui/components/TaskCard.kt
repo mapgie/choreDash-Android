@@ -70,6 +70,7 @@ fun TaskCard(
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
+    isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
@@ -151,6 +152,14 @@ fun TaskCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (isPinned) {
+                            Icon(
+                                imageVector = LucideIcons.PinFilled,
+                                contentDescription = "Pinned to widget",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                         if (task.reminderAt != null && task.reminded != true && !isDone) {
                             val reminderInstant = remember(task.reminderAt) {
                                 runCatching { Instant.parse(task.reminderAt) }.getOrNull()
@@ -204,6 +213,12 @@ fun TaskCard(
 private fun DueBadge(task: TaskDto) {
     val today = LocalDate.now(ZoneId.systemDefault())
     val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    // "Eventually" carries no urgency but is still worth showing, so it never reads
+    // as a task with no due at all.
+    if (task.dueDate == null && task.duePeriod == "eventually") {
+        StatusBadge(text = "eventually", tone = StatusTone.NEUTRAL)
+        return
+    }
     when (task.urgency()) {
         TaskUrgency.OVERDUE -> {
             val late = date?.let { ChronoUnit.DAYS.between(it, today) } ?: 1L

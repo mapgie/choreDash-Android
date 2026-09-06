@@ -285,6 +285,7 @@ fun EditTaskSheet(
         DUE_PERIOD -> when (duePeriod) {
             "this_week" -> "This week"
             "this_month" -> "This month"
+            "eventually" -> "Eventually"
             else -> "Today"
         }
         else -> "None"
@@ -388,7 +389,12 @@ fun EditTaskSheet(
                                 text = { Text("Pick a date…") },
                                 onClick = { dueMenuOpen = false; showDueDatePicker = true },
                             )
-                            listOf("today" to "Today", "this_week" to "This week", "this_month" to "This month")
+                            listOf(
+                                "today" to "Today",
+                                "this_week" to "This week",
+                                "this_month" to "This month",
+                                "eventually" to "Eventually",
+                            )
                                 .forEach { (key, label) ->
                                     DropdownMenuItem(
                                         text = { Text(label) },

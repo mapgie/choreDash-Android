@@ -19,8 +19,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,12 +56,13 @@ import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
-import com.mapgie.dash.ui.components.core.SortPill
+import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.PillShape
+import kotlinx.coroutines.launch
 
 /**
  * The Memos tab (handoff 9a), on the same chrome as Chores and Tasks: the serif
@@ -79,6 +83,21 @@ fun RemindersListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Swipe-to-done leaves a brief Undo, so a stray swipe is one tap to reverse.
+    fun markReminderDoneWithUndo(reminder: ReminderDto) {
+        viewModel.setReminderDone(reminder.id, true)
+        scope.launch {
+            snackbarHost.currentSnackbarData?.dismiss()
+            val result = snackbarHost.showSnackbar(
+                message = "“${reminder.subject}” marked done",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.setReminderDone(reminder.id, false)
+        }
+    }
 
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
@@ -205,7 +224,11 @@ fun RemindersListScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                SortPill(order = uiState.sort, onClick = { showSortSheet = true })
+                SortControls(
+                    order = uiState.sort,
+                    onOrderChange = { viewModel.setSort(it) },
+                    onPickKey = { showSortSheet = true },
+                )
             }
 
             val displayed = uiState.displayed
@@ -235,11 +258,12 @@ fun RemindersListScreen(
                 verticalArrangement = Arrangement.spacedBy(Dimens.cardGap)
             ) {
                 items(displayed, key = { it.id }) { reminder ->
-                    SwipeToDeleteReminderCard(
+                    SwipeReminderCard(
                         reminder = reminder,
                         linkedTo = uiState.linkedTo(reminder),
                         onClick = { editTargetId = reminder.id },
-                        onDelete = { viewModel.deleteReminder(reminder.id) }
+                        onDelete = { viewModel.deleteReminder(reminder.id) },
+                        onMarkDone = { markReminderDoneWithUndo(reminder) },
                     )
                 }
             }
@@ -285,44 +309,58 @@ fun RemindersListScreen(
     }
 }
 
-/** A memo card with swipe-left-to-delete. There is no swipe-to-done: a memo rings, it is not ticked. */
+/**
+ * A memo card with two swipes: left (end to start) marks it done / turns it off;
+ * right (start to end) deletes it, behind a confirm. Done is reversible from the
+ * Undo snackbar the caller shows, so it needs no confirm of its own.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeToDeleteReminderCard(
+private fun SwipeReminderCard(
     reminder: ReminderDto,
     linkedTo: String?,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMarkDone: () -> Unit,
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) showDeleteConfirm = true
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> showDeleteConfirm = true
+                SwipeToDismissBoxValue.EndToStart -> onMarkDone()
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
             false // never actually dismiss the item
         },
-        positionalThreshold = { it * 0.3f }
+        positionalThreshold = { it * 0.4f }
     )
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
+        enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+            val direction = dismissState.dismissDirection
+            if (direction != SwipeToDismissBoxValue.Settled) {
+                // Swipe right (start to end) deletes; swipe left (end to start) marks done.
+                val deleting = direction == SwipeToDismissBoxValue.StartToEnd
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = Dimens.cardInset)
                         .background(
-                            MaterialTheme.colorScheme.errorContainer,
+                            if (deleting) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.secondaryContainer,
                             shape = MaterialTheme.shapes.medium
                         ),
-                    contentAlignment = Alignment.CenterEnd
+                    contentAlignment = if (deleting) Alignment.CenterStart else Alignment.CenterEnd
                 ) {
                     Text(
-                        "Delete",
-                        modifier = Modifier.padding(end = 24.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        if (deleting) "Delete" else "Done",
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (deleting) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
