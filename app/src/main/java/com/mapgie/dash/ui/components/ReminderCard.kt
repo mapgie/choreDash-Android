@@ -52,7 +52,7 @@ import java.time.Instant
  * dismissed from the alert), the title, the schedule
  * as the meta line ("Weekdays · 8:00 PM · linked to chore", "Once · doesn't
  * repeat") and the next ring as the right-hand badge ("tomorrow 9 AM",
- * "rang 2h ago"). A done or archived memo is one plain muted state with no colour
+ * "2h ago"). A done or archived memo is one plain muted state with no colour
  * and no strikethrough.
  *
  * Colour and glyph come from [spineSwatch] / [iconSwatch] / [icon]: a standalone
@@ -161,7 +161,9 @@ fun ReminderCard(
                     )
                     MetaCaption(text = scheduleLine, uppercase = false)
                 }
-                StatusBadge(text = badgeText, tone = if (muted) StatusTone.NEUTRAL else tone)
+                if (badgeText.isNotBlank()) {
+                    StatusBadge(text = badgeText, tone = if (muted) StatusTone.NEUTRAL else tone)
+                }
             }
         }
     }
