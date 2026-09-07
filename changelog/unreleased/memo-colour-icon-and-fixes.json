@@ -1,0 +1,13 @@
+{
+  "bump": "minor",
+  "added": [
+    "Memos can carry their own colour and icon. A memo linked to a chore or task borrows that item's category colour and glyph (following your Colours settings); a standalone memo gets its own, chosen from the bell in the edit sheet."
+  ],
+  "changed": [
+    "The memo list badge drops the word \"rings\": it now just reads the next ring time, e.g. \"today 1:55 PM\"."
+  ],
+  "fixed": [
+    "A completed task no longer keeps a coloured urgency spine in the Done list; a done task's card is now fully muted.",
+    "Hardened the Alarm-style ring path with a regression test so it cannot silently fall back to the muted notification stream again."
+  ]
+}

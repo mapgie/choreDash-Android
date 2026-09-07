@@ -139,13 +139,20 @@ fun Chore.statusTone(): StatusTone = when (status) {
 /**
  * Task tone from [urgency], not priority. The bar therefore means the same thing
  * as on Chores and Memos; priority is carried separately by a non-colour marker.
+ *
+ * A completed task signals no urgency: it is done, so its spine and badge go quiet
+ * ([StatusTone.NONE], a transparent bar), the same muted treatment a done memo gets.
+ * Without this a task finished while overdue kept its rose spine in the Done list.
  */
-fun TaskDto.statusTone(): StatusTone = when (urgency()) {
-    TaskUrgency.OVERDUE -> StatusTone.CRITICAL
-    TaskUrgency.TODAY -> StatusTone.ATTENTION
-    TaskUrgency.THIS_WEEK -> StatusTone.OK
-    TaskUrgency.LATER -> StatusTone.NEUTRAL
-    TaskUrgency.NONE -> StatusTone.NONE
+fun TaskDto.statusTone(): StatusTone {
+    if (completedAt != null) return StatusTone.NONE
+    return when (urgency()) {
+        TaskUrgency.OVERDUE -> StatusTone.CRITICAL
+        TaskUrgency.TODAY -> StatusTone.ATTENTION
+        TaskUrgency.THIS_WEEK -> StatusTone.OK
+        TaskUrgency.LATER -> StatusTone.NEUTRAL
+        TaskUrgency.NONE -> StatusTone.NONE
+    }
 }
 
 /**

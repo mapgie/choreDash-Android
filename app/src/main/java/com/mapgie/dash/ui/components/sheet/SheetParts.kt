@@ -87,6 +87,8 @@ fun SheetHeader(
     chipContent: Color,
     eyebrow: String,
     ownerHandle: String? = null,
+    onIconClick: (() -> Unit)? = null,
+    iconClickLabel: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Row(
@@ -100,6 +102,15 @@ fun SheetHeader(
                 .padding(top = 4.dp)
                 .size(Dimens.sheetIconChipSize)
                 .clip(CircleShape)
+                .then(
+                    if (onIconClick != null) Modifier
+                        .semantics {
+                            role = Role.Button
+                            if (iconClickLabel != null) contentDescription = iconClickLabel
+                        }
+                        .clickable(onClick = onIconClick)
+                    else Modifier
+                )
                 .background(chipContainer),
         ) {
             Icon(imageVector = icon, contentDescription = null, tint = chipContent, modifier = Modifier.size(20.dp))

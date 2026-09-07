@@ -44,6 +44,15 @@ data class ReminderDto(
      * style plays its channel's sound regardless (Android fixes channel sounds).
      */
     @SerialName("sound") val sound: String? = null,
+    /**
+     * A standalone memo's own accent colour and glyph, as [Swatch] / [CategoryIcon]
+     * enum names, picked from the bell chip in the edit sheet. Null means the default
+     * (the reminder accent and a bell). Both are ignored while the memo is linked to a
+     * chore or task: a linked memo borrows that item's category look instead
+     * ([ReminderAppearance]).
+     */
+    @SerialName("colour") val colour: String? = null,
+    @SerialName("icon") val icon: String? = null,
 )
 
 @Serializable
@@ -54,6 +63,8 @@ data class ReminderInsert(
     @SerialName("task_id") val taskId: String? = null,
     @SerialName("repeat_days") val repeatDays: List<String> = emptyList(),
     @SerialName("sound") val sound: String? = null,
+    @SerialName("colour") val colour: String? = null,
+    @SerialName("icon") val icon: String? = null,
 )
 
 private fun parseInstant(raw: String?): Instant? =

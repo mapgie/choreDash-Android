@@ -137,6 +137,9 @@ data class ReminderDraft(
     val taskId: String = "",
     /** Ringtone URI for the Alarm style; blank means the default alarm tone. */
     val sound: String = "",
+    /** A standalone memo's own [Swatch] / [CategoryIcon] enum names; blank means default. */
+    val colour: String = "",
+    val icon: String = "",
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
     fun differsFrom(opened: ReminderDraft): Boolean = this != opened
@@ -165,6 +168,8 @@ data class ReminderDraft(
                 choreId = existing?.choreId ?: initialChoreId ?: "",
                 taskId = existing?.taskId ?: initialTaskId ?: "",
                 sound = existing?.sound ?: "",
+                colour = existing?.colour ?: "",
+                icon = existing?.icon ?: "",
             )
         }
     }

@@ -27,10 +27,12 @@ enum class ReminderKind { TASK_REMINDER, CHORE_ALERT }
 
 private enum class ChannelStyle { ALARM, NOTIFICATION, SILENT }
 
-private fun styleForDeliveryMode(deliveryMode: String): ChannelStyle = when (deliveryMode) {
-    "ALARM" -> ChannelStyle.ALARM
-    "SILENT" -> ChannelStyle.SILENT
-    else -> ChannelStyle.NOTIFICATION
+// The channel trio mirrors the Android-free DeliveryStyle so the ring decision has
+// a single source of truth (DeliveryMode, unit-tested in DeliveryStyleTest).
+private fun styleForDeliveryMode(deliveryMode: String): ChannelStyle = when (DeliveryMode.styleOf(deliveryMode)) {
+    DeliveryStyle.ALARM -> ChannelStyle.ALARM
+    DeliveryStyle.SILENT -> ChannelStyle.SILENT
+    DeliveryStyle.NOTIFICATION -> ChannelStyle.NOTIFICATION
 }
 
 private data class ChannelDef(
@@ -199,7 +201,7 @@ object NotificationHelper {
 
     /** True for the delivery mode that rings: full-screen alarm, alarm category. */
     fun isAlarmStyle(deliveryMode: String): Boolean =
-        styleForDeliveryMode(deliveryMode) == ChannelStyle.ALARM
+        DeliveryMode.ringsOnAlarmStream(deliveryMode)
 
     // The Alarm style's ring screen: AlarmActivity turns the screen on over the lock
     // screen and rings (AlarmRinger, USAGE_ALARM) until answered. This same intent is

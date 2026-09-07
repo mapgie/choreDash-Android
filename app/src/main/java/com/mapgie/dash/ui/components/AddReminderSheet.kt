@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -60,12 +63,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.IntentCompat
+import com.mapgie.dash.data.model.CategoryIcon
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDraft
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ReminderScheduleText
 import com.mapgie.dash.data.model.RepeatPreset
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.nextOccurrence
 import com.mapgie.dash.data.model.parseRepeatDays
@@ -89,6 +94,8 @@ import com.mapgie.dash.ui.screens.settings.CozySwitch
 import com.mapgie.dash.ui.theme.LocalDashTokens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Instant
@@ -167,9 +174,15 @@ fun AddReminderSheet(
     var taskId by rememberSaveable { mutableStateOf(opened.taskId) }
     // Ringtone URI for the Alarm style; blank is the device's default alarm tone.
     var sound by rememberSaveable { mutableStateOf(opened.sound) }
+    // A standalone memo's own accent and glyph (Swatch / CategoryIcon enum names,
+    // blank for the default). Ignored while the memo is linked, which inherits its
+    // chore's or task's category look on the list card instead.
+    var colour by rememberSaveable { mutableStateOf(opened.colour) }
+    var glyph by rememberSaveable { mutableStateOf(opened.icon) }
 
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    var showStylePicker by rememberSaveable { mutableStateOf(false) }
     var linkMenuOpen by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
@@ -197,6 +210,8 @@ fun AddReminderSheet(
         choreId = choreId,
         taskId = taskId,
         sound = sound,
+        colour = colour,
+        icon = glyph,
     )
     val isDirty = currentDraft.differsFrom(opened)
     val canSave = subject.isNotBlank() && !(repeatOn && days.isEmpty())
@@ -214,6 +229,8 @@ fun AddReminderSheet(
         choreId = restored.choreId
         taskId = restored.taskId
         sound = restored.sound
+        colour = restored.colour
+        glyph = restored.icon
         offeredDraft = null
     }
 
@@ -252,6 +269,8 @@ fun AddReminderSheet(
         taskId = taskId.ifBlank { null },
         repeatDays = effectiveDays.sorted().map { it.name },
         sound = sound.ifBlank { null },
+        colour = colour.ifBlank { null },
+        icon = glyph.ifBlank { null },
     )
 
     fun setDays(next: Set<DayOfWeek>) {
@@ -311,11 +330,18 @@ fun AddReminderSheet(
                 .padding(bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // A memo linked to a chore or task borrows that item's colour and glyph on
+            // the list card, so the bell chip is only a customiser for a standalone memo.
+            val linked = choreId.isNotBlank() || taskId.isNotBlank()
+            val ownSwatch = Swatch.fromName(colour)
+            val ownGlyph = CategoryIcon.fromName(glyph)
             SheetHeader(
-                icon = LucideIcons.Bell,
-                chipContainer = accents.reminderContainer,
-                chipContent = accents.onReminderContainer,
+                icon = if (!linked && ownGlyph != null) LucideIcons.forCategory(ownGlyph) else LucideIcons.Bell,
+                chipContainer = if (!linked && ownSwatch != null) ownSwatch.tintColor() else accents.reminderContainer,
+                chipContent = if (!linked && ownSwatch != null) ownSwatch.textColor() else accents.onReminderContainer,
                 eyebrow = if (isNew) "New $featureWord" else "Edit $featureWord",
+                onIconClick = if (!linked) ({ showStylePicker = true }) else null,
+                iconClickLabel = "Choose $featureWord colour and icon",
             ) {
                 TitleField(
                     value = subject,
@@ -324,6 +350,13 @@ fun AddReminderSheet(
                     autoFocus = isNew,
                 )
             }
+            Text(
+                text = if (linked) "Colour and icon are inherited from the linked item."
+                       else "Tap the bell to give this ${featureWord.lowercase()} a colour and icon.",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = tokens.inkFaint,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
 
             offeredDraft?.let { offered ->
                 DraftResumeRow(
@@ -549,6 +582,20 @@ fun AddReminderSheet(
         )
     }
 
+    if (showStylePicker) {
+        ReminderStyleDialog(
+            colour = colour,
+            icon = glyph,
+            featureWord = featureWord,
+            onConfirm = { pickedColour, pickedIcon ->
+                colour = pickedColour
+                glyph = pickedIcon
+                showStylePicker = false
+            },
+            onDismiss = { showStylePicker = false },
+        )
+    }
+
     if (showDeleteConfirm && onDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -714,5 +761,141 @@ private fun ExistingMeta(existing: ReminderDto) {
     val parts = listOfNotNull(added?.let { "added $it" }, if (existing.archivedAt != null) "archived" else null)
     if (parts.isNotEmpty()) {
         MetaCaption(text = parts.joinToString(" · "), uppercase = false, modifier = Modifier.padding(horizontal = 4.dp))
+    }
+}
+
+/**
+ * The standalone memo's colour + icon picker, opened from the bell chip. A leading
+ * "Default" option on each row clears the pick (the bell on the reminder accent).
+ * Local state until Save, so Cancel leaves the memo untouched.
+ */
+@Composable
+private fun ReminderStyleDialog(
+    colour: String,
+    icon: String,
+    featureWord: String,
+    onConfirm: (colour: String, icon: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var pickedColour by remember { mutableStateOf(Swatch.fromName(colour)) }
+    var pickedIcon by remember { mutableStateOf(CategoryIcon.fromName(icon)) }
+    // The colour the icon preview wears, so it echoes the chip on the list card.
+    val previewSwatch = pickedColour
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("$featureWord colour & icon") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = "Colour",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                ) {
+                    StyleSwatch(
+                        selected = pickedColour == null,
+                        label = "Default colour",
+                        container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        content = MaterialTheme.colorScheme.onSurfaceVariant,
+                        glyph = LucideIcons.Bell,
+                        onClick = { pickedColour = null },
+                    )
+                    Swatch.categoryPalette.forEach { swatch ->
+                        StyleSwatch(
+                            selected = pickedColour == swatch,
+                            label = "${swatch.displayName} colour",
+                            container = swatch.tintColor(),
+                            content = swatch.textColor(),
+                            glyph = null,
+                            onClick = { pickedColour = swatch },
+                        )
+                    }
+                }
+                Text(
+                    text = "Icon",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                ) {
+                    StyleSwatch(
+                        selected = pickedIcon == null,
+                        label = "Default bell",
+                        container = previewSwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+                        content = previewSwatch?.textColor() ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        glyph = LucideIcons.Bell,
+                        onClick = { pickedIcon = null },
+                    )
+                    CategoryIcon.pickerSet.forEach { option ->
+                        StyleSwatch(
+                            selected = pickedIcon == option,
+                            label = "Icon: ${option.label}",
+                            container = previewSwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+                            content = previewSwatch?.textColor() ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                            glyph = LucideIcons.forCategory(option),
+                            onClick = { pickedIcon = option },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(pickedColour?.name ?: "", pickedIcon?.name ?: "") }) { Text("Done") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+/** One 44dp option in the memo style picker: a tinted circle, ringed when selected. */
+@Composable
+private fun StyleSwatch(
+    selected: Boolean,
+    label: String,
+    container: Color,
+    content: Color,
+    glyph: androidx.compose.ui.graphics.vector.ImageVector?,
+    onClick: () -> Unit,
+) {
+    val ring = MaterialTheme.colorScheme.onBackground
+    val gap = MaterialTheme.colorScheme.surface
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .semantics {
+                role = Role.RadioButton
+                contentDescription = label
+            }
+            .selectable(selected = selected, onClick = onClick),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(if (selected) 40.dp else 34.dp)
+                .clip(CircleShape)
+                .background(if (selected) ring else Color.Transparent)
+                .padding(if (selected) 2.dp else 0.dp)
+                .clip(CircleShape)
+                .background(if (selected) gap else Color.Transparent)
+                .padding(if (selected) 2.dp else 0.dp)
+                .clip(CircleShape)
+                .background(container),
+        ) {
+            if (glyph != null) {
+                Icon(imageVector = glyph, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
+            }
+        }
     }
 }

@@ -132,16 +132,16 @@ class ReminderScheduleTest {
         val m = memo("2026-07-10T07:30:00Z", reminded = true, lastRangAt = "2026-07-10T07:30:00Z")
         assertEquals("rang 2h ago", ReminderScheduleText.nextRingBadge(m, now, zone))
         val repeating = memo("2026-07-13T07:00:00Z", names(monWedFri), lastRangAt = "2026-07-10T07:30:00Z")
-        assertEquals("rings Mon 7 AM", ReminderScheduleText.nextRingBadge(repeating, now, zone))
+        assertEquals("Mon 7 AM", ReminderScheduleText.nextRingBadge(repeating, now, zone))
     }
 
     @Test
-    fun `badge names today, tomorrow, the weekday within a week, then the date`() {
-        assertEquals("rings today 8 PM", ReminderScheduleText.nextRingBadge(memo("2026-07-10T20:00:00Z"), now, zone))
-        assertEquals("rings tomorrow 9 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-11T09:00:00Z"), now, zone))
-        assertEquals("rings Wed 7 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-15T07:00:00Z"), now, zone))
-        assertEquals("rings Thu 7:30 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-16T07:30:00Z"), now, zone))
-        assertEquals("rings 12 Oct 9 AM", ReminderScheduleText.nextRingBadge(memo("2026-10-12T09:00:00Z"), now, zone))
+    fun `badge names today, tomorrow, the weekday within a week, then the date, without the rings verb`() {
+        assertEquals("today 8 PM", ReminderScheduleText.nextRingBadge(memo("2026-07-10T20:00:00Z"), now, zone))
+        assertEquals("tomorrow 9 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-11T09:00:00Z"), now, zone))
+        assertEquals("Wed 7 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-15T07:00:00Z"), now, zone))
+        assertEquals("Thu 7:30 AM", ReminderScheduleText.nextRingBadge(memo("2026-07-16T07:30:00Z"), now, zone))
+        assertEquals("12 Oct 9 AM", ReminderScheduleText.nextRingBadge(memo("2026-10-12T09:00:00Z"), now, zone))
     }
 
     @Test

@@ -105,15 +105,17 @@ object ReminderScheduleText {
     }
 
     /**
-     * The card's right-hand badge: "rings today 8 PM", "rings tomorrow 9 AM",
-     * "rings Wed 7 AM", "rings 12 Oct 9 AM"; "due 3h ago" for a ring the device
-     * slept through; and for a done once-only memo "rang 2h ago" or "done".
+     * The card's right-hand badge: "today 8 PM", "tomorrow 9 AM", "Wed 7 AM",
+     * "12 Oct 9 AM" for the next ring; "due 3h ago" for a ring the device slept
+     * through; and for a done once-only memo "rang 2h ago" or "done". The future
+     * case drops the "rings" verb: the bell chip already says it is an alarm and
+     * the time reads as upcoming, so the word only added noise.
      */
     fun nextRingBadge(reminder: ReminderDto, now: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
         if (reminder.isDone) return reminder.rangAt()?.let { "rang ${ago(it, now)}" } ?: "done"
         val next = reminder.remindAtInstant() ?: return "no time set"
         if (!next.isAfter(now)) return "due ${ago(next, now)}"
-        return "rings " + whenLabel(next, now, zone)
+        return whenLabel(next, now, zone)
     }
 
     /** "today 8 PM", "tomorrow 9 AM", "Wed 7 AM" within the week, otherwise "12 Oct 9 AM". */

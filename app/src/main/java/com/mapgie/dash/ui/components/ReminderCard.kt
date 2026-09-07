@@ -20,11 +20,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderScheduleText
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
@@ -37,8 +40,10 @@ import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
+import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import java.time.Instant
 
 /**
@@ -46,9 +51,15 @@ import java.time.Instant
  * the 38dp bell chip (a memo is not ticked; it rings and is snoozed or
  * dismissed from the alert), the title, the schedule
  * as the meta line ("Weekdays · 8:00 PM · linked to chore", "Once · doesn't
- * repeat") and the next ring as the right-hand badge ("rings tomorrow 9 AM",
- * "rang 2h ago"). Spine, chip and badge take the memo's status tone; a done
- * or archived memo is one plain muted state with no colour and no strikethrough.
+ * repeat") and the next ring as the right-hand badge ("tomorrow 9 AM",
+ * "rang 2h ago"). A done or archived memo is one plain muted state with no colour
+ * and no strikethrough.
+ *
+ * Colour and glyph come from [spineSwatch] / [iconSwatch] / [icon]: a standalone
+ * memo carries its own pick, a linked memo borrows its chore's or task's category
+ * look (resolved in [com.mapgie.dash.data.model.ReminderAppearance]). When a swatch
+ * is null the spine and chip fall back to the memo's ring-urgency status tone, and
+ * a null [icon] is the default bell, so an unstyled memo looks exactly as before.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +71,9 @@ fun ReminderCard(
     highlightQuery: String? = null,
     inset: Dp = Dimens.cardInset,
     now: Instant = Instant.now(),
+    icon: ImageVector = LucideIcons.Bell,
+    spineSwatch: Swatch? = null,
+    iconSwatch: Swatch? = null,
 ) {
     val isDone = reminder.isDone
     val isArchived = reminder.archivedAt != null
@@ -89,11 +103,16 @@ fun ReminderCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            val spine = when {
+                muted -> Color.Transparent
+                spineSwatch != null -> spineSwatch.spineColor()
+                else -> tone.barColor()
+            }
             Box(
                 modifier = Modifier
                     .width(Dimens.accentBarWidth)
                     .fillMaxHeight()
-                    .background(tone.barColor())
+                    .background(spine)
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -107,17 +126,21 @@ fun ReminderCard(
                         bottom = Dimens.cardVerticalPadding - 3.dp,
                     )
             ) {
-                // The bell keeps the memo accent while quiet; a signalling tone takes over.
+                // A fixed swatch (the memo's own pick, or its linked category colour) wins;
+                // otherwise the chip keeps the memo accent while quiet and a signalling ring
+                // tone takes over as it comes due.
                 val signalling = tone == StatusTone.CRITICAL || tone == StatusTone.ATTENTION || tone == StatusTone.OK
                 CardIconChip(
-                    icon = LucideIcons.Bell,
+                    icon = icon,
                     containerColor = when {
                         muted -> MaterialTheme.colorScheme.surfaceContainerHigh
+                        iconSwatch != null -> iconSwatch.tintColor()
                         signalling -> tone.badgeContainerColor() ?: accents.reminderContainer
                         else -> accents.reminderContainer
                     },
                     contentColor = when {
                         muted -> MaterialTheme.colorScheme.onSurfaceVariant
+                        iconSwatch != null -> iconSwatch.textColor()
                         signalling -> tone.textColor()
                         else -> accents.onReminderContainer
                     },

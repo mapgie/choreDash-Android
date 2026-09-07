@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -47,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
+import com.mapgie.dash.data.model.ReminderAppearance
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 import com.mapgie.dash.ui.components.core.HeaderIconButton
@@ -181,11 +184,15 @@ fun RemindersListScreen(
                         )
                     }
                     items(results, key = { it.id }) { reminder ->
+                        val look = reminderAppearance(reminder, uiState)
                         ReminderCard(
                             reminder = reminder,
                             linkedTo = uiState.linkedTo(reminder),
                             onClick = { editTargetId = reminder.id },
                             highlightQuery = query,
+                            icon = look.glyph(),
+                            spineSwatch = look.spineSwatch,
+                            iconSwatch = look.iconSwatch,
                         )
                     }
                 }
@@ -258,9 +265,13 @@ fun RemindersListScreen(
                 verticalArrangement = Arrangement.spacedBy(Dimens.cardGap)
             ) {
                 items(displayed, key = { it.id }) { reminder ->
+                    val look = reminderAppearance(reminder, uiState)
                     SwipeReminderCard(
                         reminder = reminder,
                         linkedTo = uiState.linkedTo(reminder),
+                        icon = look.glyph(),
+                        spineSwatch = look.spineSwatch,
+                        iconSwatch = look.iconSwatch,
                         onClick = { editTargetId = reminder.id },
                         onDelete = { viewModel.deleteReminder(reminder.id) },
                         onMarkDone = { markReminderDoneWithUndo(reminder) },
@@ -309,6 +320,14 @@ fun RemindersListScreen(
     }
 }
 
+/** The colour and glyph a memo's card wears: inherited from its link, or its own pick. */
+private fun reminderAppearance(reminder: ReminderDto, uiState: ReminderUiState): ReminderAppearance =
+    ReminderAppearance.of(reminder, uiState.linkedCategory(reminder), uiState.catalog, uiState.colourAxes)
+
+/** The memo's chip glyph: its resolved category icon, or the default bell. */
+private fun ReminderAppearance.glyph(): ImageVector =
+    icon?.let { LucideIcons.forCategory(it) } ?: LucideIcons.Bell
+
 /**
  * A memo card with two swipes: left (end to start) marks it done / turns it off;
  * right (start to end) deletes it, behind a confirm. Done is reversible from the
@@ -319,6 +338,9 @@ fun RemindersListScreen(
 private fun SwipeReminderCard(
     reminder: ReminderDto,
     linkedTo: String?,
+    icon: ImageVector,
+    spineSwatch: Swatch?,
+    iconSwatch: Swatch?,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onMarkDone: () -> Unit,
@@ -370,6 +392,9 @@ private fun SwipeReminderCard(
             reminder = reminder,
             linkedTo = linkedTo,
             onClick = onClick,
+            icon = icon,
+            spineSwatch = spineSwatch,
+            iconSwatch = iconSwatch,
         )
     }
 
