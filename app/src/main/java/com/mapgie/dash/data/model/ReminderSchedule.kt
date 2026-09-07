@@ -105,18 +105,18 @@ object ReminderScheduleText {
     }
 
     /**
-     * The card's right-hand badge, which only ever says *when*: "today 8 PM",
-     * "tomorrow 9 AM", "Wed 7 AM", "12 Oct 9 AM" for the next ring; a plain "3h ago"
-     * for an active ring the device slept through; and "2h ago" for a done memo,
-     * read off when it last rang. It carries no active/done verb ("due", "rang",
-     * "done"): the Active/Done filter and the muted card already say which bucket a
-     * memo is in, so the word was only noise. Blank for a memo with no time to show
-     * (dismissed before it ever rang); the card then draws no badge.
+     * The card's right-hand badge, which says *when*: "today 8 PM", "tomorrow 9 AM",
+     * "Wed 7 AM", "12 Oct 9 AM" for the next ring, and "2h ago" for a done memo read
+     * off when it last rang. The one exception is "missed": an active once-only ring
+     * whose time has passed without ringing, because the phone was off through it.
+     * No active/done verb otherwise ("due", "rang", "done"): the Active/Done filter
+     * and the muted card already say which bucket a memo is in. Blank for a memo with
+     * no time to show (dismissed before it ever rang); the card then draws no badge.
      */
     fun nextRingBadge(reminder: ReminderDto, now: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
         if (reminder.isDone) return reminder.rangAt()?.let { ago(it, now) } ?: ""
         val next = reminder.remindAtInstant() ?: return ""
-        if (!next.isAfter(now)) return ago(next, now)
+        if (!next.isAfter(now)) return "missed"
         return whenLabel(next, now, zone)
     }
 

@@ -145,8 +145,8 @@ class ReminderScheduleTest {
     }
 
     @Test
-    fun `a missed active ring is a plain time ago, and a dismissed memo has no badge`() {
-        assertEquals("3h ago", ReminderScheduleText.nextRingBadge(memo("2026-07-10T06:30:00Z"), now, zone))
+    fun `an active ring the phone slept through says missed, and a dismissed memo has no badge`() {
+        assertEquals("missed", ReminderScheduleText.nextRingBadge(memo("2026-07-10T06:30:00Z"), now, zone))
         val dismissed = memo("2026-07-11T06:30:00Z", completedAt = "2026-07-10T07:00:00Z")
         assertEquals("", ReminderScheduleText.nextRingBadge(dismissed, now, zone))
     }
