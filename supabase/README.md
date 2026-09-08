@@ -13,6 +13,20 @@ and run it. Every statement is safe to run more than once. After editing
 `schema.sql`, run the new statements against every project that uses it (there is
 only one shared project today).
 
+## Data API exposure (grants)
+
+The app reaches every table through the Data API (PostgREST) with the anon key.
+Supabase is removing the automatic grant that exposes `public` tables to that API:
+new projects lose it on 2026-05-30, and new tables in existing projects on
+2026-10-30 ([discussion](https://github.com/orgs/supabase/discussions/45329)).
+Tables that already exist keep their grants, so the live project is safe, but a
+project created fresh from `schema.sql`, or any table added later, needs an
+explicit `GRANT` or requests return "permission denied". `schema.sql` therefore
+grants each table to `anon` / `authenticated` / `service_role` in its "Data API
+exposure" block, and `SchemaSyncTest` fails if a `CREATE TABLE` ever lacks a grant
+to `anon`. RLS still governs which rows a role sees; the grant governs whether the
+table is reachable at all. Both are required.
+
 ## Keeping the app and the database in sync
 
 The app writes fixed sets of strings to constrained columns (`todos.due_period`,

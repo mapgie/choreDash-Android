@@ -1221,3 +1221,28 @@ Guards, layered:
 
 Whenever you add a value to a constrained column: widen the CHECK in `schema.sql`,
 add the ALTER migration, and let `SchemaSyncTest` confirm the two agree.
+
+---
+
+## 54. Supabase's Data API needs an explicit table GRANT, separate from RLS (2026 exposure change)
+
+Supabase historically auto-granted `public` tables to the API roles (`anon`,
+`authenticated`), so enabling RLS + policies was enough to use a table over the
+Data API (PostgREST/GraphQL/supabase-js). That auto-grant is going away: new
+projects on 2026-05-30, new tables in existing projects on 2026-10-30
+(https://github.com/orgs/supabase/discussions/45329). Existing tables keep their
+grants, so nothing breaks retroactively — the trap is a *fresh* project created
+from `schema.sql`, or a table added afterwards, silently returning
+"permission denied" through the anon key even though RLS is set up correctly.
+
+RLS and GRANT answer different questions: the GRANT decides whether a role can
+reach the table through the API at all; RLS decides which rows. Both are needed.
+
+Rules for this repo:
+- Every `CREATE TABLE` in `supabase/schema.sql` gets a matching
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO anon, authenticated, service_role;`.
+  This app does full CRUD as `anon`, so anon gets all four verbs (not the
+  read-only anon the generic Supabase snippet suggests), matching its policies.
+- `SchemaSyncTest` parses the file and fails if a created table has no GRANT to
+  `anon`, so a new table can't ship unexposed.
+- No sequence grants here — every id is a uuid default or a text key.

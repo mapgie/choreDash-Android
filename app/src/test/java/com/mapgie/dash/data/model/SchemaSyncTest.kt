@@ -42,6 +42,25 @@ class SchemaSyncTest {
         )
     }
 
+    @Test
+    fun `every table is granted to the anon role for the Data API`() {
+        // From 2026 Supabase stops auto-exposing public tables to the Data API, so
+        // a table the app reaches through the anon key must carry an explicit GRANT
+        // to anon (see supabase/schema.sql). This catches adding a CREATE TABLE
+        // without the matching grant.
+        val tables = Regex("""CREATE TABLE IF NOT EXISTS\s+(\w+)""", RegexOption.IGNORE_CASE)
+            .findAll(schema).map { it.groupValues[1] }.toList()
+        assertTrue("No CREATE TABLE statements found in supabase/schema.sql", tables.isNotEmpty())
+        val ungranted = tables.filterNot { table ->
+            Regex("""GRANT[^;]*\bON\s+$table\b[^;]*\banon\b""", RegexOption.IGNORE_CASE).containsMatchIn(schema)
+        }
+        assertTrue(
+            "supabase/schema.sql creates $ungranted but never GRANTs them to anon; the app " +
+                "can't reach them through the Data API. Add a GRANT ... ON <table> TO anon.",
+            ungranted.isEmpty(),
+        )
+    }
+
     /** The quoted values inside the first `CHECK (<column> IN ('a', 'b', ...))` for [column]. */
     private fun allowedValues(column: String): Set<String> {
         val inList = Regex("""$column\s+IN\s*\(([^)]*)\)""", RegexOption.IGNORE_CASE)
