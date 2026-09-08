@@ -31,6 +31,19 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.34.0] - 2026-09-08
+
+### Added
+- Memos can carry their own colour and icon. A memo linked to a chore or task borrows that item's category colour and glyph (following your Colours settings); a standalone memo gets its own, chosen from the bell in the edit sheet.
+
+### Changed
+- The memo list badge now just shows when a memo rings, with no verb: "today 1:55 PM" for the next ring, "2h ago" once it has rung, and "missed" for a once-only ring the phone slept through. The Active and Done filters already say which is which.
+
+### Fixed
+- A completed task no longer keeps a coloured urgency spine in the Done list; a done task's card is now fully muted.
+- Hardened the Alarm-style ring path with a regression test so it cannot silently fall back to the muted notification stream again.
+
+---
 ## [0.33.1] - 2026-09-06
 
 ### Fixed
