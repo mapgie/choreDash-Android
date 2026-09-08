@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS todos (
   priority     text NOT NULL DEFAULT 'normal'
                CHECK (priority IN ('higher', 'normal', 'lower')),
   due_date     date,
-  due_period   text CHECK (due_period IN ('today', 'this_week', 'this_month')),
+  due_period   text CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually')),
   completed_at timestamptz,
   archived_at  timestamptz,
   reminder_at  timestamptz,
@@ -102,3 +102,18 @@ CREATE POLICY "anon read todos"   ON todos FOR SELECT TO anon USING (true);
 CREATE POLICY "anon insert todos" ON todos FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "anon update todos" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon delete todos" ON todos FOR DELETE TO anon USING (true);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Migrations for existing projects
+--
+-- `CREATE TABLE IF NOT EXISTS` above never alters a table that already
+-- exists, so a project created before a column or constraint changed needs
+-- the matching statement below run once in the SQL Editor. Each is written
+-- to be safe to run more than once.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- 2026-09: allow due_period = 'eventually' (a soft "someday" due with no
+-- deadline). Widens the existing check; existing rows are unaffected.
+ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
+ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
+  CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
