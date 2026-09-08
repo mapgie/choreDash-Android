@@ -178,7 +178,14 @@ object LucideIcons {
     }
 
     val Brush: ImageVector by lazy {
-        lucide("Brush", listOf("M20.4 14.5 16 10 4 20", "M12 6 8 2 4 6l4 4", "m14 4 6 6"))
+        lucide(
+            "Brush",
+            listOf(
+                "m11 10 3 3",
+                "M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z",
+                "M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031",
+            ),
+        )
     }
 
     val Leaf: ImageVector by lazy {

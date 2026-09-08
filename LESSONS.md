@@ -1185,3 +1185,26 @@ which both `NotificationHelper.isAlarmStyle` and `AlarmReceiver`'s direct
 regresses, the JVM unit test fails in CI before the phone ever falls silent again. The
 one thing a pure test can't cover is someone deleting the `startAlarmRingScreen` call
 from `AlarmReceiver`; keep that call paired with this lesson.
+
+---
+
+## 53. A pale-tint preview chip needs its own boundary: fill-vs-surface contrast is not enough
+
+The memo colour/icon picker (`StyleSwatch` in `AddReminderSheet.kt`) filled each
+chip with `Swatch.tintColor()`, the same pale wash the list card badge uses. On the
+equally pale dialog surface those chips had no visible edge in any mode, light,
+dark or WCAG, so they read as one flat blur and the colours were impossible to
+tell apart. The tint is the right *preview* (it is the real badge background), but
+a preview still has to be a legible control.
+
+The sibling Settings pickers already solved the same problem two ways worth reusing:
+`SwatchRow` (Settings › Colours) fills colour chips with the saturated
+`spineColor()` instead of the tint, and the app's pills bound themselves with a
+`tokens.pillOutline` / `colorScheme.outline` hairline. The fix here keeps the tint
+fill but adds a 1.5dp `.border(...)` per chip: the swatch's `spineColor()` for a
+colour chip (which also carries the hue the pale fill barely shows) and
+`colorScheme.outline` for the neutral/icon chips. Both clear the surface at 3:1 in
+every mode, and `outline` is already WCAG-lifted, so the high-contrast toggle
+reaches them too. Rule of thumb: if a control's fill is a near-surface tint, its
+legibility must come from a border or the saturated tone, never from the fill alone
+(this is the same "communicate via shape, not colour alone" rule the a11y notes state).
