@@ -7,10 +7,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,13 +37,17 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.withTimeoutOrNull
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.preferences.DEFAULT_FAB_ORDER
 import com.mapgie.dash.ui.theme.LocalDashTokens
@@ -69,14 +75,19 @@ private fun AddMenuOption.spec(reminderLabel: String, accents: TypeAccentColors)
     )
 }
 
+// A short-duration long press, well under the platform default (~400ms), so the
+// radial opens promptly on a hold without a normal tap ever crossing into it.
+private const val FAB_LONG_PRESS_MS = 250L
+
 /**
  * The round sage add button docked in the centre slot of the bottom bar (52dp).
- * A tap runs [onClick], which opens the speed dial. [onLongClick] is optional and
- * unused by the bar itself. While the speed dial is open the fill flips to ink and
- * the plus rotates 45° into a cross; the same button is drawn again inside
- * [SpeedDialOverlay] so it sits above the scrim.
+ * A tap runs [onClick] (add for the page you're on); a short hold runs
+ * [onLongClick] (open the radial), on a shorter-than-default timeout since the
+ * platform long press felt sluggish. When [onLongClick] is null (Settings, and
+ * the copy of the button drawn inside [SpeedDialOverlay]) a plain tap is used.
+ * While the speed dial is open the fill flips to ink and the plus rotates 45°
+ * into a cross.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AddMenuButton(
     expanded: Boolean,
@@ -85,26 +96,53 @@ fun AddMenuButton(
     onLongClick: (() -> Unit)? = null,
 ) {
     val rotation by animateFloatAsState(targetValue = if (expanded) 45f else 0f, label = "fabRotation")
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(52.dp)
-            .shadow(6.dp, CircleShape)
-            .clip(CircleShape)
-            .background(
-                if (expanded) MaterialTheme.colorScheme.onBackground
-                else MaterialTheme.colorScheme.secondary
-            )
+    // Read the latest handlers through State so the gesture detector, keyed on
+    // Unit, never fires a stale lambda (LESSONS.md #49).
+    val latestClick by rememberUpdatedState(onClick)
+    val latestLong by rememberUpdatedState(onLongClick)
+    val hasLong = onLongClick != null
+    val desc = if (expanded) "Close add menu" else "Add"
+
+    val base = modifier
+        .size(52.dp)
+        .shadow(6.dp, CircleShape)
+        .clip(CircleShape)
+        .background(
+            if (expanded) MaterialTheme.colorScheme.onBackground
+            else MaterialTheme.colorScheme.secondary
+        )
+
+    val interactive = if (hasLong) {
+        base
             .semantics {
                 role = Role.Button
-                contentDescription = if (expanded) "Close add menu" else "Add"
+                contentDescription = desc
+                onClick { latestClick(); true }
+                onLongClick(label = "More add options") { latestLong?.invoke(); true }
             }
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-                onLongClickLabel = if (expanded || onLongClick == null) null else "More add options",
-            ),
-    ) {
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    // Released before the timeout: a tap. Otherwise the hold has
+                    // crossed into a long press, so open the radial and wait out
+                    // the eventual release.
+                    val released = withTimeoutOrNull(FAB_LONG_PRESS_MS) { waitForUpOrCancellation() }
+                    if (released != null) latestClick() else {
+                        latestLong?.invoke()
+                        waitForUpOrCancellation()
+                    }
+                }
+            }
+    } else {
+        base
+            .semantics {
+                role = Role.Button
+                contentDescription = desc
+            }
+            .clickable { latestClick() }
+    }
+
+    Box(contentAlignment = Alignment.Center, modifier = interactive) {
         Icon(
             imageVector = LucideIcons.Plus,
             contentDescription = null,

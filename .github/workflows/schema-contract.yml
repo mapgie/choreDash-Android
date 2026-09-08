@@ -1,0 +1,30 @@
+name: Schema contract
+# Confirms a throwaway Supabase project actually accepts every value the app can
+# send (the values allowed by supabase/schema.sql). Dormant until the two secrets
+# below are set: without them the script prints a notice and passes.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/schema.sql"
+      - "supabase/contract_check.py"
+      - "app/src/main/java/com/mapgie/dash/data/model/Task.kt"
+      - ".github/workflows/schema-contract.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/schema.sql"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    name: Supabase REST contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Insert each allowed value against the test project's REST API
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+        run: python3 supabase/contract_check.py

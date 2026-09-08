@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS todos (
   priority     text NOT NULL DEFAULT 'normal'
                CHECK (priority IN ('higher', 'normal', 'lower')),
   due_date     date,
-  due_period   text CHECK (due_period IN ('today', 'this_week', 'this_month')),
+  due_period   text CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually')),
   completed_at timestamptz,
   archived_at  timestamptz,
   reminder_at  timestamptz,
@@ -102,3 +102,49 @@ CREATE POLICY "anon read todos"   ON todos FOR SELECT TO anon USING (true);
 CREATE POLICY "anon insert todos" ON todos FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "anon update todos" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon delete todos" ON todos FOR DELETE TO anon USING (true);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Data API exposure (table grants)
+--
+-- Supabase is removing the automatic privilege grant that exposes public
+-- tables to the Data API (PostgREST / GraphQL / supabase-js):
+--   • 2026-05-30: new projects no longer auto-expose public tables.
+--   • 2026-10-30: newly created tables in existing projects no longer auto-expose.
+-- Tables that already exist keep their grants past those dates, so the current
+-- shared project keeps working — but a project created fresh from this file, or
+-- any table added to it afterwards, needs the grants below or every request
+-- through the anon key returns "permission denied". See
+-- https://github.com/orgs/supabase/discussions/45329
+--
+-- RLS (above) decides which rows a role may touch; these GRANTs decide whether
+-- the role reaches the table through the API at all. Both are required. The app
+-- connects with the anon key and does full CRUD, so anon gets all four verbs,
+-- matching its RLS policies. authenticated/service_role are granted too so the
+-- shared project stays open to those roles as it is today. No sequence grants:
+-- every id is a uuid default or a text key, so there are no sequences.
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON owners TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON tags   TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scans  TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Migrations for existing projects
+--
+-- `CREATE TABLE IF NOT EXISTS` above never alters a table that already
+-- exists, so a project created before a column or constraint changed needs
+-- the matching statement below run once in the SQL Editor. Each is written
+-- to be safe to run more than once.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- 2026-09: allow due_period = 'eventually' (a soft "someday" due with no
+-- deadline). Widens the existing check; existing rows are unaffected.
+ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
+ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
+  CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
+
+-- 2026: Data API exposure change (see the grants block above). The existing
+-- project's tables keep working past 2026-10-30 on their current grants, so
+-- there is nothing to fix now. But run the "Data API exposure (table grants)"
+-- block once to make the grants explicit, so this project matches a fresh one
+-- and any table added later stays reachable. The statements are safe to re-run.

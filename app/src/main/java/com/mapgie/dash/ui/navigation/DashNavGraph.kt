@@ -197,11 +197,20 @@ fun DashNavGraph(
                         tabs = tabs,
                         centerContent = {
                             if (showFab) {
+                                val option = activeScreen?.addMenuOption
                                 AddMenuButton(
                                     expanded = fabExpanded,
-                                    // A single tap opens the radial to pick any type;
-                                    // no long press (its delay felt sluggish).
-                                    onClick = { fabExpanded = true },
+                                    // Tap: add a new item for the page you're on. On
+                                    // Settings there is no such type, so tap opens the
+                                    // radial instead.
+                                    onClick = {
+                                        if (option != null) pendingAddIntent = option
+                                        else fabExpanded = true
+                                    },
+                                    // Short hold: open the radial to pick any type.
+                                    onLongClick = if (option != null) {
+                                        { fabExpanded = true }
+                                    } else null,
                                 )
                             }
                         }
