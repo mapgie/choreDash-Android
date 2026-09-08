@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.data.model.DuePeriod
 import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskDueType
@@ -242,9 +243,7 @@ fun EditTaskSheet(
     // still false (LESSONS.md #45). Read the latest one through State instead.
     val latestRequestDismiss by rememberUpdatedState<() -> Unit>({ requestDismiss() })
 
-    fun priorityString() = when (priority) {
-        TaskPriority.HIGHER -> "higher"; TaskPriority.LOWER -> "lower"; TaskPriority.NORMAL -> "normal"
-    }
+    fun priorityString() = priority.wire
 
     fun buildInsert() = TaskInsert(
         title = title.trim(),
@@ -282,12 +281,7 @@ fun EditTaskSheet(
 
     val dueChipText = when (dueType) {
         DUE_DATE -> dueDate?.format(DateTimeFormatter.ofPattern("EEE d MMM")) ?: "Pick a date"
-        DUE_PERIOD -> when (duePeriod) {
-            "this_week" -> "This week"
-            "this_month" -> "This month"
-            "eventually" -> "Eventually"
-            else -> "Today"
-        }
+        DUE_PERIOD -> DuePeriod.fromKey(duePeriod)?.label ?: DuePeriod.TODAY.label
         else -> "None"
     }
     val remindChipText = if (reminderEnabled) {
@@ -389,18 +383,12 @@ fun EditTaskSheet(
                                 text = { Text("Pick a date…") },
                                 onClick = { dueMenuOpen = false; showDueDatePicker = true },
                             )
-                            listOf(
-                                "today" to "Today",
-                                "this_week" to "This week",
-                                "this_month" to "This month",
-                                "eventually" to "Eventually",
-                            )
-                                .forEach { (key, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = { dueType = DUE_PERIOD; duePeriod = key; dueMenuOpen = false },
-                                    )
-                                }
+                            DuePeriod.entries.forEach { period ->
+                                DropdownMenuItem(
+                                    text = { Text(period.label) },
+                                    onClick = { dueType = DUE_PERIOD; duePeriod = period.key; dueMenuOpen = false },
+                                )
+                            }
                         }
                     }
                 }

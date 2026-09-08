@@ -50,8 +50,38 @@ data class TaskUpdate(
     @SerialName("reminded") val reminded: Boolean? = null
 )
 
-enum class TaskPriority { HIGHER, NORMAL, LOWER }
-enum class DuePeriod { TODAY, THIS_WEEK, THIS_MONTH }
+/**
+ * Task priority. [wire] is the exact string written to todos.priority and must
+ * stay in sync with the todos_priority check constraint in supabase/schema.sql
+ * (SchemaSyncTest guards this).
+ */
+enum class TaskPriority(val wire: String) {
+    HIGHER("higher"),
+    NORMAL("normal"),
+    LOWER("lower");
+
+    companion object {
+        fun fromWire(value: String?): TaskPriority = entries.firstOrNull { it.wire == value } ?: NORMAL
+    }
+}
+
+/**
+ * The due "period" buckets a task carries when it has no exact date. [key] is the
+ * value written to todos.due_period and the whole set must stay in sync with the
+ * todos_due_period check constraint in supabase/schema.sql (SchemaSyncTest guards
+ * this). [label] is the word shown in the Due picker and on the card chip.
+ */
+enum class DuePeriod(val key: String, val label: String) {
+    TODAY("today", "Today"),
+    THIS_WEEK("this_week", "This week"),
+    THIS_MONTH("this_month", "This month"),
+    EVENTUALLY("eventually", "Eventually");
+
+    companion object {
+        val keys: List<String> = entries.map { it.key }
+        fun fromKey(key: String?): DuePeriod? = entries.firstOrNull { it.key == key }
+    }
+}
 
 enum class TaskUrgency { OVERDUE, TODAY, THIS_WEEK, LATER, NONE }
 
@@ -79,8 +109,4 @@ fun TaskDto.urgency(): TaskUrgency {
 fun TaskDto.reminderInstant(): Instant? =
     reminderAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
-fun TaskDto.priorityEnum(): TaskPriority = when (priority) {
-    "higher" -> TaskPriority.HIGHER
-    "lower" -> TaskPriority.LOWER
-    else -> TaskPriority.NORMAL
-}
+fun TaskDto.priorityEnum(): TaskPriority = TaskPriority.fromWire(priority)

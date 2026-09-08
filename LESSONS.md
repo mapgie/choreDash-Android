@@ -1188,7 +1188,68 @@ from `AlarmReceiver`; keep that call paired with this lesson.
 
 ---
 
-## 53. A pale-tint preview chip needs its own boundary: fill-vs-surface contrast is not enough
+## 53. App enum values are a contract with the Supabase CHECK constraints — guard the drift in CI
+
+`todos.due_period` and `todos.priority` are `text` columns with a CHECK
+constraint listing the allowed values. The app writes those same strings. Add a
+value on the app side (a new "Eventually" due) without widening the constraint
+and Supabase rejects the insert at runtime, with no compile error and nothing in
+the local Room DB to catch it:
+
+```
+new row for relation "todos" violates check constraint "todos_due_period_check"
+```
+
+The database is the shared source of truth (the taskDash web app reads the same
+`todos` table), so a new value is a cross-app schema change, not a client detail.
+
+Guards, layered:
+- Keep the emittable values in one Android-free place — `DuePeriod` (`key`) and
+  `TaskPriority` (`wire`) in `data/model/Task.kt` — never as string literals in a
+  composable, so a test can read them.
+- `SchemaSyncTest` parses `supabase/schema.sql` and asserts every enum value is in
+  the matching CHECK. It fails on the PR that adds a value without widening the
+  schema. No secrets, runs in the normal unit-test job. This ties the app to
+  `schema.sql`.
+- `schema-contract.yml` + `supabase/contract_check.py` insert each allowed value
+  against a throwaway project's REST API and delete it, proving the live database
+  has the schema applied. Dormant until `SUPABASE_TEST_URL` /
+  `SUPABASE_TEST_ANON_KEY` secrets exist. This ties `schema.sql` to a live DB.
+- `schema.sql` carries a Migrations section (`ALTER TABLE ... DROP/ADD CONSTRAINT`)
+  because `CREATE TABLE IF NOT EXISTS` never alters an existing table. Applying it
+  to the production project stays a manual SQL Editor step.
+
+Whenever you add a value to a constrained column: widen the CHECK in `schema.sql`,
+add the ALTER migration, and let `SchemaSyncTest` confirm the two agree.
+
+---
+
+## 54. Supabase's Data API needs an explicit table GRANT, separate from RLS (2026 exposure change)
+
+Supabase historically auto-granted `public` tables to the API roles (`anon`,
+`authenticated`), so enabling RLS + policies was enough to use a table over the
+Data API (PostgREST/GraphQL/supabase-js). That auto-grant is going away: new
+projects on 2026-05-30, new tables in existing projects on 2026-10-30
+(https://github.com/orgs/supabase/discussions/45329). Existing tables keep their
+grants, so nothing breaks retroactively — the trap is a *fresh* project created
+from `schema.sql`, or a table added afterwards, silently returning
+"permission denied" through the anon key even though RLS is set up correctly.
+
+RLS and GRANT answer different questions: the GRANT decides whether a role can
+reach the table through the API at all; RLS decides which rows. Both are needed.
+
+Rules for this repo:
+- Every `CREATE TABLE` in `supabase/schema.sql` gets a matching
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO anon, authenticated, service_role;`.
+  This app does full CRUD as `anon`, so anon gets all four verbs (not the
+  read-only anon the generic Supabase snippet suggests), matching its policies.
+- `SchemaSyncTest` parses the file and fails if a created table has no GRANT to
+  `anon`, so a new table can't ship unexposed.
+- No sequence grants here — every id is a uuid default or a text key.
+
+---
+
+## 55. A pale-tint preview chip needs its own boundary: fill-vs-surface contrast is not enough
 
 The memo colour/icon picker (`StyleSwatch` in `AddReminderSheet.kt`) filled each
 chip with `Swatch.tintColor()`, the same pale wash the list card badge uses. On the

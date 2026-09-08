@@ -3,6 +3,7 @@ package com.mapgie.dash.ui.screens.chores
 import android.nfc.NfcAdapter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -119,6 +121,9 @@ fun ChoreListScreen(
     var showLogSheet by remember { mutableStateOf(false) }
     var showEditSheet by rememberSaveable { mutableStateOf(false) }
     var showArchivedSection by remember { mutableStateOf(false) }
+    // Category groups the user has tapped to collapse (by category label), held in
+    // composition per-visit, matching the Tasks list.
+    val collapsedCategories = remember { mutableStateListOf<String>() }
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var showNfcDialog by remember { mutableStateOf(false) }
@@ -436,17 +441,24 @@ fun ChoreListScreen(
                             ) {
                                 if (uiState.groupByCategory && !uiState.zenMode) {
                                     uiState.grouped.forEach { (category, chores) ->
+                                        val collapsed = category in collapsedCategories
                                         stickyHeader(key = "group_$category") {
                                             SectionHeaderRow(
                                                 text = category,
                                                 count = chores.size,
+                                                collapsed = collapsed,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .background(MaterialTheme.colorScheme.background)
+                                                    .semantics { role = Role.Button }
+                                                    .clickable {
+                                                        if (collapsed) collapsedCategories.remove(category)
+                                                        else collapsedCategories.add(category)
+                                                    }
                                                     .padding(horizontal = 24.dp, vertical = 6.dp)
                                             )
                                         }
-                                        items(chores, key = { it.id }) { chore ->
+                                        if (!collapsed) items(chores, key = { it.id }) { chore ->
                                             SwipeToLogCard(
                                                 chore = chore,
                                                 icon = iconFor(chore),
