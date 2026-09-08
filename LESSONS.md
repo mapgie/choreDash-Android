@@ -1176,3 +1176,12 @@ Two things that keep the double path from double-ringing or missing its window:
 Don't "fix" a silent alarm channel by only re-tuning the channel's sound/usage: the
 channel is immutable after creation (LESSONS #17) and, even fresh, its sound is not
 guaranteed to use the alarm stream. Play the alarm yourself under `USAGE_ALARM`.
+
+Regression guard: the "which mode rings on the alarm stream" decision now lives in one
+Android-free place, `DeliveryMode.ringsOnAlarmStream` (`notification/DeliveryStyle.kt`),
+which both `NotificationHelper.isAlarmStyle` and `AlarmReceiver`'s direct
+`startAlarmRingScreen` launch flow through. `DeliveryStyleTest` pins that the Alarm mode
+(and only it) returns true and that the stored mode strings don't drift. If that ever
+regresses, the JVM unit test fails in CI before the phone ever falls silent again. The
+one thing a pure test can't cover is someone deleting the `startAlarmRingScreen` call
+from `AlarmReceiver`; keep that call paired with this lesson.

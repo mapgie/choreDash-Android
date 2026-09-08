@@ -4,8 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
+import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.DraftStore
+import com.mapgie.dash.data.model.LinkedCategory
 import com.mapgie.dash.data.model.ReminderDraft
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
@@ -16,6 +19,7 @@ import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.repeats
+import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
@@ -54,6 +58,9 @@ data class ReminderUiState(
     val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
     val filter: ReminderFilter = ReminderFilter.ACTIVE,
     val sort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
+    /** Settings › Categories styling and Settings › Colours axes, so a linked memo can wear its chore's or task's look. */
+    val catalog: CategoryCatalog = CategoryCatalog(),
+    val colourAxes: ChoreColourAxes = ChoreColourAxes(),
 ) {
     val active: List<ReminderDto>
         get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone })
@@ -83,6 +90,17 @@ data class ReminderUiState(
         else -> null
     }
 
+    /**
+     * The category a memo inherits its colour and glyph from: its linked chore's or
+     * task's, when the link still resolves; null for a standalone memo (or a link
+     * whose target was deleted), which then uses its own picked look.
+     */
+    fun linkedCategory(reminder: ReminderDto): LinkedCategory? {
+        reminder.choreId?.let { id -> chores.find { it.id == id }?.let { return LinkedCategory(it.category) } }
+        reminder.taskId?.let { id -> tasks.find { it.id == id }?.let { return LinkedCategory(it.category) } }
+        return null
+    }
+
     /** The linked chore's or task's name, for the sheet. */
     fun linkedLabel(reminder: ReminderDto): String? {
         reminder.choreId?.let { id -> chores.find { it.id == id }?.let { return "Chore: ${it.label}" } }
@@ -107,6 +125,7 @@ class RemindersListViewModel @Inject constructor(
     private val choreRepository: ChoreRepository,
     private val taskRepository: TaskRepository,
     private val settingsRepository: SettingsRepository,
+    private val categoryStyleStore: CategoryStyleStore,
     private val alarmScheduler: AlarmScheduler
 ) : ViewModel() {
 
@@ -123,7 +142,18 @@ class RemindersListViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
-                _uiState.update { it.copy(reminderLabel = settings.reminderLabel, sort = settings.reminderSort) }
+                _uiState.update {
+                    it.copy(
+                        reminderLabel = settings.reminderLabel,
+                        sort = settings.reminderSort,
+                        colourAxes = settings.colourAxes,
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            categoryStyleStore.catalog.collect { catalog ->
+                _uiState.update { it.copy(catalog = catalog) }
             }
         }
         load()
