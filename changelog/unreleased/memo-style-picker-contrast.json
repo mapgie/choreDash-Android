@@ -1,7 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "Memo colour and icon picker: the colour and icon chips now carry a visible outline so they read as distinct chips against the dialog, in light, dark and high-contrast modes.",
-    "The Cleaning category icon now draws a brush instead of a shape that read as a hammer."
-  ]
-}

@@ -31,6 +31,20 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.35.0] - 2026-09-09
+
+### Added
+- Tap a category heading on the Chores list to collapse or expand that group, the same as on Tasks.
+
+### Changed
+- A tap on the add button now adds for the page you're on, and a short hold opens the radial (a quicker hold than the platform default). On the Settings screen, where there's no page type to add, a tap opens the radial.
+
+### Fixed
+- Saving a task due “Eventually” no longer fails: the shared task database now allows the value (existing projects must run the migration in supabase/schema.sql).
+- Memo colour and icon picker: the colour and icon chips now carry a visible outline so they read as distinct chips against the dialog, in light, dark and high-contrast modes.
+- The Cleaning category icon now draws a brush instead of a shape that read as a hammer.
+
+---
 ## [0.34.0] - 2026-09-08
 
 ### Added
