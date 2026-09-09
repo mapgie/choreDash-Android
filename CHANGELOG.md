@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.35.1] - 2026-09-09
+
+### Changed
+- In Zen mode (chores and tasks) the Zen target button now keeps the same place it holds outside Zen, with the sort arrow moved to the far right, so tapping the same spot twice toggles Zen on and off without moving your finger.
+
+### Fixed
+- Pinning a chore now keeps it in the main Chores list so its pin icon is visible, instead of leaving it in the collapsed hidden-until-due section. Pinned chores shown in the archived section now display the pin icon too.
+
+---
 ## [0.35.0] - 2026-09-09
 
 ### Added

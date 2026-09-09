@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "Pinning a chore now keeps it in the main Chores list so its pin icon is visible, instead of leaving it in the collapsed hidden-until-due section. Pinned chores shown in the archived section now display the pin icon too."
-  ]
-}
