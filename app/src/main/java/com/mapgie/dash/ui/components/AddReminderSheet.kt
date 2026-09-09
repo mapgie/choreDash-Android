@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.selectable
@@ -94,6 +95,7 @@ import com.mapgie.dash.ui.screens.settings.CozySwitch
 import com.mapgie.dash.ui.theme.LocalDashTokens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
 import kotlinx.coroutines.launch
@@ -802,6 +804,7 @@ private fun ReminderStyleDialog(
                         label = "Default colour",
                         container = MaterialTheme.colorScheme.surfaceContainerHigh,
                         content = MaterialTheme.colorScheme.onSurfaceVariant,
+                        border = MaterialTheme.colorScheme.outline,
                         glyph = LucideIcons.Bell,
                         onClick = { pickedColour = null },
                     )
@@ -811,6 +814,7 @@ private fun ReminderStyleDialog(
                             label = "${swatch.displayName} colour",
                             container = swatch.tintColor(),
                             content = swatch.textColor(),
+                            border = swatch.spineColor(),
                             glyph = null,
                             onClick = { pickedColour = swatch },
                         )
@@ -821,6 +825,10 @@ private fun ReminderStyleDialog(
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // The icon chips echo the picked colour's saturated ring so both
+                // rows read as one family; with no colour picked they bound
+                // themselves against the pale dialog with a neutral outline.
+                val iconBorder = previewSwatch?.spineColor() ?: MaterialTheme.colorScheme.outline
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
@@ -832,6 +840,7 @@ private fun ReminderStyleDialog(
                         label = "Default bell",
                         container = previewSwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                         content = previewSwatch?.textColor() ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        border = iconBorder,
                         glyph = LucideIcons.Bell,
                         onClick = { pickedIcon = null },
                     )
@@ -841,6 +850,7 @@ private fun ReminderStyleDialog(
                             label = "Icon: ${option.label}",
                             container = previewSwatch?.tintColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                             content = previewSwatch?.textColor() ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                            border = iconBorder,
                             glyph = LucideIcons.forCategory(option),
                             onClick = { pickedIcon = option },
                         )
@@ -857,13 +867,22 @@ private fun ReminderStyleDialog(
     )
 }
 
-/** One 44dp option in the memo style picker: a tinted circle, ringed when selected. */
+/**
+ * One 44dp option in the memo style picker: a tinted circle, ringed when
+ * selected. The tints are pale washes that all but vanish on the equally pale
+ * dialog surface, so every chip carries a [border] hairline to bound it. For a
+ * colour chip that is the swatch's saturated spine, which also carries the hue
+ * the pale fill barely shows; the neutral chips take a scheme outline. Both
+ * clear the surface in light, dark and high-contrast, so the chips read as
+ * chips whatever the mode.
+ */
 @Composable
 private fun StyleSwatch(
     selected: Boolean,
     label: String,
     container: Color,
     content: Color,
+    border: Color,
     glyph: androidx.compose.ui.graphics.vector.ImageVector?,
     onClick: () -> Unit,
 ) {
@@ -891,7 +910,8 @@ private fun StyleSwatch(
                 .background(if (selected) gap else Color.Transparent)
                 .padding(if (selected) 2.dp else 0.dp)
                 .clip(CircleShape)
-                .background(container),
+                .background(container)
+                .border(1.5.dp, border, CircleShape),
         ) {
             if (glyph != null) {
                 Icon(imageVector = glyph, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
