@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "changed": [
+    "In Zen mode (chores and tasks) the Zen target button now keeps the same place it holds outside Zen, with the sort arrow moved to the far right, so tapping the same spot twice toggles Zen on and off without moving your finger."
+  ]
+}

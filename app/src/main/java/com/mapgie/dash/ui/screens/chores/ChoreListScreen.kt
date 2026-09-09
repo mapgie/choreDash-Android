@@ -260,7 +260,10 @@ fun ChoreListScreen(
                     },
                     actions = {
                         if (uiState.zenMode) {
-                            // Zen header (3a-4): mine | all, the sort arrow, LEAVE.
+                            // Zen header (3a-4): mine | all, LEAVE, then the sort arrow. The
+                            // Target glyph keeps the same slot it holds outside zen (second
+                            // from the right), so a second tap in the same place toggles zen
+                            // back off without moving your finger.
                             if (uiState.ownerHandle.isNotBlank()) {
                                 ZenScopeToggle(
                                     mine = uiState.ownerFilter == OwnerFilter.MINE,
@@ -269,12 +272,6 @@ fun ChoreListScreen(
                                     },
                                 )
                             }
-                            HeaderIconButton(
-                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most overdue first" else "Sorted: recently done first",
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                            )
                             // Zen is a mode, not a place: the same target glyph that entered it leaves it.
                             HeaderIconButton(
                                 icon = LucideIcons.Target,
@@ -282,6 +279,12 @@ fun ChoreListScreen(
                                 onClick = { viewModel.setZenMode(false) },
                                 active = true,
                                 activeTint = choreAccent,
+                            )
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most overdue first" else "Sorted: recently done first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
                             )
                         } else {
                             // Same row as Tasks: search, owner, zen, group/flat.
