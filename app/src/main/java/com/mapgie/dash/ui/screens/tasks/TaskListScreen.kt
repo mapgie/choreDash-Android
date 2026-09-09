@@ -189,7 +189,10 @@ fun TaskListScreen(
                     accent = if (uiState.zenMode) LocalDashTokens.current.sectionCount else taskAccent,
                     actions = {
                         if (uiState.zenMode) {
-                            // Zen header (3a-4): mine | all, the sort arrow, LEAVE.
+                            // Zen header (3a-4): mine | all, LEAVE, then the sort arrow. The
+                            // Target glyph keeps the same slot it holds outside zen (second
+                            // from the right), so a second tap in the same place toggles zen
+                            // back off without moving your finger.
                             if (uiState.ownerHandle.isNotBlank()) {
                                 ZenScopeToggle(
                                     mine = uiState.ownerFilter == OwnerFilter.MINE,
@@ -198,12 +201,6 @@ fun TaskListScreen(
                                     },
                                 )
                             }
-                            HeaderIconButton(
-                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
-                                contentDescription = if (uiState.zenSortAscending)
-                                    "Sorted: most urgent first" else "Sorted: least urgent first",
-                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
-                            )
                             // Zen is a mode, not a place: the same target glyph that entered it leaves it.
                             HeaderIconButton(
                                 icon = LucideIcons.Target,
@@ -211,6 +208,12 @@ fun TaskListScreen(
                                 onClick = { viewModel.setZenMode(false) },
                                 active = true,
                                 activeTint = taskAccent,
+                            )
+                            HeaderIconButton(
+                                icon = if (uiState.zenSortAscending) LucideIcons.ArrowUp else LucideIcons.ArrowDown,
+                                contentDescription = if (uiState.zenSortAscending)
+                                    "Sorted: most urgent first" else "Sorted: least urgent first",
+                                onClick = { viewModel.setZenSort(!uiState.zenSortAscending) },
                             )
                         } else {
                             // Same row as Chores: search, owner, zen, group/flat.

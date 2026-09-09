@@ -125,27 +125,29 @@ data class ChoreUiState(
     }
 
     /**
+     * True if this chore is kept out of the main list by the automatic
+     * "hidden until closer to due" rule: beyond its cadence lead time when smart
+     * visibility is on, otherwise the legacy distant (due 60+ days out) test.
+     *
+     * A pinned chore is exempt so its card, and the pin marker on it, are always
+     * reachable in the main list rather than buried in the collapsed section.
+     */
+    private fun autoHidden(chore: Chore): Boolean {
+        if (chore.id == pinnedChoreId) return false
+        return if (smartVisibility) !withinLeadTime(chore) else chore.isDistant()
+    }
+
+    /**
      * Chores kept out of the main list but revealable via the collapsed section:
-     * everything beyond its lead time when smart visibility is on, otherwise only
-     * the legacy distant (due 60+ days out) chores, plus anything snoozed.
+     * everything auto-hidden by lead time (never a pinned chore), plus anything
+     * snoozed.
      */
     val hiddenChores: List<Chore>
-        get() {
-            val beyondLeadTime = if (smartVisibility) {
-                awake.filterNot(::withinLeadTime)
-            } else {
-                awake.filter { it.isDistant() }
-            }
-            return beyondLeadTime + snoozed
-        }
+        get() = awake.filter(::autoHidden) + snoozed
 
     val displayed: List<Chore>
         get() {
-            var result = if (smartVisibility) {
-                awake.filter(::withinLeadTime)
-            } else {
-                awake.filter { !it.isDistant() }
-            }
+            var result = awake.filterNot(::autoHidden)
             result = when (filter) {
                 ChoreFilter.ALL -> result
                 ChoreFilter.OVERDUE -> result.filter {
