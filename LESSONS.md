@@ -1269,3 +1269,27 @@ every mode, and `outline` is already WCAG-lifted, so the high-contrast toggle
 reaches them too. Rule of thumb: if a control's fill is a near-surface tint, its
 legibility must come from a border or the saturated tone, never from the fill alone
 (this is the same "communicate via shape, not colour alone" rule the a11y notes state).
+
+---
+
+## 56. Never give an elevated Card a translucent container colour: the shadow ring shows through
+
+Done tasks and done/archived memos were tinted with
+`surfaceVariant.copy(alpha = 0.6f)` on a `Card` that still carried its 1dp light-mode
+elevation. Every active card looked fine; every muted card grew a thick grey border
+around a paler, smaller-radius inner rectangle, which nobody had drawn.
+
+The border is the platform shadow. HWUI renders an elevated node's shadow as a ring
+(penumbra out to the umbra edge) and leaves the umbra unfilled, on the assumption
+that the caster covers it. With an opaque fill that holds. With a 60% fill the ring
+shows through around the edge, while the unfilled umbra in the middle shows only the
+pale blend, so the card looks like a grey frame around a lighter inset panel. The
+inset roughly matched the content padding, which made it look like a deliberate
+(bad) inner border rather than a rendering artefact.
+
+Fix (`ui/theme/CardColors.kt`, `mutedCardContainer()`): keep the design intent but
+flatten the blend into an opaque colour with `compositeOver(colorScheme.background)`.
+Rule: any `Surface`/`Card` with `shadowElevation > 0` gets an opaque container. If a
+translucent look is genuinely wanted, drop the elevation to 0dp instead of relying on
+the fill to hide the shadow. Dark schemes here run at 0dp, which is why the bug only
+showed in light mode.

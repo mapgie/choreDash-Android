@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "fixed": ["Done tasks and done or archived memos no longer show a thick grey border around a paler inner rectangle; the faded card fill is now a solid colour."]
+}

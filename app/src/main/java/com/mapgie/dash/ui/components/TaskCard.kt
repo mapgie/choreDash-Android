@@ -44,6 +44,7 @@ import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
+import com.mapgie.dash.ui.theme.mutedCardContainer
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import java.time.Instant
@@ -97,7 +98,7 @@ fun TaskCard(
         colors = CardDefaults.cardColors(
             containerColor = when {
                 zenMode -> MaterialTheme.colorScheme.surfaceContainerLow
-                isDone -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                isDone -> mutedCardContainer()
                 else -> MaterialTheme.colorScheme.surfaceVariant
             }
         ),
