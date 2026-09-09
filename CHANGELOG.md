@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.35.2] - 2026-09-09
+
+### Fixed
+- Done tasks and done or archived memos no longer show a thick grey border around a paler inner rectangle; the faded card fill is now a solid colour.
+
+---
 ## [0.35.1] - 2026-09-09
 
 ### Changed
