@@ -118,6 +118,26 @@ class ChoreUiStateTest {
         assertEquals(listOf("distant"), ids(state.hiddenChores))
     }
 
+    @Test
+    fun `a pinned chore stays in the main list even when distant`() {
+        val distant = chore("distant", intervalDays = 365.0, lastScannedAgo = Duration.ofHours(36))
+        val state = ChoreUiState(active = listOf(fresh, distant), pinnedChoreId = distant.id)
+        assertTrue("distant" in ids(state.displayed))
+        assertTrue(state.hiddenChores.none { it.id == "distant" })
+    }
+
+    @Test
+    fun `a pinned chore stays visible past its lead time under smart visibility`() {
+        val distant = chore("distant", intervalDays = 365.0, lastScannedAgo = Duration.ofHours(36))
+        val state = ChoreUiState(
+            active = listOf(distant),
+            smartVisibility = true,
+            pinnedChoreId = distant.id,
+        )
+        assertEquals(listOf("distant"), ids(state.displayed))
+        assertTrue(state.hiddenChores.isEmpty())
+    }
+
     // ── Sorting ───────────────────────────────────────────────────────────────
 
     @Test

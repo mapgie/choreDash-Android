@@ -585,6 +585,7 @@ fun ChoreListScreen(
                                                 showOwner = uiState.ownerFilter.showsOwner,
                                                 zenMode = uiState.zenMode,
                                                 showCategory = !uiState.groupByCategory,
+                                                isPinned = chore.id == uiState.pinnedChoreId,
                                                 modifier = Modifier
                                                     .semantics { role = Role.Button }
                                                     .combinedClickable(
