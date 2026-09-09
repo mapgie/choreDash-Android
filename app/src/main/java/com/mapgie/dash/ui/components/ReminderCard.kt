@@ -40,6 +40,7 @@ import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
+import com.mapgie.dash.ui.theme.mutedCardContainer
 import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
@@ -95,10 +96,8 @@ fun ReminderCard(
             .fillMaxWidth()
             .padding(horizontal = inset),
         colors = CardDefaults.cardColors(
-            containerColor = if (muted)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (muted) mutedCardContainer()
+            else MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 1.dp)
     ) {
