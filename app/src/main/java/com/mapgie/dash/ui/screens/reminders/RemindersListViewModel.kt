@@ -24,6 +24,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.notification.DeliveryMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,8 @@ data class ReminderUiState(
     /** Settings › Categories styling and Settings › Colours axes, so a linked memo can wear its chore's or task's look. */
     val catalog: CategoryCatalog = CategoryCatalog(),
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
+    /** Settings › Reminders & alerts style; decides which missing permissions the list warns about. */
+    val deliveryMode: String = DeliveryMode.NOTIFICATION,
 ) {
     val active: List<ReminderDto>
         get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone })
@@ -147,6 +150,7 @@ class RemindersListViewModel @Inject constructor(
                         reminderLabel = settings.reminderLabel,
                         sort = settings.reminderSort,
                         colourAxes = settings.colourAxes,
+                        deliveryMode = settings.deliveryMode,
                     )
                 }
             }
