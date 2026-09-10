@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import com.mapgie.dash.notification.ReminderPermissionGrants
 
 /**
  * Settings deep links for the permissions AlarmScheduler and NotificationHelper depend on.
@@ -39,6 +40,14 @@ object PermissionHelper {
         return (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .canUseFullScreenIntent()
     }
+
+    /** The four grants in one read, for [ReminderPermissionGrants.missingFor] and the list banners. */
+    fun reminderGrants(context: Context): ReminderPermissionGrants = ReminderPermissionGrants(
+        notifications = areNotificationsEnabled(context),
+        exactAlarms = canScheduleExactAlarms(context),
+        fullScreen = canUseFullScreenIntent(context),
+        dndAccess = isDndAccessGranted(context),
+    )
 
     /** Opens this app's "Full-screen notifications" toggle (API 34+). */
     fun fullScreenIntentSettingsIntent(context: Context): Intent =

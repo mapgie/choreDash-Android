@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "The Memos list now shows a banner when a permission the chosen notification style needs is missing (for example full-screen alarms, without which the Alarm style can arrive silently). Tapping it opens Settings > Reminders & alerts."
+  ],
+  "changed": [
+    "The Full-screen alarms row in Reminders & alerts now says that without it alarms can arrive silently."
+  ]
+}

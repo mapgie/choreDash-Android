@@ -42,6 +42,7 @@ import com.mapgie.dash.ui.screens.reminder.ReminderViewScreen
 import com.mapgie.dash.ui.screens.reminder.reminderViewRoute
 import com.mapgie.dash.ui.screens.reminders.RemindersListScreen
 import com.mapgie.dash.ui.screens.settings.SettingsScreen
+import com.mapgie.dash.ui.screens.settings.SettingsSubScreen
 import com.mapgie.dash.ui.screens.tasks.TaskListScreen
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -108,6 +109,9 @@ fun DashNavGraph(
 
     var fabExpanded by remember { mutableStateOf(false) }
     var pendingAddIntent by remember { mutableStateOf<AddMenuOption?>(null) }
+    // A sub-screen the Settings tab should open on arrival (e.g. the Memos
+    // permission banner sends the user to Reminders & alerts).
+    var pendingSettingsSubScreen by remember { mutableStateOf<SettingsSubScreen?>(null) }
 
     val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
     // The Memos/Reminders slot is always present, so the five-slot bar never
@@ -250,12 +254,18 @@ fun DashNavGraph(
                     composable(Screen.Reminders.route) {
                         RemindersListScreen(
                             pendingAddIntent = pendingAddIntent,
-                            onPendingAddIntentConsumed = { pendingAddIntent = null }
+                            onPendingAddIntentConsumed = { pendingAddIntent = null },
+                            onOpenReminderSettings = {
+                                pendingSettingsSubScreen = SettingsSubScreen.REMINDERS
+                                navigateTo(Screen.Settings.route)
+                            },
                         )
                     }
                     composable(Screen.Settings.route) {
                         SettingsScreen(
                             onNavigateToLicenses = { navController.navigate("licenses") },
+                            pendingSubScreen = pendingSettingsSubScreen,
+                            onPendingSubScreenConsumed = { pendingSettingsSubScreen = null },
                         )
                     }
                     composable("licenses") {

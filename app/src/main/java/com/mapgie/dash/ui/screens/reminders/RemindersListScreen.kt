@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,23 +41,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ReminderAppearance
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
+import com.mapgie.dash.ui.components.core.PermissionBanner
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortControls
@@ -76,17 +83,36 @@ import kotlinx.coroutines.launch
  *
  * The owner ("mine / all") header action the design shows is not built: memos
  * carry no owner, so there is nothing to filter by.
+ *
+ * Above the filter row, a permission banner appears whenever a system grant the
+ * chosen notification style depends on is missing (full-screen alarms for the
+ * Alarm style, say), since a memo that fires silently is worse than none.
+ * Tapping it opens Settings › Reminders & alerts via [onOpenReminderSettings].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemindersListScreen(
     pendingAddIntent: AddMenuOption?,
     onPendingAddIntentConsumed: () -> Unit,
+    onOpenReminderSettings: () -> Unit,
     viewModel: RemindersListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // The system grants reminders depend on, re-read on every resume so a change
+    // made in system settings shows the moment the user comes back.
+    val context = LocalContext.current
+    var grants by remember { mutableStateOf(PermissionHelper.reminderGrants(context)) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) grants = PermissionHelper.reminderGrants(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Swipe-to-done leaves a brief Undo, so a stray swipe is one tap to reverse.
     fun markReminderDoneWithUndo(reminder: ReminderDto) {
@@ -197,6 +223,14 @@ fun RemindersListScreen(
                     }
                 }
                 return@Scaffold
+            }
+
+            grants.warningFor(uiState.deliveryMode, plural)?.let { warning ->
+                PermissionBanner(
+                    text = warning,
+                    onClick = onOpenReminderSettings,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                )
             }
 
             // Filter chips, then the sort pill pinned to the right.
