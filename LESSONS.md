@@ -1293,3 +1293,28 @@ Rule: any `Surface`/`Card` with `shadowElevation > 0` gets an opaque container. 
 translucent look is genuinely wanted, drop the elevation to 0dp instead of relying on
 the fill to hide the shadow. Dark schemes here run at 0dp, which is why the bug only
 showed in light mode.
+
+---
+
+## 57. Auto-apply a Supabase schema on a Free plan with idempotent SQL + psql, no CLI or Branching
+
+Supabase's own GitHub integration (branching, migration deploys) is a paid,
+CLI-and-dashboard flow, and it needs `supabase/migrations/` + `config.toml` plus
+baselining an existing database. Overkill for a small single project, and it can't
+be set up from a phone. A lighter path keeps `supabase/schema.sql` as the single
+source of truth and makes every statement idempotent (tables/indexes `IF NOT
+EXISTS`, `DROP POLICY IF EXISTS` before each `CREATE POLICY`, `DROP CONSTRAINT IF
+EXISTS` before `ADD CONSTRAINT`, plain re-`GRANT`s). Then a tiny Action applies the
+whole file on merge to main in one transaction:
+
+    psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --single-transaction -f supabase/schema.sql
+
+- Idempotent + single transaction means re-applying is safe and self-healing, and
+  a failure rolls back cleanly. It is DDL only, so it never touches row data.
+- One secret, `SUPABASE_DB_URL`, and it must be the **Session pooler** URI: the
+  direct `db.<ref>.supabase.co` host is IPv6-only and GitHub runners are IPv4.
+- Gate the step on the secret being present so it is dormant (prints a notice,
+  passes) until someone opts in, and run it only on push to main so the secret is
+  never exposed to pull requests.
+- `CREATE TABLE IF NOT EXISTS` never widens a constraint on an existing table, so a
+  changed CHECK must be re-asserted with an explicit DROP/ADD lower in the file.

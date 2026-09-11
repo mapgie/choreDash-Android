@@ -1,16 +1,24 @@
 -- choreDash + taskDash Android — Supabase schema
 --
--- Run this entire file once in your Supabase project's SQL Editor
--- (Project → SQL Editor → New query) to create the tables the Android
--- app expects: owners, tags, scans, todos.
+-- The whole tables + app schema, and the single source of truth for it. Every
+-- statement is idempotent (safe to run any number of times against a database
+-- that already has some or all of it): tables and indexes use IF NOT EXISTS,
+-- policies are dropped-then-created, constraints are dropped-then-added, grants
+-- re-grant. So you can apply it two ways, and both are safe:
+--   • by hand: paste the whole file into the SQL Editor (Project → SQL Editor →
+--     New query) and Run;
+--   • automatically: the "Deploy Supabase schema" GitHub Action
+--     (.github/workflows/supabase-deploy.yml) runs it against the database on
+--     every merge to main, in one transaction, when the SUPABASE_DB_URL secret
+--     is set. See supabase/README.md.
 --
--- If you're sharing this project with the taskDash web app, the `owners`
--- and `todos` tables below are compatible with it — do not create them
--- twice.
+-- If you're sharing this project with the taskDash web app, the `owners` and
+-- `todos` tables are compatible with it. Applying this file does not drop or
+-- edit any row; it only creates/adjusts tables, policies, constraints and grants.
 --
--- This schema grants the `anon` role full read/write access (no auth),
--- matching how the app connects with the Supabase anon key. Only share
--- your Project URL and anon key with people you trust with this data.
+-- This schema grants the `anon` role full read/write access (no auth), matching
+-- how the app connects with the Supabase anon key. Only share your Project URL
+-- and anon key with people you trust with this data.
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- owners — household members. The "I am" picker in Settings reads this.
@@ -21,9 +29,13 @@ CREATE TABLE IF NOT EXISTS owners (
 
 ALTER TABLE owners ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anon read owners"   ON owners;
 CREATE POLICY "anon read owners"   ON owners FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon insert owners" ON owners;
 CREATE POLICY "anon insert owners" ON owners FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "anon update owners" ON owners;
 CREATE POLICY "anon update owners" ON owners FOR UPDATE TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon delete owners" ON owners;
 CREATE POLICY "anon delete owners" ON owners FOR DELETE TO anon USING (true);
 
 -- Add one row per household member, e.g.:
@@ -48,9 +60,13 @@ CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);
 
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anon read tags"   ON tags;
 CREATE POLICY "anon read tags"   ON tags FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon insert tags" ON tags;
 CREATE POLICY "anon insert tags" ON tags FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "anon update tags" ON tags;
 CREATE POLICY "anon update tags" ON tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon delete tags" ON tags;
 CREATE POLICY "anon delete tags" ON tags FOR DELETE TO anon USING (true);
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -67,9 +83,13 @@ CREATE INDEX IF NOT EXISTS scans_scanned_at_idx ON scans(scanned_at);
 
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anon read scans"   ON scans;
 CREATE POLICY "anon read scans"   ON scans FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon insert scans" ON scans;
 CREATE POLICY "anon insert scans" ON scans FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "anon update scans" ON scans;
 CREATE POLICY "anon update scans" ON scans FOR UPDATE TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon delete scans" ON scans;
 CREATE POLICY "anon delete scans" ON scans FOR DELETE TO anon USING (true);
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -98,9 +118,13 @@ CREATE INDEX IF NOT EXISTS todos_owner_idx        ON todos(owner);
 
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anon read todos"   ON todos;
 CREATE POLICY "anon read todos"   ON todos FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon insert todos" ON todos;
 CREATE POLICY "anon insert todos" ON todos FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "anon update todos" ON todos;
 CREATE POLICY "anon update todos" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon delete todos" ON todos;
 CREATE POLICY "anon delete todos" ON todos FOR DELETE TO anon USING (true);
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -129,22 +153,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON scans  TO anon, authenticated, service_r
 GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Migrations for existing projects
+-- Constraint sync
 --
--- `CREATE TABLE IF NOT EXISTS` above never alters a table that already
--- exists, so a project created before a column or constraint changed needs
--- the matching statement below run once in the SQL Editor. Each is written
--- to be safe to run more than once.
+-- CREATE TABLE IF NOT EXISTS never alters a table that already exists, so the
+-- inline due_period CHECK above only lands on a brand-new database. Re-assert it
+-- here so an older database (created before 'eventually' was allowed) is widened
+-- to match; a no-op once it already allows all four values.
 -- ─────────────────────────────────────────────────────────────────────────
-
--- 2026-09: allow due_period = 'eventually' (a soft "someday" due with no
--- deadline). Widens the existing check; existing rows are unaffected.
 ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
 ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
   CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
-
--- 2026: Data API exposure change (see the grants block above). The existing
--- project's tables keep working past 2026-10-30 on their current grants, so
--- there is nothing to fix now. But run the "Data API exposure (table grants)"
--- block once to make the grants explicit, so this project matches a fresh one
--- and any table added later stays reachable. The statements are safe to re-run.
