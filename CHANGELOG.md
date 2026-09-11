@@ -31,6 +31,15 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.37.0] - 2026-09-11
+
+### Added
+- A saved tag-alarm can write its own id to a blank NFC tag from the Tag row ("Write this tag-alarm to a tag"), the same way a chore writes its tag. A tap on that tag then sets the alarm, from any screen or with the app closed.
+
+### Changed
+- Developer tooling only (no app-visible change): supabase/schema.sql is now idempotent and can be applied to the database automatically on merge via a GitHub Action, with a test that guards app/schema drift.
+
+---
 ## [0.36.0] - 2026-09-11
 
 ### Added

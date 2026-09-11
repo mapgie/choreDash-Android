@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "changed": [
-    "Developer tooling only (no app-visible change): supabase/schema.sql is now idempotent and can be applied to the database automatically on merge via a GitHub Action, with a test that guards app/schema drift."
-  ]
-}
