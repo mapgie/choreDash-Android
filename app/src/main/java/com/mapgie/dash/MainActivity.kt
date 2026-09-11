@@ -31,6 +31,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
+import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.tagalarm.TagAlarmService
@@ -67,8 +68,8 @@ class MainActivity : ComponentActivity() {
     // (route kind, record id); drives navigation to the full-screen reminder view.
     private var pendingReminderView by mutableStateOf<Pair<String, String>?>(null)
 
-    // When set, the next scanned tag is written with this chore tag ID instead of being read
-    private var nfcWriteRequest by mutableStateOf<String?>(null)
+    // When set, the next scanned tag is written with this chore or memo id instead of being read
+    private var nfcWriteRequest by mutableStateOf<NfcWriteRequest?>(null)
     private var nfcWriteResult by mutableStateOf<NfcWriteResult?>(null)
 
     // While true, the next scanned tag's id is captured for the memo sheet's "link
@@ -166,7 +167,11 @@ class MainActivity : ComponentActivity() {
                     nfcWriteRequest = nfcWriteRequest,
                     nfcWriteResult = nfcWriteResult,
                     onStartNfcWrite = { tagId ->
-                        nfcWriteRequest = tagId
+                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId)
+                        nfcWriteResult = null
+                    },
+                    onStartMemoTagWrite = { memoId ->
+                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.MEMO, memoId)
                         nfcWriteResult = null
                     },
                     onCancelNfcWrite = {
@@ -218,11 +223,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNfcIntent(intent: Intent, fromForeground: Boolean) {
-        val writeTagId = nfcWriteRequest
-        if (writeTagId != null) {
+        val writeRequest = nfcWriteRequest
+        if (writeRequest != null) {
             val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
             if (tag != null) {
-                nfcWriteResult = NfcHandler.writeTagId(tag, writeTagId)
+                nfcWriteResult = NfcHandler.writeUri(tag, writeRequest.uri)
             }
             return
         }

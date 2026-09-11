@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
@@ -97,9 +98,10 @@ fun DashNavGraph(
     onWidgetDestinationConsumed: () -> Unit = {},
     pendingReminderView: Pair<String, String>? = null,
     onReminderViewConsumed: () -> Unit = {},
-    nfcWriteRequest: String?,
+    nfcWriteRequest: NfcWriteRequest?,
     nfcWriteResult: NfcWriteResult?,
     onStartNfcWrite: (String) -> Unit,
+    onStartMemoTagWrite: (String) -> Unit = {},
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
     nfcCapturedTagId: String? = null,
@@ -244,7 +246,9 @@ fun DashNavGraph(
                         ChoreListScreen(
                             pendingNfcTagId = pendingNfcTagId,
                             onNfcConsumed = onNfcConsumed,
-                            nfcWriteRequest = nfcWriteRequest,
+                            // Each tab shows the write dialog for its own kind only, so a memo
+                            // write started on Memos never pops a dialog here.
+                            nfcWriteRequest = nfcWriteRequest?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE }?.id,
                             nfcWriteResult = nfcWriteResult,
                             onStartNfcWrite = onStartNfcWrite,
                             onCancelNfcWrite = onCancelNfcWrite,
@@ -267,6 +271,11 @@ fun DashNavGraph(
                             onStartNfcCapture = onStartNfcCapture,
                             onCancelNfcCapture = onCancelNfcCapture,
                             onNfcCaptureConsumed = onNfcCaptureConsumed,
+                            memoTagWritePending = nfcWriteRequest?.kind == NfcWriteRequest.Kind.MEMO,
+                            nfcWriteResult = nfcWriteResult,
+                            onStartMemoTagWrite = onStartMemoTagWrite,
+                            onCancelNfcWrite = onCancelNfcWrite,
+                            onNfcWriteResultConsumed = onNfcWriteResultConsumed,
                             onOpenReminderSettings = {
                                 pendingSettingsSubScreen = SettingsSubScreen.REMINDERS
                                 navigateTo(Screen.Settings.route)

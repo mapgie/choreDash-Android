@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.dp
 import com.mapgie.dash.nfc.NfcWriteResult
 
 /**
- * Shown while the app waits for a tag to be tapped to write a chore's tag ID to it,
+ * Shown while the app waits for a tag to be tapped to write a chore's tag ID (or a
+ * tag-alarm's own id) to it,
  * and reports the outcome once a tag is scanned.
  */
 @Composable

@@ -176,6 +176,12 @@ fun AddReminderSheet(
     onScanConsumed: () -> Unit = {},
     onArmTagAlarm: (() -> Unit)? = null,
     onDisarmTagAlarm: (() -> Unit)? = null,
+    /**
+     * Write this memo's own id to a tag: the sheet saves the memo with its id as
+     * the linked tag, closes, and the caller waits for the tap. Only offered for
+     * a saved tag-alarm, since a new one has no id until it is saved.
+     */
+    onWriteTag: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
@@ -328,7 +334,7 @@ fun AddReminderSheet(
     // Swipe-down calls the first onDismissRequest it was built with (LESSONS.md #49).
     val latestRequestDismiss by rememberUpdatedState<() -> Unit>({ requestDismiss() })
 
-    fun buildInsert() = if (tagAlarmOn) ReminderInsert(
+    fun buildInsert(tagOverride: String? = null) = if (tagAlarmOn) ReminderInsert(
         subject = subject.trim(),
         // Only the time of day matters; the repository re-arms an armed alarm from
         // the new times and leaves a dormant one dormant.
@@ -337,7 +343,7 @@ fun AddReminderSheet(
         colour = colour.ifBlank { null },
         icon = glyph.ifBlank { null },
         tagAlarm = true,
-        tagId = tagIdValue.ifBlank { null },
+        tagId = (tagOverride ?: tagIdValue).ifBlank { null },
         ringTimes = ringTimes.map { formatRingTime(it) },
     ) else ReminderInsert(
         subject = subject.trim(),
@@ -685,6 +691,24 @@ fun AddReminderSheet(
                                                      else "Tag: ${tagIdValue.ifBlank { "none" }}. Change tag",
                             )
                             DropdownMenu(expanded = tagMenuOpen, onDismissRequest = { tagMenuOpen = false }) {
+                                // Writing stamps the memo's own id on the tag, so the record is
+                                // saved with that id first; the tap itself happens after the sheet
+                                // closes, in the write dialog the list screen shows.
+                                if (existing != null && onWriteTag != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Write this ${kindWord.lowercase()} to a tag") },
+                                        onClick = {
+                                            tagMenuOpen = false
+                                            tagIdValue = existing.id
+                                            onDraftClear()
+                                            onSave(buildInsert(tagOverride = existing.id))
+                                            sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                                                onWriteTag()
+                                                onDismiss()
+                                            }
+                                        },
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text(if (tagIdValue.isBlank()) "Scan a tag" else "Scan a different tag") },
                                     onClick = { tagMenuOpen = false; startScan() },
@@ -697,6 +721,15 @@ fun AddReminderSheet(
                                 }
                             }
                         }
+                    }
+                    if (!scanning && tagIdValue.isBlank() && tagError == null) {
+                        Text(
+                            text = if (existing == null) "Save first, then write this ${kindWord.lowercase()} to a blank tag from the Tag row. Or scan a card that already has an id."
+                                   else "Write this ${kindWord.lowercase()} to a blank tag, or scan a card that already has an id.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = tokens.inkFaint,
+                            modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+                        )
                     }
                     if (scanning) {
                         Text(

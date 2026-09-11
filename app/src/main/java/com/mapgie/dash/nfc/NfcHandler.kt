@@ -17,14 +17,35 @@ sealed class NfcWriteResult {
 }
 
 /**
- * Extracts the chore tag_id from an NFC intent.
+ * A tag the app is waiting to write: a chore's tag id (`chordash://tag?tag=<id>`)
+ * or a memo's own id (`chordash://memo?memo=<id>`). Both read back through
+ * [NfcHandler.extractTagId] as the bare id, so one id space serves chores and
+ * tag-alarms alike; the host only says which kind minted it.
+ */
+data class NfcWriteRequest(val kind: Kind, val id: String) {
+    enum class Kind { CHORE, MEMO }
+
+    val uri: String
+        get() = when (kind) {
+            Kind.CHORE -> NfcHandler.choreTagUri(id)
+            Kind.MEMO -> NfcHandler.memoTagUri(id)
+        }
+}
+
+/**
+ * Extracts the id an NFC tag stands for from an NFC intent.
  *
  * Priority order:
  * 1. NDEF text record payload — matches the string written by Tasker / NFC Tools
- * 2. NDEF URI record — extracts ?tag= query param or last path segment
+ * 2. NDEF URI record — the ?tag= (chore) or ?memo= (tag-alarm) query param, else
+ *    the last path segment
  * 3. Raw hardware tag ID as lowercase hex — fallback for unformatted tags
  */
 object NfcHandler {
+
+    fun choreTagUri(tagId: String): String = "chordash://tag?tag=$tagId"
+
+    fun memoTagUri(memoId: String): String = "chordash://memo?memo=$memoId"
 
     fun extractTagId(intent: Intent?): String? {
         intent ?: return null
@@ -54,8 +75,11 @@ object NfcHandler {
      * Writes a chore tag ID onto [tag] as a single NDEF URI record
      * (`chordash://tag?tag=<tagId>`), formatting blank tags if needed.
      */
-    fun writeTagId(tag: Tag, tagId: String): NfcWriteResult {
-        val message = NdefMessage(arrayOf(NdefRecord.createUri("chordash://tag?tag=$tagId")))
+    fun writeTagId(tag: Tag, tagId: String): NfcWriteResult = writeUri(tag, choreTagUri(tagId))
+
+    /** Writes [uri] onto [tag] as a single NDEF URI record, formatting blank tags if needed. */
+    fun writeUri(tag: Tag, uri: String): NfcWriteResult {
+        val message = NdefMessage(arrayOf(NdefRecord.createUri(uri)))
         return try {
             val ndef = Ndef.get(tag)
             if (ndef != null) {
@@ -93,7 +117,7 @@ object NfcHandler {
         record.tnf == NdefRecord.TNF_WELL_KNOWN &&
             record.type.contentEquals(NdefRecord.RTD_URI) -> {
             record.toUri()?.let { uri ->
-                uri.getQueryParameter("tag") ?: uri.lastPathSegment
+                uri.getQueryParameter("tag") ?: uri.getQueryParameter("memo") ?: uri.lastPathSegment
             }
         }
         else -> null

@@ -1,0 +1,6 @@
+{
+  "bump": "minor",
+  "added": [
+    "A saved tag-alarm can write its own id to a blank NFC tag from the Tag row (\"Write this tag-alarm to a tag\"), the same way a chore writes its tag. A tap on that tag then sets the alarm, from any screen or with the app closed."
+  ]
+}

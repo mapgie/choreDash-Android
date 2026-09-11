@@ -62,6 +62,8 @@ import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 import com.mapgie.dash.ui.components.TagAlarmConflictDialog
+import com.mapgie.dash.ui.components.WriteTagDialog
+import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
@@ -100,6 +102,12 @@ fun RemindersListScreen(
     onStartNfcCapture: () -> Unit = {},
     onCancelNfcCapture: () -> Unit = {},
     onNfcCaptureConsumed: () -> Unit = {},
+    /** A tag-alarm's "Write tag" is waiting for a tag (or has its result); shows the write dialog. */
+    memoTagWritePending: Boolean = false,
+    nfcWriteResult: NfcWriteResult? = null,
+    onStartMemoTagWrite: (memoId: String) -> Unit = {},
+    onCancelNfcWrite: () -> Unit = {},
+    onNfcWriteResultConsumed: () -> Unit = {},
     onOpenReminderSettings: () -> Unit,
     viewModel: RemindersListViewModel = hiltViewModel()
 ) {
@@ -370,6 +378,16 @@ fun RemindersListScreen(
             onScanConsumed = onNfcCaptureConsumed,
             onArmTagAlarm = { viewModel.armTagAlarm(reminder.id) },
             onDisarmTagAlarm = { viewModel.disarmTagAlarm(reminder.id) },
+            onWriteTag = { onStartMemoTagWrite(reminder.id) },
+        )
+    }
+
+    if (memoTagWritePending) {
+        WriteTagDialog(
+            result = nfcWriteResult,
+            onDismiss = {
+                if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
+            }
         )
     }
 
