@@ -30,6 +30,7 @@ import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
+import com.mapgie.dash.nfc.TagKind
 import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
 import com.mapgie.dash.ui.components.TagAlarmConflictDialog
@@ -248,7 +249,7 @@ fun DashNavGraph(
                             onNfcConsumed = onNfcConsumed,
                             // Each tab shows the write dialog for its own kind only, so a memo
                             // write started on Memos never pops a dialog here.
-                            nfcWriteRequest = nfcWriteRequest?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE }?.id,
+                            nfcWriteRequest = nfcWriteRequest?.takeIf { it.kind == TagKind.CHORE }?.id,
                             nfcWriteResult = nfcWriteResult,
                             onStartNfcWrite = onStartNfcWrite,
                             onCancelNfcWrite = onCancelNfcWrite,
@@ -271,7 +272,7 @@ fun DashNavGraph(
                             onStartNfcCapture = onStartNfcCapture,
                             onCancelNfcCapture = onCancelNfcCapture,
                             onNfcCaptureConsumed = onNfcCaptureConsumed,
-                            memoTagWritePending = nfcWriteRequest?.kind == NfcWriteRequest.Kind.MEMO,
+                            memoTagWritePending = nfcWriteRequest?.kind == TagKind.MEMO,
                             nfcWriteResult = nfcWriteResult,
                             onStartMemoTagWrite = onStartMemoTagWrite,
                             onCancelNfcWrite = onCancelNfcWrite,

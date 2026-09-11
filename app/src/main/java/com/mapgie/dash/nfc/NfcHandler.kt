@@ -19,16 +19,15 @@ sealed class NfcWriteResult {
 /**
  * A tag the app is waiting to write: a chore's tag id (`chordash://tag?tag=<id>`)
  * or a memo's own id (`chordash://memo?memo=<id>`). Both read back through
- * [NfcHandler.extractTagId] as the bare id, so one id space serves chores and
- * tag-alarms alike; the host only says which kind minted it.
+ * [NfcHandler.extractScan] as the bare id plus its [TagKind]; the host says which
+ * kind minted it, so a memo tag can be routed to its memo and a chore tag to its
+ * chore.
  */
-data class NfcWriteRequest(val kind: Kind, val id: String) {
-    enum class Kind { CHORE, MEMO }
-
+data class NfcWriteRequest(val kind: TagKind, val id: String) {
     val uri: String
         get() = when (kind) {
-            Kind.CHORE -> NfcHandler.choreTagUri(id)
-            Kind.MEMO -> NfcHandler.memoTagUri(id)
+            TagKind.CHORE -> NfcHandler.choreTagUri(id)
+            TagKind.MEMO -> NfcHandler.memoTagUri(id)
         }
 }
 
@@ -47,7 +46,11 @@ object NfcHandler {
 
     fun memoTagUri(memoId: String): String = "chordash://memo?memo=$memoId"
 
-    fun extractTagId(intent: Intent?): String? {
+    /** The bare id an NFC tag stands for, ignoring its kind. */
+    fun extractTagId(intent: Intent?): String? = extractScan(intent)?.id
+
+    /** The id an NFC tag stands for, plus whether a chore or a memo minted it. */
+    fun extractScan(intent: Intent?): ScannedTag? {
         intent ?: return null
         if (intent.action !in setOf(
                 NfcAdapter.ACTION_NDEF_DISCOVERED,
@@ -66,9 +69,10 @@ object NfcHandler {
             if (fromNdef != null) return fromNdef
         }
 
-        // Fallback: raw hardware tag ID as hex
+        // Fallback: raw hardware tag ID as hex, treated as a bare chore tag id.
         val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
-        return tag?.id?.joinToString("") { "%02x".format(it) }
+        val hex = tag?.id?.joinToString("") { "%02x".format(it) } ?: return null
+        return ScannedTag(TagKind.CHORE, hex)
     }
 
     /**
@@ -106,19 +110,19 @@ object NfcHandler {
         }
     }
 
-    private fun extractFromRecord(record: NdefRecord): String? = when {
+    private fun extractFromRecord(record: NdefRecord): ScannedTag? = when {
         record.tnf == NdefRecord.TNF_WELL_KNOWN &&
             record.type.contentEquals(NdefRecord.RTD_TEXT) -> {
             val payload = record.payload
             val langLen = payload[0].toInt() and 0x3F
-            String(payload, 1 + langLen, payload.size - 1 - langLen, Charsets.UTF_8).trim()
-                .takeIf { it.isNotEmpty() }
+            val text = String(payload, 1 + langLen, payload.size - 1 - langLen, Charsets.UTF_8)
+            // A text record may itself hold a chordash URI (NFC Tools writes it that
+            // way); parse it down rather than passing the whole string through.
+            parseTagPayload(text)
         }
         record.tnf == NdefRecord.TNF_WELL_KNOWN &&
             record.type.contentEquals(NdefRecord.RTD_URI) -> {
-            record.toUri()?.let { uri ->
-                uri.getQueryParameter("tag") ?: uri.getQueryParameter("memo") ?: uri.lastPathSegment
-            }
+            record.toUri()?.toString()?.let { parseTagPayload(it) }
         }
         else -> null
     }

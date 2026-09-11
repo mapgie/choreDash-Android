@@ -29,10 +29,14 @@ import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.TagAlarmText
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
+import com.mapgie.dash.nfc.ScannedTag
+import com.mapgie.dash.nfc.TagKind
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.ui.navigation.DashNavGraph
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var choreRepository: ChoreRepository
+    @Inject lateinit var reminderRepository: ReminderRepository
     @Inject lateinit var tagAlarmService: TagAlarmService
 
     private var nfcAdapter: NfcAdapter? = null
@@ -167,11 +172,11 @@ class MainActivity : ComponentActivity() {
                     nfcWriteRequest = nfcWriteRequest,
                     nfcWriteResult = nfcWriteResult,
                     onStartNfcWrite = { tagId ->
-                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId)
+                        nfcWriteRequest = NfcWriteRequest(TagKind.CHORE, tagId)
                         nfcWriteResult = null
                     },
                     onStartMemoTagWrite = { memoId ->
-                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.MEMO, memoId)
+                        nfcWriteRequest = NfcWriteRequest(TagKind.MEMO, memoId)
                         nfcWriteResult = null
                     },
                     onCancelNfcWrite = {
@@ -231,14 +236,14 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        val tagId = NfcHandler.extractTagId(intent)
-        if (tagId != null) {
+        val scan = NfcHandler.extractScan(intent)
+        if (scan != null) {
             when {
                 nfcCaptureRequested -> {
                     nfcCaptureRequested = false
-                    nfcCapturedTagId = tagId
+                    nfcCapturedTagId = scan.id
                 }
-                else -> routeScannedTag(tagId, fromForeground)
+                else -> routeScannedTag(scan, fromForeground)
             }
         }
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
@@ -247,13 +252,29 @@ class MainActivity : ComponentActivity() {
     // A tag-alarm's tag is resolved first, on-device and offline, so the chore path
     // never sees it: before this, a background tap wrote a Supabase scan row for
     // any id at all. Only a tag no tag-alarm owns goes on to the chore flows.
-    private fun routeScannedTag(tagId: String, fromForeground: Boolean) {
+    //
+    // A memo tag (`chordash://memo?memo=<memoId>`) names a memo by its own id, so it
+    // is resolved against the reminder id first: a tag-alarm memo is armed, any other
+    // memo is opened. A chore tag, or a memo id that matches nothing, falls through to
+    // the tag-alarm-by-tag-id / chore path unchanged.
+    private fun routeScannedTag(scan: ScannedTag, fromForeground: Boolean) {
         lifecycleScope.launch {
-            val alarm = runCatching { tagAlarmService.findByTagId(tagId) }.getOrNull()
+            if (scan.kind == TagKind.MEMO) {
+                val memo = runCatching {
+                    reminderRepository.loadReminders()
+                        .firstOrNull { it.id == scan.id && it.archivedAt == null }
+                }.getOrNull()
+                if (memo != null) {
+                    if (memo.isTagAlarm) armTagAlarm(memo)
+                    else pendingReminderView = ReminderViewKind.REMINDER.routeArg to memo.id
+                    return@launch
+                }
+            }
+            val alarm = runCatching { tagAlarmService.findByTagId(scan.id) }.getOrNull()
             when {
                 alarm != null -> armTagAlarm(alarm)
-                fromForeground -> pendingNfcTagId = tagId
-                else -> autoLogChore(tagId)
+                fromForeground -> pendingNfcTagId = scan.id
+                else -> autoLogChore(scan.id)
             }
         }
     }
