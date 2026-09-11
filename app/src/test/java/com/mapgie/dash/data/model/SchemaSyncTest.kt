@@ -48,7 +48,9 @@ class SchemaSyncTest {
         // a table the app reaches through the anon key must carry an explicit GRANT
         // to anon (see supabase/schema.sql). This catches adding a CREATE TABLE
         // without the matching grant.
-        val tables = Regex("""CREATE TABLE IF NOT EXISTS\s+(\w+)""", RegexOption.IGNORE_CASE)
+        // Anchored to the start of a line so a comment that merely says
+        // "CREATE TABLE IF NOT EXISTS never alters..." is not read as a table.
+        val tables = Regex("""(?m)^[ \t]*CREATE TABLE IF NOT EXISTS\s+(\w+)""", RegexOption.IGNORE_CASE)
             .findAll(schema).map { it.groupValues[1] }.toList()
         assertTrue("No CREATE TABLE statements found in supabase/schema.sql", tables.isNotEmpty())
         val ungranted = tables.filterNot { table ->

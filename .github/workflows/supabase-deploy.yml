@@ -1,0 +1,36 @@
+name: Deploy Supabase schema
+# Applies supabase/schema.sql to the database on every merge to main. The file is
+# idempotent and runs in a single transaction, so re-applying is safe and it never
+# touches row data (DDL only). Dormant until the SUPABASE_DB_URL secret is set:
+# with it unset the job prints a notice and passes, so it is safe to merge now and
+# turn on later. Runs only on push to main, so the secret is never exposed to PRs.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/schema.sql"
+      - ".github/workflows/supabase-deploy.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    name: Apply schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply schema.sql to the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret not set; skipping schema deploy."
+            exit 0
+          fi
+          psql --version >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y postgresql-client; }
+          echo "Applying supabase/schema.sql in a single transaction…"
+          psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --single-transaction -f supabase/schema.sql
+          echo "Done."

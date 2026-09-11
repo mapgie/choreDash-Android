@@ -2,16 +2,33 @@
 
 `schema.sql` is the single source of truth for the shared Supabase project the
 Android app and the taskDash web app talk to. It creates the tables (`owners`,
-`tags`, `scans`, `todos`) and, at the bottom, holds a **Migrations** section:
-`ALTER` statements existing projects run once, since `CREATE TABLE IF NOT EXISTS`
-never changes a table that already exists.
+`tags`, `scans`, `todos`), their policies, grants and constraints. Every statement
+is **idempotent** (tables/indexes use `IF NOT EXISTS`, policies are dropped then
+created, constraints dropped then added, grants re-granted), so applying the whole
+file to a database that already has some or all of it is safe and never touches row
+data.
 
-## Applying it
+## Applying it by hand
 
-Paste the file into the project's SQL Editor (Project → SQL Editor → New query)
-and run it. Every statement is safe to run more than once. After editing
-`schema.sql`, run the new statements against every project that uses it (there is
-only one shared project today).
+Paste the file into the project's SQL Editor (Project → SQL Editor → New query) and
+Run. Safe to re-run any time. This is the recommended path for a Free-plan project.
+
+## Applying it automatically (GitHub Action)
+
+`.github/workflows/supabase-deploy.yml` applies `schema.sql` to the database on
+every merge to `main`, in a single transaction, with `psql`. No Supabase CLI, no
+Branching, no paid plan. It is **dormant** until one repository secret is set:
+
+- `SUPABASE_DB_URL` — the project's **Session pooler** connection URI (Dashboard →
+  Connect → Session pooler; it is IPv4, which GitHub runners need, unlike the direct
+  connection). It contains the database password, so it lives only as an Actions
+  secret (Settings → Secrets and variables → Actions → New repository secret).
+
+With the secret unset the job prints a notice and passes, so merging it changes
+nothing until you opt in. The workflow runs only on push to `main`, so the secret
+is never exposed to pull requests. Watch the first run (Actions tab): because the
+file is idempotent it is a no-op on objects that already exist, and only applies
+what is new.
 
 ## Data API exposure (grants)
 
@@ -56,5 +73,5 @@ Two CI guards catch that drift:
    the schema is actually applied. Until then it prints a notice and passes.
 
 Together: guard 1 ties the app to `schema.sql`; guard 2 ties `schema.sql` to a live
-database. The one gap is applying a merged `schema.sql` change to the production
-project, which is still a manual SQL Editor step (see "Applying it").
+database. Applying a merged `schema.sql` change to production is handled by the
+deploy Action above once `SUPABASE_DB_URL` is set, or by hand in the SQL Editor.
