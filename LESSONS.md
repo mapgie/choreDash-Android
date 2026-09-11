@@ -1296,7 +1296,29 @@ showed in light mode.
 
 ---
 
-## 57. Auto-apply a Supabase schema on a Free plan with idempotent SQL + psql, no CLI or Branching
+## 57. A multi-ring sequence is one alarm identity advancing through `remindAt`, not N PendingIntents
+
+A tag-alarm morning is several rings (5:15, 5:30, 5:45). The obvious build is one
+`PendingIntent` per ring, which means N request codes, N cancels on Turn off, N
+re-arms in `BootWorker`, and a snooze that has to know which of the N it belongs to.
+
+The build that shipped keeps the single alarm identity every memo already has and
+lets the *record* carry the sequence: `remindAt` is always the next ring, and
+`afterRing` (via `afterTagAlarmRing`) moves it to the next follow-up on the same
+date, or clears `armed` after the last one. `syncReminder` after every mutation then
+does the right thing for free: cancel, and re-arm only if `needsScheduling()`. Boot,
+snooze, Done and Turn off all fall out of the existing paths with no new alarm code.
+
+The one consequence to know about: a snooze re-schedules the same identity, so it
+*replaces* the pending follow-up's alarm rather than adding to it. That is fine
+(`afterRing` sees the follow-up's time has passed when the snooze fires and advances
+past it), but it means a 15-minute snooze on a ring with a follow-up 10 minutes out
+rings once at +15, not twice. Acceptable for an alarm; do not reuse the pattern where
+every ring in a sequence must be delivered exactly.
+
+---
+
+## 58. Auto-apply a Supabase schema on a Free plan with idempotent SQL + psql, no CLI or Branching
 
 Supabase's own GitHub integration (branching, migration deploys) is a paid,
 CLI-and-dashboard flow, and it needs `supabase/migrations/` + `config.toml` plus

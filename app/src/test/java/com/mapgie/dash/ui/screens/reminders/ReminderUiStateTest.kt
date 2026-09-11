@@ -135,6 +135,37 @@ class ReminderUiStateTest {
         )
     }
 
+    // ── Tag-alarms ────────────────────────────────────────────────────────────
+
+    private fun tagAlarm(id: String, armed: Boolean, remindAt: String = "2099-07-11T05:15:00Z", tagId: String? = "tag-$id") =
+        memo(id, remindAt = remindAt).copy(tagAlarm = true, tagId = tagId, ringTimes = listOf("05:15"), armed = armed)
+
+    @Test
+    fun `a dormant tag-alarm is active, never done, and sorts after every armed ring`() {
+        val dormant = tagAlarm("dormant", armed = false, remindAt = "2000-01-01T05:15:00Z")
+        val armed = tagAlarm("armed", armed = true)
+        val state = ReminderUiState(reminders = listOf(dormant, upcoming, armed, weekly))
+        assertEquals(listOf("armed", "weekly", "upcoming", "dormant"), ids(state.active))
+        assertTrue("dormant" !in ids(state.done))
+    }
+
+    @Test
+    fun `taken tag ids name every chore tag and every other tag-alarm tag`() {
+        val chore = com.mapgie.dash.data.model.Chore(
+            id = "c1", tagId = "kitchen", label = "Kitchen", category = null, owner = null,
+            intervalDays = null, archivedAt = null, lastScanned = null, lastScanId = null,
+            status = com.mapgie.dash.data.model.ChoreStatus.NEVER,
+        )
+        val office = tagAlarm("office", armed = false, tagId = "bedside")
+        val home = tagAlarm("home", armed = false, tagId = "card")
+        val untagged = tagAlarm("untagged", armed = false, tagId = null)
+        val state = ReminderUiState(reminders = listOf(office, home, untagged), chores = listOf(chore))
+        val taken = state.takenTagIds(editingId = "office")
+        assertEquals(setOf("kitchen", "card"), taken.keys)
+        assertEquals("the chore \"Kitchen\"", taken["kitchen"])
+        assertEquals("the tag-alarm \"home\"", taken["card"])
+    }
+
     // ── Linked suffix ─────────────────────────────────────────────────────────
 
     @Test

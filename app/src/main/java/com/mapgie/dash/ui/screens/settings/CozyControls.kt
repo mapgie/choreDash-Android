@@ -477,6 +477,10 @@ fun StepperControl(
 /**
  * Sub-screen header (4a): the 5dp accent strip, then a back chevron and the
  * lowercase serif title with an accent-tinted full stop ("appearance.").
+ *
+ * Painted on the page ground, not transparent: it is a Scaffold top bar that
+ * stays put while the content column scrolls beneath it (the column pads for
+ * the bar inside its own scroll), so without a fill the rows show through it.
  */
 @Composable
 fun SubScreenHeader(
@@ -486,7 +490,11 @@ fun SubScreenHeader(
     accent: Color = MaterialTheme.colorScheme.primary,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()

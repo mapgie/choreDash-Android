@@ -26,6 +26,9 @@ enum class ReminderStatus {
 
     /** A once-only memo that has rung, or was marked Done. */
     DONE,
+
+    /** A dormant tag-alarm: nothing armed until its tag is tapped. */
+    OFF,
 }
 
 private val WEEKDAYS = setOf(
@@ -78,14 +81,20 @@ object ReminderScheduleText {
 
     /**
      * The card's meta line: "Weekdays · 8:00 PM", "Mon · Wed · Fri · 7:00 AM",
-     * or "Once · doesn't repeat"; with " · linked to chore" / " · linked to task"
-     * when [linkedTo] names what it hangs off.
+     * "Once · doesn't repeat", or for a tag-alarm its morning, "Tag-alarm · 5:15 AM ·
+     * 5:30 AM · 5:45 AM"; with " · linked to chore" / " · linked to task" when
+     * [linkedTo] names what it hangs off.
      */
     fun scheduleLine(
         reminder: ReminderDto,
         zone: ZoneId = ZoneId.systemDefault(),
         linkedTo: String? = null,
     ): String {
+        if (reminder.isTagAlarm) {
+            val times = reminder.ringTimeList()
+            return if (times.isEmpty()) "Tag-alarm${MIDDLE_DOT}no time set"
+            else "Tag-alarm" + MIDDLE_DOT + times.joinToString(MIDDLE_DOT) { shortTime(it) }
+        }
         val days = reminder.repeatDaySet()
         val base = if (days.isEmpty()) {
             "Once${MIDDLE_DOT}doesn't repeat"
@@ -99,6 +108,7 @@ object ReminderScheduleText {
     /** Which urgency bucket the memo is in at [now]. */
     fun status(reminder: ReminderDto, now: Instant): ReminderStatus {
         if (reminder.isDone) return ReminderStatus.DONE
+        if (reminder.isTagAlarm && !reminder.armed) return ReminderStatus.OFF
         val next = reminder.remindAtInstant() ?: return ReminderStatus.UPCOMING
         if (!next.isAfter(now)) return ReminderStatus.RANG
         return if (ChronoUnit.HOURS.between(now, next) < 24) ReminderStatus.DUE_SOON else ReminderStatus.UPCOMING
@@ -112,9 +122,12 @@ object ReminderScheduleText {
      * No active/done verb otherwise ("due", "rang", "done"): the Active/Done filter
      * and the muted card already say which bucket a memo is in. Blank for a memo with
      * no time to show (dismissed before it ever rang); the card then draws no badge.
+     * A dormant tag-alarm says "off": the word, not just a muted colour, is what
+     * tells it apart from an armed one.
      */
     fun nextRingBadge(reminder: ReminderDto, now: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
         if (reminder.isDone) return reminder.rangAt()?.let { ago(it, now) } ?: ""
+        if (reminder.isTagAlarm && !reminder.armed) return "off"
         val next = reminder.remindAtInstant() ?: return ""
         if (!next.isAfter(now)) return "missed"
         return whenLabel(next, now, zone)

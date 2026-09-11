@@ -24,13 +24,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.Severity
+import com.mapgie.dash.data.model.TagAlarmText
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.notification.NotificationHelper
+import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.ui.navigation.DashNavGraph
 import com.mapgie.dash.ui.screens.reminder.ReminderViewKind
 import com.mapgie.dash.ui.theme.AppTheme
@@ -39,6 +42,7 @@ import com.mapgie.dash.ui.theme.DashTheme
 import com.mapgie.dash.widget.WIDGET_DESTINATION_EXTRA
 import com.mapgie.dash.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var choreRepository: ChoreRepository
+    @Inject lateinit var tagAlarmService: TagAlarmService
 
     private var nfcAdapter: NfcAdapter? = null
     private var nfcPendingIntent: PendingIntent? = null
@@ -65,6 +70,15 @@ class MainActivity : ComponentActivity() {
     // When set, the next scanned tag is written with this chore tag ID instead of being read
     private var nfcWriteRequest by mutableStateOf<String?>(null)
     private var nfcWriteResult by mutableStateOf<NfcWriteResult?>(null)
+
+    // While true, the next scanned tag's id is captured for the memo sheet's "link
+    // tag" flow instead of arming a tag-alarm or logging a chore.
+    private var nfcCaptureRequested by mutableStateOf(false)
+    private var nfcCapturedTagId by mutableStateOf<String?>(null)
+
+    // Set after a tap armed a tag-alarm while other tag-alarms were already set for
+    // the same morning; drives the "Turn them off?" dialog.
+    private var tagAlarmConflicts by mutableStateOf<List<ReminderDto>?>(null)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -163,6 +177,19 @@ class MainActivity : ComponentActivity() {
                         nfcWriteRequest = null
                         nfcWriteResult = null
                     },
+                    nfcCapturedTagId = nfcCapturedTagId,
+                    onStartNfcCapture = {
+                        nfcCaptureRequested = true
+                        nfcCapturedTagId = null
+                    },
+                    onCancelNfcCapture = { nfcCaptureRequested = false },
+                    onNfcCaptureConsumed = { nfcCapturedTagId = null },
+                    tagAlarmConflicts = tagAlarmConflicts,
+                    onTagAlarmConflictResolved = { turnOff ->
+                        val others = tagAlarmConflicts.orEmpty()
+                        tagAlarmConflicts = null
+                        if (turnOff) turnOffTagAlarms(others)
+                    },
                     startOnSettings = settings!!.supabaseUrl.isBlank()
                 )
             }
@@ -201,13 +228,49 @@ class MainActivity : ComponentActivity() {
         }
         val tagId = NfcHandler.extractTagId(intent)
         if (tagId != null) {
-            if (fromForeground) {
-                pendingNfcTagId = tagId
-            } else {
-                autoLogChore(tagId)
+            when {
+                nfcCaptureRequested -> {
+                    nfcCaptureRequested = false
+                    nfcCapturedTagId = tagId
+                }
+                else -> routeScannedTag(tagId, fromForeground)
             }
         }
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
+    }
+
+    // A tag-alarm's tag is resolved first, on-device and offline, so the chore path
+    // never sees it: before this, a background tap wrote a Supabase scan row for
+    // any id at all. Only a tag no tag-alarm owns goes on to the chore flows.
+    private fun routeScannedTag(tagId: String, fromForeground: Boolean) {
+        lifecycleScope.launch {
+            val alarm = runCatching { tagAlarmService.findByTagId(tagId) }.getOrNull()
+            when {
+                alarm != null -> armTagAlarm(alarm)
+                fromForeground -> pendingNfcTagId = tagId
+                else -> autoLogChore(tagId)
+            }
+        }
+    }
+
+    // The tap's whole feedback is a toast naming the alarm and its first ring; the
+    // app is already in front (Android routes NFC through the activity) but it asks
+    // nothing unless another tag-alarm is set for the same morning.
+    private suspend fun armTagAlarm(alarm: ReminderDto) {
+        val armed = runCatching { tagAlarmService.arm(alarm.id) }.getOrElse {
+            Toast.makeText(this, "Could not set ${alarm.subject}", Toast.LENGTH_SHORT).show()
+            return
+        } ?: return
+        Toast.makeText(this, TagAlarmText.armedToast(armed.alarm, Instant.now()), Toast.LENGTH_LONG).show()
+        if (armed.conflicts.isNotEmpty()) tagAlarmConflicts = armed.conflicts
+        WidgetUpdater.updateAll(applicationContext)
+    }
+
+    private fun turnOffTagAlarms(others: List<ReminderDto>) {
+        lifecycleScope.launch {
+            runCatching { tagAlarmService.disarmAll(others.map { it.id }) }
+            WidgetUpdater.updateAll(applicationContext)
+        }
     }
 
     private fun autoLogChore(tagId: String) {

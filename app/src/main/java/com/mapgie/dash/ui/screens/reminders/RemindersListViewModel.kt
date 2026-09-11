@@ -17,6 +17,7 @@ import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.isDone
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.data.preferences.CategoryStyleStore
@@ -24,7 +25,9 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.notification.DeliveryMode
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -62,6 +65,8 @@ data class ReminderUiState(
     /** Settings › Categories styling and Settings › Colours axes, so a linked memo can wear its chore's or task's look. */
     val catalog: CategoryCatalog = CategoryCatalog(),
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
+    /** Other tag-alarms set for the same morning as one just armed in-app; drives the "Turn off?" dialog. */
+    val tagAlarmConflicts: List<ReminderDto> = emptyList(),
     /** Settings › Reminders & alerts style; decides which missing permissions the list warns about. */
     val deliveryMode: String = DeliveryMode.NOTIFICATION,
 ) {
@@ -111,9 +116,30 @@ data class ReminderUiState(
         return null
     }
 
+    /**
+     * NFC tag ids already spoken for, each with the name of what owns it: every
+     * chore's tag and every other tag-alarm's. A tag has one job, so the sheet
+     * refuses these when linking a tag-alarm. [editingId] is the memo being edited,
+     * whose own tag is not "taken".
+     */
+    fun takenTagIds(editingId: String? = null): Map<String, String> {
+        val taken = LinkedHashMap<String, String>()
+        chores.forEach { chore -> taken[chore.tagId] = "the chore \"${chore.label}\"" }
+        reminders.forEach { memo ->
+            val tag = memo.tagId ?: return@forEach
+            if (memo.isTagAlarm && memo.id != editingId && memo.archivedAt == null) {
+                taken[tag] = "the tag-alarm \"${memo.subject}\""
+            }
+        }
+        return taken
+    }
+
     private fun sorted(list: List<ReminderDto>): List<ReminderDto> {
         val ordered = when (sort.key) {
-            ReminderSortKey.NEXT_RING -> list.sortedBy { it.remindAtInstant() ?: Instant.MAX }
+            // A dormant tag-alarm has no next ring, so it sorts after everything that does.
+            ReminderSortKey.NEXT_RING -> list.sortedBy {
+                if (it.isTagAlarm && !it.armed) Instant.MAX else it.remindAtInstant() ?: Instant.MAX
+            }
             ReminderSortKey.NAME -> list.sortedBy { it.subject.lowercase() }
             ReminderSortKey.CREATED -> list.sortedByDescending { it.createdAt }
         }
@@ -129,7 +155,8 @@ class RemindersListViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val settingsRepository: SettingsRepository,
     private val categoryStyleStore: CategoryStyleStore,
-    private val alarmScheduler: AlarmScheduler
+    private val alarmScheduler: AlarmScheduler,
+    private val tagAlarmService: TagAlarmService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReminderUiState())
@@ -160,6 +187,14 @@ class RemindersListViewModel @Inject constructor(
                 _uiState.update { it.copy(catalog = catalog) }
             }
         }
+        // Memos change under this screen too: a tap on a tag-alarm's NFC tag arms it
+        // from MainActivity, and a ring advances it from AlarmReceiver. Following the
+        // store keeps the list honest without a reload.
+        viewModelScope.launch {
+            reminderRepository.remindersFlow.collect { reminders ->
+                _uiState.update { if (it.loading) it else it.copy(reminders = reminders) }
+            }
+        }
         load()
     }
 
@@ -174,7 +209,7 @@ class RemindersListViewModel @Inject constructor(
                     it.copy(loading = false, reminders = reminders, chores = chores, tasks = tasks)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(loading = false, error = e.message) }
+                _uiState.update { it.copy(loading = false, error = e.userFacingMessage()) }
             }
         }
     }
@@ -194,7 +229,7 @@ class RemindersListViewModel @Inject constructor(
                 alarmScheduler.syncReminder(reminderRepository.addReminder(insert))
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -205,7 +240,7 @@ class RemindersListViewModel @Inject constructor(
                 alarmScheduler.syncReminder(reminderRepository.updateReminder(id, insert))
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -217,20 +252,67 @@ class RemindersListViewModel @Inject constructor(
                 reminderRepository.archiveReminder(id, archived)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Set for next, from the sheet: arms the tag-alarm and raises the conflict question if one applies. */
+    fun armTagAlarm(id: String) {
+        viewModelScope.launch {
+            runCatching {
+                val armed = tagAlarmService.arm(id)
+                _uiState.update { it.copy(tagAlarmConflicts = armed?.conflicts.orEmpty()) }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Turn off, from the sheet or a swipe: the tag-alarm goes dormant, its morning cancelled. */
+    fun disarmTagAlarm(id: String) {
+        viewModelScope.launch {
+            runCatching {
+                tagAlarmService.disarm(id)
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** The answer to the "Turn off?" question after an in-app Set for next. */
+    fun resolveTagAlarmConflicts(turnOff: Boolean) {
+        val others = _uiState.value.tagAlarmConflicts
+        _uiState.update { it.copy(tagAlarmConflicts = emptyList()) }
+        if (!turnOff || others.isEmpty()) return
+        viewModelScope.launch {
+            runCatching {
+                tagAlarmService.disarmAll(others.map { it.id })
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
 
     /**
      * Marks a memo done from a swipe (or undoes it). A once-only memo completes;
-     * a repeating memo has no Done, so it is archived (turned off) instead. Either
-     * way its alarm is cancelled, or re-armed on undo.
+     * a repeating memo has no Done, so it is archived (turned off) instead; a
+     * tag-alarm is turned off (dormant) and re-armed on undo. Either way its alarm
+     * is cancelled, or re-armed on undo.
      */
     fun setReminderDone(id: String, done: Boolean) {
         viewModelScope.launch {
             runCatching {
-                val repeats = _uiState.value.reminders.find { it.id == id }?.repeats == true
+                val memo = _uiState.value.reminders.find { it.id == id }
+                if (memo?.isTagAlarm == true) {
+                    if (done) tagAlarmService.disarm(id) else tagAlarmService.arm(id)
+                    load()
+                    return@runCatching
+                }
+                val repeats = memo?.repeats == true
                 if (done) {
                     alarmScheduler.cancelReminder(id)
                     if (repeats) reminderRepository.archiveReminder(id, true)
@@ -242,7 +324,7 @@ class RemindersListViewModel @Inject constructor(
                 }
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -254,7 +336,7 @@ class RemindersListViewModel @Inject constructor(
                 reminderRepository.deleteReminder(id)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
