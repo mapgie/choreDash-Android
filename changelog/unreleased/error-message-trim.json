@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "When a Supabase request fails, the screen shows the reason (for example \"permission denied for table tags\") instead of the whole request with its URL, headers and project key."
-  ]
-}

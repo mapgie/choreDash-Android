@@ -31,6 +31,24 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.36.0] - 2026-09-11
+
+### Added
+- The Memos list now shows a banner when a permission the chosen notification style needs is missing (for example full-screen alarms, without which the Alarm style can arrive silently). Tapping it opens Settings > Reminders & alerts.
+- Tag-alarms: a third kind of memo for mornings with no fixed pattern. Link an NFC tag, set a first ring and optional follow-ups, and a tap on the tag sets it for the next time that first ring comes round (today or tomorrow, weekday ignored). It rings that one morning and is then off again until the next tap. Tapping again never turns it off.
+- After a tap that sets a tag-alarm while another one is set for the same morning, the app asks whether to turn the other one off.
+- The ring screen offers Stop for today on a tag-alarm with follow-ups still to come; Done keeps them ringing.
+- Set for next and Turn off in a tag-alarm's sheet, and swipe left on its card to turn it off.
+
+### Changed
+- The Full-screen alarms row in Reminders & alerts now says that without it alarms can arrive silently.
+- An NFC tag now has one job: a tag linked to a tag-alarm is never logged as a chore, and a tag-alarm refuses a tag a chore or another tag-alarm already uses.
+
+### Fixed
+- When a Supabase request fails, the screen shows the reason (for example "permission denied for table tags") instead of the whole request with its URL, headers and project key.
+- Settings sub-screen headers (and the licences page) now sit on the page ground, so rows no longer show through the title while scrolling.
+
+---
 ## [0.35.2] - 2026-09-09
 
 ### Fixed

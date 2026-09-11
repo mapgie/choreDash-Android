@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "Settings sub-screen headers (and the licences page) now sit on the page ground, so rows no longer show through the title while scrolling."
-  ]
-}
