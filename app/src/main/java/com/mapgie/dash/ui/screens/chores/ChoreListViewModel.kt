@@ -29,6 +29,7 @@ import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
 import com.mapgie.dash.widget.WidgetUpdater
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -357,7 +358,7 @@ class ChoreListViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(loading = false, error = e.message ?: "Failed to load chores")
+                        it.copy(loading = false, error = e.userFacingMessage())
                     }
                 }
         }
@@ -375,7 +376,7 @@ class ChoreListViewModel @Inject constructor(
                 _uiState.update { it.copy(recentScan = RecentScan(choreLabel, scanId)) }
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -403,7 +404,7 @@ class ChoreListViewModel @Inject constructor(
                 loadScanHistory(chore.tagId)
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -430,7 +431,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.updateTag(tagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -445,7 +446,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -458,7 +459,7 @@ class ChoreListViewModel @Inject constructor(
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -478,7 +479,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.archiveTag(tagId, archived)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }

@@ -15,6 +15,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.tagalarm.TagAlarmService
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -195,7 +196,7 @@ class ReminderViewViewModel @Inject constructor(
                     ReminderViewKind.TASK -> taskRepository.markReminded(id)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
             _uiState.update { it.copy(finished = true) }
         }
@@ -212,7 +213,7 @@ class ReminderViewViewModel @Inject constructor(
         viewModelScope.launch {
             cancelNotification(kind, id)
             runCatching { tagAlarmService.disarm(id) }
-                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+                .onFailure { e -> _uiState.update { it.copy(error = e.userFacingMessage()) } }
             _uiState.update { it.copy(finished = true) }
         }
     }

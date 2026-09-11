@@ -30,6 +30,7 @@ import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
 import com.mapgie.dash.widget.WidgetUpdater
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -249,7 +250,7 @@ class TaskListViewModel @Inject constructor(
                 val owners = taskRepository.loadOwners()
                 _uiState.update { it.copy(loading = false, tasks = tasks, owners = owners) }
             }.onFailure { e ->
-                _uiState.update { it.copy(loading = false, error = e.message) }
+                _uiState.update { it.copy(loading = false, error = e.userFacingMessage()) }
             }
         }
     }
@@ -269,7 +270,7 @@ class TaskListViewModel @Inject constructor(
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -300,7 +301,7 @@ class TaskListViewModel @Inject constructor(
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -314,7 +315,7 @@ class TaskListViewModel @Inject constructor(
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, insert.taskId)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -334,7 +335,7 @@ class TaskListViewModel @Inject constructor(
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -368,7 +369,7 @@ class TaskListViewModel @Inject constructor(
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -390,7 +391,7 @@ class TaskListViewModel @Inject constructor(
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }

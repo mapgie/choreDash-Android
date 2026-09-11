@@ -27,6 +27,7 @@ import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.notification.DeliveryMode
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -208,7 +209,7 @@ class RemindersListViewModel @Inject constructor(
                     it.copy(loading = false, reminders = reminders, chores = chores, tasks = tasks)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(loading = false, error = e.message) }
+                _uiState.update { it.copy(loading = false, error = e.userFacingMessage()) }
             }
         }
     }
@@ -228,7 +229,7 @@ class RemindersListViewModel @Inject constructor(
                 alarmScheduler.syncReminder(reminderRepository.addReminder(insert))
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -239,7 +240,7 @@ class RemindersListViewModel @Inject constructor(
                 alarmScheduler.syncReminder(reminderRepository.updateReminder(id, insert))
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -251,7 +252,7 @@ class RemindersListViewModel @Inject constructor(
                 reminderRepository.archiveReminder(id, archived)?.let { alarmScheduler.syncReminder(it) }
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -264,7 +265,7 @@ class RemindersListViewModel @Inject constructor(
                 _uiState.update { it.copy(tagAlarmConflicts = armed?.conflicts.orEmpty()) }
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -276,7 +277,7 @@ class RemindersListViewModel @Inject constructor(
                 tagAlarmService.disarm(id)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -291,7 +292,7 @@ class RemindersListViewModel @Inject constructor(
                 tagAlarmService.disarmAll(others.map { it.id })
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -323,7 +324,7 @@ class RemindersListViewModel @Inject constructor(
                 }
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -335,7 +336,7 @@ class RemindersListViewModel @Inject constructor(
                 reminderRepository.deleteReminder(id)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
