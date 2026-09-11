@@ -438,6 +438,7 @@ class ChoreListViewModel @Inject constructor(
     fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
         viewModelScope.launch {
             runCatching {
+                requireTagFree(tagId)
                 // A chore isn't required to have a physical NFC tag; generate a unique
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
@@ -460,6 +461,15 @@ class ChoreListViewModel @Inject constructor(
                 _uiState.update { it.copy(error = e.message) }
             }
         }
+    }
+
+    // A tag has one job: an id a tag-alarm is linked to cannot become a chore's too.
+    // (A scanned tag never gets this far, MainActivity routes it to the tag-alarm;
+    // this catches an id typed into the sheet.)
+    private suspend fun requireTagFree(tagId: String) {
+        if (tagId.isBlank()) return
+        val owner = reminderRepository.findTagAlarmByTagId(tagId) ?: return
+        throw IllegalArgumentException("That tag already belongs to the tag-alarm \"${owner.subject}\". A tag has one job.")
     }
 
     fun archiveChore(tagId: String, archived: Boolean) {

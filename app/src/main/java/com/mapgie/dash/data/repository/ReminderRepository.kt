@@ -11,6 +11,9 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.afterDone
 import com.mapgie.dash.data.model.afterRing
+import com.mapgie.dash.data.model.armedForNextMorning
+import com.mapgie.dash.data.model.disarmed
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.model.needsScheduling
 import com.mapgie.dash.data.model.withScheduleAligned
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -68,10 +71,29 @@ class ReminderRepository @Inject constructor(
             sound = insert.sound,
             colour = insert.colour,
             icon = insert.icon,
+            tagAlarm = insert.tagAlarm,
+            tagId = insert.tagId,
+            ringTimes = insert.ringTimes,
         ).withScheduleAligned(now)
         saveAll(loadReminders() + reminder)
         return reminder
     }
+
+    /** The unarchived tag-alarm linked to [tagId], the one a tap on that tag arms. */
+    suspend fun findTagAlarmByTagId(tagId: String): ReminderDto? =
+        loadReminders().firstOrNull { it.isTagAlarm && it.tagId == tagId && it.archivedAt == null }
+
+    /**
+     * A tap on the tag, or Set for next: arms the tag-alarm's next morning (see
+     * [armedForNextMorning]; a ring already ahead is kept). The caller re-syncs
+     * the alarm. Null when there is no such record.
+     */
+    suspend fun armTagAlarm(id: String): ReminderDto? =
+        update(id) { if (it.isTagAlarm) it.armedForNextMorning(Instant.now()) else it }
+
+    /** Turn off / Stop for today: the tag-alarm goes dormant. The caller clears its alarm. */
+    suspend fun disarmTagAlarm(id: String): ReminderDto? =
+        update(id) { if (it.isTagAlarm) it.disarmed() else it }
 
     /**
      * Done from the notification or ring screen. A once-only memo completes; a
@@ -108,6 +130,9 @@ class ReminderRepository @Inject constructor(
                 sound = insert.sound,
                 colour = insert.colour,
                 icon = insert.icon,
+                tagAlarm = insert.tagAlarm,
+                tagId = insert.tagId,
+                ringTimes = insert.ringTimes,
                 reminded = false,
             ).withScheduleAligned(now)
         }

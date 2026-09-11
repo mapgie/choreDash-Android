@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,9 +73,15 @@ import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ReminderScheduleText
 import com.mapgie.dash.data.model.RepeatPreset
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.MAX_TAG_ALARM_RINGS
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.formatRingTime
+import com.mapgie.dash.data.model.isTagAlarm
+import com.mapgie.dash.data.model.nextMorning
 import com.mapgie.dash.data.model.nextOccurrence
 import com.mapgie.dash.data.model.parseRepeatDays
+import com.mapgie.dash.data.model.parseRingTimes
+import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.sheet.DraftResumeRow
@@ -101,6 +108,7 @@ import com.mapgie.dash.ui.theme.tintColor
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -117,6 +125,8 @@ private val DAY_CELLS = listOf(
 
 private fun Set<DayOfWeek>.toRaw(): String = sorted().joinToString(",") { it.name }
 private fun String.toDays(): Set<DayOfWeek> = parseRepeatDays(split(',').filter { it.isNotBlank() })
+private fun List<LocalTime>.toRawTimes(): String = joinToString(",") { formatRingTime(it) }
+private fun String.toTimes(): List<LocalTime> = parseRingTimes(split(',').filter { it.isNotBlank() })
 
 /**
  * The edit-alarm sheet (handoff 9a), one grammar with the chore and task
@@ -130,6 +140,13 @@ private fun String.toDays(): Set<DayOfWeek> = parseRepeatDays(split(',').filter 
  * Two things the mockup leaves out of frame are kept: a once-only memo still
  * needs a date, so a Date row appears under Time while Repeat is off; and a
  * memo can hang off a task as well as a chore, so both are offered.
+ *
+ * With the Tag-alarm switch on the sheet edits the third kind of memo (see
+ * TagAlarm.kt): the Time row is the first ring, a Follow-ups row holds the
+ * rest of the morning, Date, Repeat and the link give way to a Tag row that
+ * scans the NFC tag to link ([onStartScan] / [scannedTagId]), and the footer
+ * offers Set for next / Turn off for an existing one. A scanned id that
+ * [takenTagIds] already maps to a chore or another tag-alarm is refused.
  *
  * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27, #49).
  * Fields survive rotation and process death (rememberSaveable) and every change
@@ -152,6 +169,13 @@ fun AddReminderSheet(
     draft: ReminderDraft? = null,
     onDraftChange: (ReminderDraft) -> Unit = {},
     onDraftClear: () -> Unit = {},
+    takenTagIds: Map<String, String> = emptyMap(),
+    scannedTagId: String? = null,
+    onStartScan: () -> Unit = {},
+    onCancelScan: () -> Unit = {},
+    onScanConsumed: () -> Unit = {},
+    onArmTagAlarm: (() -> Unit)? = null,
+    onDisarmTagAlarm: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
@@ -181,6 +205,15 @@ fun AddReminderSheet(
     // chore's or task's category look on the list card instead.
     var colour by rememberSaveable { mutableStateOf(opened.colour) }
     var glyph by rememberSaveable { mutableStateOf(opened.icon) }
+    // Tag-alarm: the switch, the linked tag id, and the follow-up rings after the
+    // first (comma-joined "HH:mm", a plain String so rememberSaveable can hold it).
+    var tagAlarmOn by rememberSaveable { mutableStateOf(opened.tagAlarm) }
+    var tagIdValue by rememberSaveable { mutableStateOf(opened.tagId) }
+    var followUpsRaw by rememberSaveable { mutableStateOf(opened.followUps.joinToString(",")) }
+    var scanning by rememberSaveable { mutableStateOf(false) }
+    var tagError by rememberSaveable { mutableStateOf<String?>(null) }
+    var tagMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showFollowUpPicker by rememberSaveable { mutableStateOf(false) }
 
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -196,27 +229,55 @@ fun AddReminderSheet(
     }
 
     val days = repeatDaysRaw.toDays()
-    val effectiveDays = if (repeatOn) days else emptySet()
+    val effectiveDays = if (repeatOn && !tagAlarmOn) days else emptySet()
     val now = Instant.now()
+    // A tag-alarm's morning: the Time row's time first, then the follow-ups later
+    // that day (anything not after the first ring is dropped, so editing the first
+    // ring past a follow-up quietly retires it).
+    val firstRing = ringAt.toLocalTime().withSecond(0).withNano(0)
+    val followUps = followUpsRaw.toTimes().filter { it.isAfter(firstRing) }
+    val ringTimes = listOf(firstRing) + followUps
     // The ring the record will carry: a repeating memo's first occurrence on a
-    // chosen day, a once-only memo's date and time as picked.
-    val nextRing: Instant? =
-        if (repeatOn) {
-            if (days.isEmpty()) null else nextOccurrence(now, ringAt.toLocalTime(), days, zone)
-        } else ringAt.toInstant()
+    // chosen day, a once-only memo's date and time as picked. A tag-alarm has no
+    // ring of its own until it is armed; the banner shows its armed state instead.
+    val nextRing: Instant? = when {
+        tagAlarmOn -> existing?.takeIf { it.armed }?.remindAtInstant()
+        repeatOn -> if (days.isEmpty()) null else nextOccurrence(now, ringAt.toLocalTime(), days, zone)
+        else -> ringAt.toInstant()
+    }
 
     val currentDraft = ReminderDraft(
         subject = subject,
         ringAtEpochMillis = ringAt.withSecond(0).withNano(0).toInstant().toEpochMilli(),
         repeatDays = effectiveDays.sorted().map { it.name },
-        choreId = choreId,
-        taskId = taskId,
+        choreId = if (tagAlarmOn) "" else choreId,
+        taskId = if (tagAlarmOn) "" else taskId,
         sound = sound,
         colour = colour,
         icon = glyph,
+        tagAlarm = tagAlarmOn,
+        tagId = if (tagAlarmOn) tagIdValue else "",
+        followUps = if (tagAlarmOn) followUps.map { formatRingTime(it) } else emptyList(),
     )
     val isDirty = currentDraft.differsFrom(opened)
-    val canSave = subject.isNotBlank() && !(repeatOn && days.isEmpty())
+    val canSave = subject.isNotBlank() && (tagAlarmOn || !(repeatOn && days.isEmpty()))
+
+    // The tag the phone just read while this sheet was waiting for one. A tag has
+    // one job: an id a chore or another tag-alarm owns is refused, with the owner named.
+    LaunchedEffect(scannedTagId) {
+        val scanned = scannedTagId ?: return@LaunchedEffect
+        if (scanning) {
+            scanning = false
+            val owner = takenTagIds[scanned]
+            if (owner != null) {
+                tagError = "That tag already belongs to $owner. A tag has one job."
+            } else {
+                tagIdValue = scanned
+                tagError = null
+            }
+        }
+        onScanConsumed()
+    }
 
     LaunchedEffect(currentDraft) {
         if (isDirty) onDraftChange(currentDraft)
@@ -233,6 +294,9 @@ fun AddReminderSheet(
         sound = restored.sound
         colour = restored.colour
         glyph = restored.icon
+        tagAlarmOn = restored.tagAlarm
+        tagIdValue = restored.tagId
+        followUpsRaw = restored.followUps.joinToString(",")
         offeredDraft = null
     }
 
@@ -264,7 +328,18 @@ fun AddReminderSheet(
     // Swipe-down calls the first onDismissRequest it was built with (LESSONS.md #49).
     val latestRequestDismiss by rememberUpdatedState<() -> Unit>({ requestDismiss() })
 
-    fun buildInsert() = ReminderInsert(
+    fun buildInsert() = if (tagAlarmOn) ReminderInsert(
+        subject = subject.trim(),
+        // Only the time of day matters; the repository re-arms an armed alarm from
+        // the new times and leaves a dormant one dormant.
+        remindAt = nextMorning(now, firstRing, zone).toString(),
+        sound = sound.ifBlank { null },
+        colour = colour.ifBlank { null },
+        icon = glyph.ifBlank { null },
+        tagAlarm = true,
+        tagId = tagIdValue.ifBlank { null },
+        ringTimes = ringTimes.map { formatRingTime(it) },
+    ) else ReminderInsert(
         subject = subject.trim(),
         remindAt = (nextRing ?: ringAt.toInstant()).withSecondsZeroed().toString(),
         choreId = choreId.ifBlank { null },
@@ -274,6 +349,25 @@ fun AddReminderSheet(
         colour = colour.ifBlank { null },
         icon = glyph.ifBlank { null },
     )
+
+    fun startScan() {
+        tagError = null
+        scanning = true
+    }
+
+    fun stopScan() {
+        scanning = false
+    }
+
+    // The activity's "capture the next tag" request follows [scanning], so it is
+    // re-asked after rotation (the activity forgets, the saved state does not) and
+    // withdrawn when the scan is cancelled or the sheet goes away.
+    LaunchedEffect(scanning) {
+        if (scanning) onStartScan() else onCancelScan()
+    }
+    DisposableEffect(Unit) {
+        onDispose { onCancelScan() }
+    }
 
     fun setDays(next: Set<DayOfWeek>) {
         repeatDaysRaw = next.toRaw()
@@ -334,14 +428,19 @@ fun AddReminderSheet(
         ) {
             // A memo linked to a chore or task borrows that item's colour and glyph on
             // the list card, so the bell chip is only a customiser for a standalone memo.
-            val linked = choreId.isNotBlank() || taskId.isNotBlank()
+            val linked = !tagAlarmOn && (choreId.isNotBlank() || taskId.isNotBlank())
             val ownSwatch = Swatch.fromName(colour)
             val ownGlyph = CategoryIcon.fromName(glyph)
+            val kindWord = if (tagAlarmOn) "tag-alarm" else featureWord
             SheetHeader(
-                icon = if (!linked && ownGlyph != null) LucideIcons.forCategory(ownGlyph) else LucideIcons.Bell,
+                icon = when {
+                    !linked && ownGlyph != null -> LucideIcons.forCategory(ownGlyph)
+                    tagAlarmOn -> LucideIcons.Nfc
+                    else -> LucideIcons.Bell
+                },
                 chipContainer = if (!linked && ownSwatch != null) ownSwatch.tintColor() else accents.reminderContainer,
                 chipContent = if (!linked && ownSwatch != null) ownSwatch.textColor() else accents.onReminderContainer,
-                eyebrow = if (isNew) "New $featureWord" else "Edit $featureWord",
+                eyebrow = if (isNew) "New $kindWord" else "Edit $kindWord",
                 onIconClick = if (!linked) ({ showStylePicker = true }) else null,
                 iconClickLabel = "Choose $featureWord colour and icon",
             ) {
@@ -354,7 +453,7 @@ fun AddReminderSheet(
             }
             Text(
                 text = if (linked) "Colour and icon are inherited from the linked item."
-                       else "Tap the bell to give this ${featureWord.lowercase()} a colour and icon.",
+                       else "Tap the chip to give this ${kindWord.lowercase()} a colour and icon.",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = tokens.inkFaint,
                 modifier = Modifier.padding(horizontal = 4.dp),
@@ -368,12 +467,61 @@ fun AddReminderSheet(
                 )
             }
 
-            // Time (and, for a once-only memo, the date it rings on).
+            // Tag-alarm: the switch, and what it means while on.
             SheetBlock {
-                SettingsRow(icon = LucideIcons.Clock, label = "Time") {
+                Column(modifier = Modifier.padding(bottom = if (tagAlarmOn) 12.dp else 0.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp)
+                            .semantics { role = Role.Switch }
+                            .toggleable(
+                                value = tagAlarmOn,
+                                onValueChange = { on ->
+                                    tagAlarmOn = on
+                                    if (on) { repeatOn = false; choreId = ""; taskId = "" }
+                                    if (!on) stopScan()
+                                },
+                            )
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Icon(
+                            imageVector = LucideIcons.Nfc,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(17.dp),
+                        )
+                        Text(
+                            text = "Tag-alarm",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.5.sp, fontWeight = FontWeight.Bold),
+                            modifier = Modifier.weight(1f),
+                        )
+                        CozySwitch(
+                            checked = tagAlarmOn,
+                            onCheckedChange = null,
+                            modifier = Modifier.semantics { stateDescription = if (tagAlarmOn) "On" else "Off" },
+                        )
+                    }
+                    if (tagAlarmOn) {
+                        Text(
+                            text = "Off until you tap its tag. A tap sets it for the next time the first ring comes round, " +
+                                "today or tomorrow, whatever the weekday. It rings once (plus its follow-ups), then it's off again.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = tokens.inkFaint,
+                            modifier = Modifier.padding(horizontal = 14.dp),
+                        )
+                    }
+                }
+            }
+
+            // Time (and, for a once-only memo, the date it rings on; for a tag-alarm, its follow-ups).
+            SheetBlock {
+                SettingsRow(icon = LucideIcons.Clock, label = if (tagAlarmOn) "First ring" else "Time") {
                     TimeValue(text = timeText, onClick = { showTimePicker = true })
                 }
-                if (!repeatOn) {
+                if (!repeatOn && !tagAlarmOn) {
                     SheetRowDivider()
                     SettingsRow(icon = LucideIcons.Calendar, label = "Date") {
                         ValueChip(
@@ -383,10 +531,64 @@ fun AddReminderSheet(
                         )
                     }
                 }
+                if (tagAlarmOn) {
+                    SheetRowDivider()
+                    Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                        ) {
+                            Icon(
+                                imageVector = LucideIcons.Repeat,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Text(
+                                text = "Follow-ups",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.5.sp, fontWeight = FontWeight.Bold),
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (ringTimes.size < MAX_TAG_ALARM_RINGS) {
+                                ValueChip(
+                                    text = "Add",
+                                    onClick = { showFollowUpPicker = true },
+                                    contentDescription = "Add a follow-up ring",
+                                    chevron = false,
+                                )
+                            }
+                        }
+                        // Each follow-up is a chip; tapping one removes it.
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                        ) {
+                            followUps.forEach { time ->
+                                val label = ReminderScheduleText.shortTime(time)
+                                ValueChip(
+                                    text = "$label  ×",
+                                    onClick = { followUpsRaw = (followUps - time).toRawTimes() },
+                                    contentDescription = "Remove the $label follow-up",
+                                    chevron = false,
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (followUps.isEmpty()) "Extra rings later the same morning, in case the first one doesn't stick."
+                                   else "Each rings even if you dismissed the one before. Stop for today ends them.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = tokens.inkFaint,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
             }
 
             // Repeat: toggle, then the day cells and shortcut chips while on.
-            SheetBlock {
+            if (!tagAlarmOn) SheetBlock {
                 Column(modifier = Modifier.padding(bottom = if (repeatOn) 12.dp else 0.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -462,7 +664,7 @@ fun AddReminderSheet(
                 }
             }
 
-            // Sound, then what the memo hangs off.
+            // Sound, then what the memo hangs off (a tag-alarm hangs off its tag instead).
             SheetBlock {
                 SettingsRow(icon = LucideIcons.Volume2, label = "Sound") {
                     ValueChip(
@@ -471,7 +673,53 @@ fun AddReminderSheet(
                         contentDescription = "Sound: $soundTitle. Change sound",
                     )
                 }
-                if (chores.isNotEmpty() || tasks.isNotEmpty()) {
+                if (tagAlarmOn) {
+                    SheetRowDivider()
+                    val tagLabel = tagIdValue.ifBlank { "None" }.let { if (it.length > 14) it.take(12) + "…" else it }
+                    SettingsRow(icon = LucideIcons.NfcScan, label = "Tag") {
+                        Box {
+                            ValueChip(
+                                text = if (scanning) "Scanning…" else tagLabel,
+                                onClick = { if (scanning) stopScan() else tagMenuOpen = true },
+                                contentDescription = if (scanning) "Scanning for a tag. Cancel"
+                                                     else "Tag: ${tagIdValue.ifBlank { "none" }}. Change tag",
+                            )
+                            DropdownMenu(expanded = tagMenuOpen, onDismissRequest = { tagMenuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(if (tagIdValue.isBlank()) "Scan a tag" else "Scan a different tag") },
+                                    onClick = { tagMenuOpen = false; startScan() },
+                                )
+                                if (tagIdValue.isNotBlank()) {
+                                    DropdownMenuItem(
+                                        text = { Text("Remove tag") },
+                                        onClick = { tagMenuOpen = false; tagIdValue = ""; tagError = null },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (scanning) {
+                        Text(
+                            text = "Hold the tag to the back of your phone. Any tag works, blank or not; it just has to be one no chore uses.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = tokens.inkFaint,
+                            modifier = Modifier
+                                .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                                .semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                    tagError?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                                .semantics { liveRegion = LiveRegionMode.Assertive },
+                        )
+                    }
+                }
+                if (!tagAlarmOn && (chores.isNotEmpty() || tasks.isNotEmpty())) {
                     SheetRowDivider()
                     SettingsRow(icon = LucideIcons.Home, label = linkLabel) {
                         Box {
@@ -509,7 +757,7 @@ fun AddReminderSheet(
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
 
-            NextRingBanner(nextRing = nextRing, now = now, zone = zone, repeating = repeatOn)
+            NextRingBanner(nextRing = nextRing, now = now, zone = zone, repeating = repeatOn, tagAlarm = tagAlarmOn)
 
             if (existing != null) {
                 ExistingMeta(existing = existing)
@@ -528,8 +776,33 @@ fun AddReminderSheet(
 
             if (existing != null && (onArchiveToggle != null || onDelete != null)) {
                 val isArchived = existing.archivedAt != null
+                // Set for next / Turn off act on the saved record, so they only show for
+                // a saved tag-alarm the sheet is not in the middle of changing.
+                val showArmLinks = existing.isTagAlarm && tagAlarmOn && !isDirty && !isArchived
                 TertiaryLinkRow(
                     links = listOfNotNull(
+                        if (showArmLinks && !existing.armed && onArmTagAlarm != null) TertiaryLink(
+                            icon = LucideIcons.Bell,
+                            label = "Set for next",
+                            onClick = {
+                                onDraftClear()
+                                sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    onArmTagAlarm()
+                                    onDismiss()
+                                }
+                            },
+                        ) else null,
+                        if (showArmLinks && existing.armed && onDisarmTagAlarm != null) TertiaryLink(
+                            icon = LucideIcons.BellOff,
+                            label = "Turn off",
+                            onClick = {
+                                onDraftClear()
+                                sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    onDisarmTagAlarm()
+                                    onDismiss()
+                                }
+                            },
+                        ) else null,
                         if (onArchiveToggle != null) TertiaryLink(
                             icon = LucideIcons.Archive,
                             label = if (isArchived) "Unarchive" else "Archive",
@@ -581,6 +854,23 @@ fun AddReminderSheet(
                 showTimePicker = false
             },
             onDismiss = { showTimePicker = false }
+        )
+    }
+
+    if (showFollowUpPicker) {
+        // Opens a quarter of an hour after the last ring of the morning so far.
+        val suggested = ringTimes.last().plusMinutes(15)
+        SheetTimePickerDialog(
+            initialHour = suggested.hour,
+            initialMinute = suggested.minute,
+            onConfirm = { h, m ->
+                val picked = LocalTime.of(h, m)
+                // A follow-up before the first ring would be a different morning; it is
+                // ignored rather than silently moved.
+                if (picked.isAfter(firstRing)) followUpsRaw = (followUps + picked).distinct().sorted().toRawTimes()
+                showFollowUpPicker = false
+            },
+            onDismiss = { showFollowUpPicker = false }
         )
     }
 
@@ -709,10 +999,14 @@ private fun DayOfWeekRow(
     }
 }
 
-/** "Next ring · Wed, 7:00 AM" on the sage tint, with "in 4 days" on the right. */
+/**
+ * "Next ring · Wed, 7:00 AM" on the sage tint, with "in 4 days" on the right.
+ * A dormant tag-alarm says so in words: "Off · tap the tag to set".
+ */
 @Composable
-private fun NextRingBanner(nextRing: Instant?, now: Instant, zone: ZoneId, repeating: Boolean) {
+private fun NextRingBanner(nextRing: Instant?, now: Instant, zone: ZoneId, repeating: Boolean, tagAlarm: Boolean = false) {
     val (headline, relative) = when {
+        tagAlarm && nextRing == null -> "Off · tap the tag to set" to ""
         nextRing == null -> "Next ring · pick a day" to ""
         !nextRing.isAfter(now) && !repeating -> "Rings · ${ReminderScheduleText.bannerWhen(nextRing, zone)}" to "already passed"
         else -> "Next ring · ${ReminderScheduleText.bannerWhen(nextRing, zone)}" to ReminderScheduleText.bannerRelative(nextRing, now)

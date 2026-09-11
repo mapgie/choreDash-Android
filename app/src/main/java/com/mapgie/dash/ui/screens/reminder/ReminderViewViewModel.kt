@@ -8,11 +8,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.tagalarm.TagAlarmService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -57,6 +59,11 @@ data class ReminderViewUiState(
     val error: String? = null,
     /** The user's word for the reminders feature; names a standalone nudge on screen. */
     val featureLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
+    /**
+     * A tag-alarm with follow-up rings still to come this morning: the screen then
+     * offers Stop for today, since Done only dismisses the ring on screen.
+     */
+    val canStopForToday: Boolean = false,
 )
 
 /**
@@ -72,6 +79,7 @@ class ReminderViewViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val alarmScheduler: AlarmScheduler,
     private val settingsRepository: SettingsRepository,
+    private val tagAlarmService: TagAlarmService,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -122,6 +130,9 @@ class ReminderViewViewModel @Inject constructor(
                         val reminder = reminderRepository.loadReminders().firstOrNull { it.id == id }
                         reminder?.let {
                             linkedTaskId = it.taskId
+                            // By the time this screen is up the ring has been recorded, so an
+                            // armed tag-alarm here is one with a follow-up still pending.
+                            _uiState.update { state -> state.copy(canStopForToday = it.isTagAlarm && it.armed) }
                             it.subject to it.remindAtInstant()
                         }
                     }
@@ -186,6 +197,22 @@ class ReminderViewViewModel @Inject constructor(
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
+            _uiState.update { it.copy(finished = true) }
+        }
+    }
+
+    /**
+     * Stop for today on a tag-alarm: its remaining follow-ups are cancelled and it
+     * goes dormant until the next tap. The ring on screen is dismissed with it.
+     */
+    fun stopForToday() {
+        val kind = kind ?: return
+        val id = id ?: return
+        if (kind != ReminderViewKind.REMINDER) return
+        viewModelScope.launch {
+            cancelNotification(kind, id)
+            runCatching { tagAlarmService.disarm(id) }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
             _uiState.update { it.copy(finished = true) }
         }
     }

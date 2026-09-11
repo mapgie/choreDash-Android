@@ -109,6 +109,7 @@ fun ReminderViewScreen(
                         remindAt = uiState.remindAt,
                         onDone = viewModel::markDone,
                         onSnooze = viewModel::snoozeOneHour,
+                        onStopForToday = if (uiState.canStopForToday) viewModel::stopForToday else null,
                     )
                 }
             }
@@ -170,6 +171,7 @@ private fun NudgeContent(
     remindAt: Instant?,
     onDone: () -> Unit,
     onSnooze: () -> Unit,
+    onStopForToday: (() -> Unit)? = null,
 ) {
     BellDisc()
     Spacer(Modifier.height(30.dp))
@@ -211,6 +213,12 @@ private fun NudgeContent(
     ) {
         DonePill(onClick = onDone)
         SnoozePill(onClick = onSnooze)
+    }
+    // A tag-alarm with follow-ups still to come: Done dismisses only this ring,
+    // so the way to end the morning early gets its own pill.
+    if (onStopForToday != null) {
+        Spacer(Modifier.height(14.dp))
+        OutlinedPill(label = "Stop for today", onClick = onStopForToday)
     }
 }
 
