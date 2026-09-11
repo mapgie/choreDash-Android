@@ -26,6 +26,7 @@ import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.tagalarm.TagAlarmService
+import com.mapgie.dash.notification.DeliveryMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,6 +66,8 @@ data class ReminderUiState(
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
     /** Other tag-alarms set for the same morning as one just armed in-app; drives the "Turn off?" dialog. */
     val tagAlarmConflicts: List<ReminderDto> = emptyList(),
+    /** Settings › Reminders & alerts style; decides which missing permissions the list warns about. */
+    val deliveryMode: String = DeliveryMode.NOTIFICATION,
 ) {
     val active: List<ReminderDto>
         get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone })
@@ -173,6 +176,7 @@ class RemindersListViewModel @Inject constructor(
                         reminderLabel = settings.reminderLabel,
                         sort = settings.reminderSort,
                         colourAxes = settings.colourAxes,
+                        deliveryMode = settings.deliveryMode,
                     )
                 }
             }

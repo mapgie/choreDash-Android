@@ -97,7 +97,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
-private enum class SettingsSubScreen {
+enum class SettingsSubScreen {
     NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT, HELP
 }
 
@@ -106,12 +106,26 @@ private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/b
 /** Content inset for every settings page (18dp per the 3a/4a mock-ups). */
 private val PageInset = 18.dp
 
+/**
+ * The Settings tab. [pendingSubScreen] opens a sub-screen directly (the Memos
+ * permission banner lands on Reminders & alerts this way); it is consumed once
+ * applied so the tab's own back navigation works as usual afterwards.
+ */
 @Composable
 fun SettingsScreen(
     onNavigateToLicenses: () -> Unit,
+    pendingSubScreen: SettingsSubScreen? = null,
+    onPendingSubScreenConsumed: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     var subScreen by rememberSaveable { mutableStateOf(SettingsSubScreen.NONE) }
+
+    LaunchedEffect(pendingSubScreen) {
+        if (pendingSubScreen != null) {
+            subScreen = pendingSubScreen
+            onPendingSubScreenConsumed()
+        }
+    }
 
     BackHandler(enabled = subScreen != SettingsSubScreen.NONE) {
         subScreen = SettingsSubScreen.NONE
@@ -988,7 +1002,7 @@ private fun RemindersSubScreen(
                     SettingsHairline()
                     PermissionRow(
                         title = "Full-screen alarms",
-                        subtitle = "Lets the Alarm style turn the screen on and ring",
+                        subtitle = "Lets the Alarm style turn the screen on and ring. Without it, alarms can arrive silently",
                         granted = fullScreenAllowed,
                         icon = LucideIcons.Lamp,
                         onClick = { context.startActivity(PermissionHelper.fullScreenIntentSettingsIntent(context)) }
