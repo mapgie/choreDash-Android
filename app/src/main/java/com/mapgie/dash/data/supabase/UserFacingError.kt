@@ -19,11 +19,10 @@ fun Throwable.userFacingMessage(): String {
 
 /** [Throwable.userFacingMessage] on the message text alone, for the test. */
 fun userFacingMessage(raw: String): String {
-    val cut = REQUEST_DUMP_MARKERS
-        .mapNotNull { marker -> raw.indexOf(marker).takeIf { it >= 0 } }
-        .minOrNull()
+    val cut = REQUEST_DUMP.find(raw)?.range?.first
     val head = if (cut == null) raw else raw.substring(0, cut)
     return head.trim().trimEnd(',', ';').ifEmpty { "Request failed" }
 }
 
-private val REQUEST_DUMP_MARKERS = listOf("\nURL:", " URL:", "\nHeaders:", "\nHttp Method:")
+// The request dump's field labels, at the start of the message or after any whitespace.
+private val REQUEST_DUMP = Regex("""(^|\s)(URL|Headers|Http Method):""")
