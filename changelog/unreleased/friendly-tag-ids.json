@@ -1,7 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "A tag-alarm's tag now has a friendly name: name it from the Tag row (\"Office A\" becomes \"office-a\"), or let the write use one made from the memo's title. A new tag-alarm can be written to a blank tag straight away, before it is saved.",
-    "Settings > NFC tags lists every tag the app recognises: each chore's tag and each tag-alarm. Scan a tag to see what it belongs to, write a chore's or tag-alarm's id to a blank sticker, give a tag-alarm an id, or unlink one."
-  ]
-}
