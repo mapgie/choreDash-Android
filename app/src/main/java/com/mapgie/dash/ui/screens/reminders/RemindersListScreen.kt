@@ -105,7 +105,7 @@ fun RemindersListScreen(
     /** A tag-alarm's "Write tag" is waiting for a tag (or has its result); shows the write dialog. */
     memoTagWritePending: Boolean = false,
     nfcWriteResult: NfcWriteResult? = null,
-    onStartMemoTagWrite: (memoId: String) -> Unit = {},
+    onStartMemoTagWrite: (tagId: String) -> Unit = {},
     onCancelNfcWrite: () -> Unit = {},
     onNfcWriteResultConsumed: () -> Unit = {},
     onOpenReminderSettings: () -> Unit,
@@ -355,6 +355,7 @@ fun RemindersListScreen(
             onStartScan = onStartNfcCapture,
             onCancelScan = onCancelNfcCapture,
             onScanConsumed = onNfcCaptureConsumed,
+            onWriteTag = { tagId -> onStartMemoTagWrite(tagId) },
         )
     }
 
@@ -378,7 +379,7 @@ fun RemindersListScreen(
             onScanConsumed = onNfcCaptureConsumed,
             onArmTagAlarm = { viewModel.armTagAlarm(reminder.id) },
             onDisarmTagAlarm = { viewModel.disarmTagAlarm(reminder.id) },
-            onWriteTag = { onStartMemoTagWrite(reminder.id) },
+            onWriteTag = { tagId -> onStartMemoTagWrite(tagId) },
         )
     }
 

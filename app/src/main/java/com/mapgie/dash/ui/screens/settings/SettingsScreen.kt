@@ -85,6 +85,8 @@ import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.permission.PermissionHelper
 import android.app.NotificationManager
+import com.mapgie.dash.nfc.NfcWriteRequest
+import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
 import com.mapgie.dash.ui.theme.AppTheme
@@ -98,7 +100,7 @@ import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
 enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT, HELP
+    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, TAGS, ABOUT, HELP
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -116,6 +118,17 @@ fun SettingsScreen(
     onNavigateToLicenses: () -> Unit,
     pendingSubScreen: SettingsSubScreen? = null,
     onPendingSubScreenConsumed: () -> Unit = {},
+    // NFC plumbing for Settings › NFC tags: identify a tag by scanning it, and
+    // write a chore's or tag-alarm's id to one.
+    nfcCapturedTagId: String? = null,
+    onStartNfcCapture: () -> Unit = {},
+    onCancelNfcCapture: () -> Unit = {},
+    onNfcCaptureConsumed: () -> Unit = {},
+    tagWritePending: Boolean = false,
+    nfcWriteResult: NfcWriteResult? = null,
+    onStartTagWrite: (NfcWriteRequest) -> Unit = {},
+    onCancelNfcWrite: () -> Unit = {},
+    onNfcWriteResultConsumed: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     var subScreen by rememberSaveable { mutableStateOf(SettingsSubScreen.NONE) }
@@ -166,6 +179,18 @@ fun SettingsScreen(
         SettingsSubScreen.WIDGET -> WidgetSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
+        )
+        SettingsSubScreen.TAGS -> TagsSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            nfcCapturedTagId = nfcCapturedTagId,
+            onStartNfcCapture = onStartNfcCapture,
+            onCancelNfcCapture = onCancelNfcCapture,
+            onNfcCaptureConsumed = onNfcCaptureConsumed,
+            tagWritePending = tagWritePending,
+            nfcWriteResult = nfcWriteResult,
+            onStartTagWrite = onStartTagWrite,
+            onCancelNfcWrite = onCancelNfcWrite,
+            onNfcWriteResultConsumed = onNfcWriteResultConsumed,
         )
         SettingsSubScreen.ABOUT -> AboutSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
@@ -242,6 +267,12 @@ private fun SettingsMainList(
                         title = "Widget customisation",
                         subtitle = "Choose what your home-screen widget shows",
                         onClick = { onNavigate(SettingsSubScreen.WIDGET) }
+                    )
+                    SettingsHairline()
+                    SettingsNavRow(
+                        title = "NFC tags",
+                        subtitle = "Every tag the app knows: identify one, write one, unlink one",
+                        onClick = { onNavigate(SettingsSubScreen.TAGS) }
                     )
                 }
 

@@ -166,12 +166,8 @@ class MainActivity : ComponentActivity() {
                     },
                     nfcWriteRequest = nfcWriteRequest,
                     nfcWriteResult = nfcWriteResult,
-                    onStartNfcWrite = { tagId ->
-                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId)
-                        nfcWriteResult = null
-                    },
-                    onStartMemoTagWrite = { memoId ->
-                        nfcWriteRequest = NfcWriteRequest(NfcWriteRequest.Kind.MEMO, memoId)
+                    onStartNfcWriteRequest = { request ->
+                        nfcWriteRequest = request
                         nfcWriteResult = null
                     },
                     onCancelNfcWrite = {

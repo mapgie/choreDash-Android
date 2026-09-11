@@ -140,6 +140,30 @@ fun ReminderDto.conflictingTagAlarms(all: List<ReminderDto>, zone: ZoneId = Zone
     }
 }
 
+/**
+ * A friendly tag id for a tag-alarm, from its name: "Office A" becomes
+ * "office-a". Lower-case ASCII letters, digits and single hyphens only, so it
+ * reads well on a card and travels safely inside the `chordash://memo?memo=`
+ * URI; at most 40 characters; "memo" when nothing usable is left.
+ */
+fun suggestTagId(subject: String): String {
+    val slug = subject.lowercase()
+        .replace(Regex("[^a-z0-9]+"), "-")
+        .trim('-')
+        .take(40)
+        .trimEnd('-')
+    return slug.ifEmpty { "memo" }
+}
+
+/** [suggestTagId], made unique against [taken] by a numeric suffix: "office-a-2". */
+fun freeTagId(subject: String, taken: Set<String>): String {
+    val base = suggestTagId(subject)
+    if (base !in taken) return base
+    var n = 2
+    while ("$base-$n" in taken) n++
+    return "$base-$n"
+}
+
 /** The words the tap feedback and the conflict question use, kept testable. */
 object TagAlarmText {
 

@@ -249,6 +249,16 @@ class TagAlarmModelTest {
     }
 
     @Test
+    fun `a friendly tag id is the name folded to lower-case letters, digits and hyphens`() {
+        assertEquals("office-a", suggestTagId("Office A"))
+        assertEquals("waterloo-office", suggestTagId("  Waterloo  Office!  "))
+        assertEquals("memo", suggestTagId("???"))
+        assertEquals(40, suggestTagId("x".repeat(60)).length)
+        assertEquals("office-a-3", freeTagId("Office A", setOf("office-a", "office-a-2")))
+        assertEquals("home", freeTagId("Home", setOf("office-a")))
+    }
+
+    @Test
     fun `a plain memo is untouched by the tag-alarm rules`() {
         val memo = ReminderDto(id = "memo", subject = "memo", remindAt = "2026-07-08T09:00:00Z")
         assertFalse(memo.isTagAlarm)
