@@ -21,6 +21,7 @@ import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.ui.theme.AppTheme
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -319,7 +320,7 @@ class SettingsViewModel @Inject constructor(
                 taskRepository.moveCategory(from, target)
                 categoryStyleStore.update { it.renamed(from, target) }
                 loadCategoryUsage()
-            }.onFailure { e -> _saveError.value = e.message }
+            }.onFailure { e -> _saveError.value = e.userFacingMessage() }
         }
     }
 
@@ -332,7 +333,7 @@ class SettingsViewModel @Inject constructor(
                 taskRepository.moveCategory(name, GENERAL_CATEGORY)
                 categoryStyleStore.update { it.without(name) }
                 loadCategoryUsage()
-            }.onFailure { e -> _saveError.value = e.message }
+            }.onFailure { e -> _saveError.value = e.userFacingMessage() }
         }
     }
 

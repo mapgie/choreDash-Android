@@ -29,6 +29,7 @@ import com.mapgie.dash.widget.PinnedItemStore
 import com.mapgie.dash.widget.PinnedItemType
 import com.mapgie.dash.widget.PinnedWidgetItem
 import com.mapgie.dash.widget.WidgetUpdater
+import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -357,7 +358,7 @@ class ChoreListViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(loading = false, error = e.message ?: "Failed to load chores")
+                        it.copy(loading = false, error = e.userFacingMessage())
                     }
                 }
         }
@@ -375,7 +376,7 @@ class ChoreListViewModel @Inject constructor(
                 _uiState.update { it.copy(recentScan = RecentScan(choreLabel, scanId)) }
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -403,7 +404,7 @@ class ChoreListViewModel @Inject constructor(
                 loadScanHistory(chore.tagId)
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -430,7 +431,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.updateTag(tagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -438,13 +439,14 @@ class ChoreListViewModel @Inject constructor(
     fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
         viewModelScope.launch {
             runCatching {
+                requireTagFree(tagId)
                 // A chore isn't required to have a physical NFC tag; generate a unique
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
                 choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }
@@ -457,9 +459,18 @@ class ChoreListViewModel @Inject constructor(
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
+    }
+
+    // A tag has one job: an id a tag-alarm is linked to cannot become a chore's too.
+    // (A scanned tag never gets this far, MainActivity routes it to the tag-alarm;
+    // this catches an id typed into the sheet.)
+    private suspend fun requireTagFree(tagId: String) {
+        if (tagId.isBlank()) return
+        val owner = reminderRepository.findTagAlarmByTagId(tagId) ?: return
+        throw IllegalArgumentException("That tag already belongs to the tag-alarm \"${owner.subject}\". A tag has one job.")
     }
 
     fun archiveChore(tagId: String, archived: Boolean) {
@@ -468,7 +479,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.archiveTag(tagId, archived)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
     }

@@ -53,6 +53,24 @@ data class ReminderDto(
      */
     @SerialName("colour") val colour: String? = null,
     @SerialName("icon") val icon: String? = null,
+    /**
+     * True for a tag-alarm (see TagAlarm.kt): a dormant morning alarm that a tap on
+     * its NFC tag, or Set for next in the app, arms for exactly one morning. It has
+     * no repeat days; [ringTimes] holds its morning instead.
+     */
+    @SerialName("tag_alarm") val tagAlarm: Boolean = false,
+    /** The NFC tag id that arms this tag-alarm; null until one is linked. */
+    @SerialName("tag_id") val tagId: String? = null,
+    /**
+     * A tag-alarm's morning as "HH:mm" local times, sorted: the first ring, then
+     * its follow-ups later the same day. Empty on any other kind of memo.
+     */
+    @SerialName("ring_times") val ringTimes: List<String> = emptyList(),
+    /**
+     * A tag-alarm's state: armed for the morning [remindAt] falls on, or dormant.
+     * Always false on any other kind of memo.
+     */
+    @SerialName("armed") val armed: Boolean = false,
 )
 
 @Serializable
@@ -65,6 +83,9 @@ data class ReminderInsert(
     @SerialName("sound") val sound: String? = null,
     @SerialName("colour") val colour: String? = null,
     @SerialName("icon") val icon: String? = null,
+    @SerialName("tag_alarm") val tagAlarm: Boolean = false,
+    @SerialName("tag_id") val tagId: String? = null,
+    @SerialName("ring_times") val ringTimes: List<String> = emptyList(),
 )
 
 private fun parseInstant(raw: String?): Instant? =
@@ -96,15 +117,17 @@ fun ReminderDto.timeOfDay(zone: ZoneId = ZoneId.systemDefault()): LocalTime? =
 // are included deliberately — a reminder that came due while the device was off is
 // still pending, and BootWorker decides between scheduling and immediate delivery.
 // A repeating memo is never "reminded" or "completed", so it stays pending until archived.
+// A dormant tag-alarm has no ring to give until it is armed.
 fun ReminderDto.needsScheduling(): Boolean =
-    !reminded && completedAt == null && archivedAt == null && remindAtInstant() != null
+    !reminded && completedAt == null && archivedAt == null && remindAtInstant() != null &&
+        (!isTagAlarm || armed)
 
 /**
  * True once a once-only memo has had its moment: it rang, or it was marked done
  * from the notification or ring screen. A repeating memo is never done.
  */
 val ReminderDto.isDone: Boolean
-    get() = !repeats && (reminded || completedAt != null)
+    get() = !repeats && !isTagAlarm && (reminded || completedAt != null)
 
 /** When a once-only memo rang, for the Done badge; legacy records fall back to their fire time. */
 fun ReminderDto.rangAt(): Instant? =
@@ -137,9 +160,11 @@ fun ReminderDto.nextOccurrenceAfter(after: Instant, zone: ZoneId = ZoneId.system
 /**
  * A repeating memo whose stored ring is in the past, or on a day it no longer
  * repeats on, is moved to its next valid occurrence after [now]. Once-only
- * memos are returned unchanged. Applied on every save.
+ * memos are returned unchanged. An armed tag-alarm is re-armed from its (possibly
+ * edited) ring times; a dormant one is left dormant. Applied on every save.
  */
 fun ReminderDto.withScheduleAligned(now: Instant, zone: ZoneId = ZoneId.systemDefault()): ReminderDto {
+    if (isTagAlarm) return if (armed) realigned(now, zone) else copy(armed = false)
     if (!repeats) return this
     val current = remindAtInstant() ?: return this
     val aligned = current.isAfter(now) && current.atZone(zone).dayOfWeek in repeatDaySet()
@@ -155,6 +180,7 @@ fun ReminderDto.withScheduleAligned(now: Instant, zone: ZoneId = ZoneId.systemDe
  * occurrence; that one is kept rather than advanced a second time.
  */
 fun ReminderDto.afterRing(now: Instant, zone: ZoneId = ZoneId.systemDefault()): ReminderDto {
+    if (isTagAlarm) return afterTagAlarmRing(now, zone)
     val rang = now.toString()
     if (!repeats) return copy(reminded = true, lastRangAt = rang)
     val current = remindAtInstant() ?: return copy(reminded = true, lastRangAt = rang)
@@ -166,6 +192,8 @@ fun ReminderDto.afterRing(now: Instant, zone: ZoneId = ZoneId.systemDefault()): 
  * The record after Done on the notification or ring screen at [now]. A once-only
  * memo completes (it is also done once it has rung). A repeating memo has
  * nothing to record: Done just dismisses this ring, and the next one stays armed.
+ * The same goes for a tag-alarm: Done dismisses this ring and any follow-up still
+ * rings; only Stop for today (see [disarmed]) ends its morning early.
  */
 fun ReminderDto.afterDone(now: Instant): ReminderDto =
-    if (!repeats) copy(completedAt = now.toString()) else this
+    if (!repeats && !isTagAlarm) copy(completedAt = now.toString()) else this

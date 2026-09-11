@@ -49,6 +49,21 @@ class ReminderDraftTest {
     }
 
     @Test
+    fun `a tag-alarm opens on its first ring today, its tag and its follow-ups`() {
+        val office = ReminderDto(
+            id = "t1", subject = "Office A", remindAt = "2020-01-01T05:15:00Z",
+            tagAlarm = true, tagId = "bedside", ringTimes = listOf("05:15", "05:30", "05:45"),
+        )
+        val opened = ReminderDraft.of(office, now = now, zone = java.time.ZoneId.of("UTC"))
+        assertTrue(opened.tagAlarm)
+        assertEquals("bedside", opened.tagId)
+        assertEquals(listOf("05:30", "05:45"), opened.followUps)
+        // Only the time of day matters: it opens on today's date, not the stale stored one.
+        assertEquals(Instant.parse("2026-07-10T05:15:00Z").toEpochMilli(), opened.ringAtEpochMillis)
+        assertFalse(ReminderDraft.of(plants, now = now).tagAlarm)
+    }
+
+    @Test
     fun `a draft differs only when a field changed`() {
         val opened = ReminderDraft.of(plants, now = now)
         assertFalse(opened.copy().differsFrom(opened))

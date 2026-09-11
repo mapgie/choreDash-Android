@@ -168,5 +168,6 @@ fun ReminderDto.statusTone(now: Instant = Instant.now()): StatusTone = when {
         ReminderStatus.DUE_SOON -> StatusTone.ATTENTION
         ReminderStatus.UPCOMING -> StatusTone.OK
         ReminderStatus.DONE -> StatusTone.NONE
+        ReminderStatus.OFF -> StatusTone.NEUTRAL
     }
 }

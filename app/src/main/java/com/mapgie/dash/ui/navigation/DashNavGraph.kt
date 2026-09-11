@@ -27,9 +27,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mapgie.dash.data.model.AddMenuOption
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
+import com.mapgie.dash.ui.components.TagAlarmConflictDialog
 import com.mapgie.dash.ui.components.WelcomeSheet
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
@@ -100,6 +102,12 @@ fun DashNavGraph(
     onStartNfcWrite: (String) -> Unit,
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
+    nfcCapturedTagId: String? = null,
+    onStartNfcCapture: () -> Unit = {},
+    onCancelNfcCapture: () -> Unit = {},
+    onNfcCaptureConsumed: () -> Unit = {},
+    tagAlarmConflicts: List<ReminderDto>? = null,
+    onTagAlarmConflictResolved: (turnOff: Boolean) -> Unit = {},
     startOnSettings: Boolean = false,
     navViewModel: DashNavViewModel = hiltViewModel(),
 ) {
@@ -255,6 +263,10 @@ fun DashNavGraph(
                         RemindersListScreen(
                             pendingAddIntent = pendingAddIntent,
                             onPendingAddIntentConsumed = { pendingAddIntent = null },
+                            nfcCapturedTagId = nfcCapturedTagId,
+                            onStartNfcCapture = onStartNfcCapture,
+                            onCancelNfcCapture = onCancelNfcCapture,
+                            onNfcCaptureConsumed = onNfcCaptureConsumed,
                             onOpenReminderSettings = {
                                 pendingSettingsSubScreen = SettingsSubScreen.REMINDERS
                                 navigateTo(Screen.Settings.route)
@@ -281,6 +293,17 @@ fun DashNavGraph(
                         ReminderViewScreen(onBack = { navController.popBackStack() })
                     }
                 }
+            }
+
+            // A tap armed a tag-alarm while another was already set for the same
+            // morning. Asked here, above every tab, because the tap can land on any
+            // of them (or cold-start the app).
+            tagAlarmConflicts?.takeIf { it.isNotEmpty() }?.let { conflicts ->
+                TagAlarmConflictDialog(
+                    conflicts = conflicts,
+                    onTurnOff = { onTagAlarmConflictResolved(true) },
+                    onKeep = { onTagAlarmConflictResolved(false) },
+                )
             }
 
             // First run: the chores / tasks / memos explanation, shown once.

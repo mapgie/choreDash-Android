@@ -57,9 +57,11 @@ import com.mapgie.dash.data.model.ReminderAppearance
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
+import com.mapgie.dash.ui.components.TagAlarmConflictDialog
 import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
@@ -94,6 +96,10 @@ import kotlinx.coroutines.launch
 fun RemindersListScreen(
     pendingAddIntent: AddMenuOption?,
     onPendingAddIntentConsumed: () -> Unit,
+    nfcCapturedTagId: String? = null,
+    onStartNfcCapture: () -> Unit = {},
+    onCancelNfcCapture: () -> Unit = {},
+    onNfcCaptureConsumed: () -> Unit = {},
     onOpenReminderSettings: () -> Unit,
     viewModel: RemindersListViewModel = hiltViewModel()
 ) {
@@ -115,12 +121,14 @@ fun RemindersListScreen(
     }
 
     // Swipe-to-done leaves a brief Undo, so a stray swipe is one tap to reverse.
+    // On a tag-alarm the swipe turns it off, and Undo arms it again.
     fun markReminderDoneWithUndo(reminder: ReminderDto) {
         viewModel.setReminderDone(reminder.id, true)
         scope.launch {
             snackbarHost.currentSnackbarData?.dismiss()
             val result = snackbarHost.showSnackbar(
-                message = "“${reminder.subject}” marked done",
+                message = if (reminder.isTagAlarm) "“${reminder.subject}” turned off"
+                          else "“${reminder.subject}” marked done",
                 actionLabel = "Undo",
                 duration = SnackbarDuration.Short,
             )
@@ -334,6 +342,11 @@ fun RemindersListScreen(
             draft = remember { viewModel.reminderDrafts.get(NEW_DRAFT_KEY) },
             onDraftChange = { viewModel.reminderDrafts.put(NEW_DRAFT_KEY, it) },
             onDraftClear = { viewModel.reminderDrafts.clear(NEW_DRAFT_KEY) },
+            takenTagIds = uiState.takenTagIds(),
+            scannedTagId = nfcCapturedTagId,
+            onStartScan = onStartNfcCapture,
+            onCancelScan = onCancelNfcCapture,
+            onScanConsumed = onNfcCaptureConsumed,
         )
     }
 
@@ -350,6 +363,21 @@ fun RemindersListScreen(
             draft = remember(reminder.id) { viewModel.reminderDrafts.get(reminder.id) },
             onDraftChange = { viewModel.reminderDrafts.put(reminder.id, it) },
             onDraftClear = { viewModel.reminderDrafts.clear(reminder.id) },
+            takenTagIds = uiState.takenTagIds(editingId = reminder.id),
+            scannedTagId = nfcCapturedTagId,
+            onStartScan = onStartNfcCapture,
+            onCancelScan = onCancelNfcCapture,
+            onScanConsumed = onNfcCaptureConsumed,
+            onArmTagAlarm = { viewModel.armTagAlarm(reminder.id) },
+            onDisarmTagAlarm = { viewModel.disarmTagAlarm(reminder.id) },
+        )
+    }
+
+    if (uiState.tagAlarmConflicts.isNotEmpty()) {
+        TagAlarmConflictDialog(
+            conflicts = uiState.tagAlarmConflicts,
+            onTurnOff = { viewModel.resolveTagAlarmConflicts(true) },
+            onKeep = { viewModel.resolveTagAlarmConflicts(false) },
         )
     }
 }
@@ -363,9 +391,10 @@ private fun ReminderAppearance.glyph(): ImageVector =
     icon?.let { LucideIcons.forCategory(it) } ?: LucideIcons.Bell
 
 /**
- * A memo card with two swipes: left (end to start) marks it done / turns it off;
- * right (start to end) deletes it, behind a confirm. Done is reversible from the
- * Undo snackbar the caller shows, so it needs no confirm of its own.
+ * A memo card with two swipes: left (end to start) marks it done / turns it off
+ * (a tag-alarm goes dormant); right (start to end) deletes it, behind a confirm.
+ * Done is reversible from the Undo snackbar the caller shows, so it needs no
+ * confirm of its own.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -412,7 +441,7 @@ private fun SwipeReminderCard(
                     contentAlignment = if (deleting) Alignment.CenterStart else Alignment.CenterEnd
                 ) {
                     Text(
-                        if (deleting) "Delete" else "Done",
+                        if (deleting) "Delete" else if (reminder.isTagAlarm) "Turn off" else "Done",
                         modifier = Modifier.padding(horizontal = 24.dp),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
                         color = if (deleting) MaterialTheme.colorScheme.onErrorContainer
