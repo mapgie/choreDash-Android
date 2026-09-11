@@ -1,0 +1,6 @@
+{
+  "bump": "minor",
+  "added": [
+    "Settings > NFC tags can show only the chores that are on a sticker, or only those without one. A chore counts as on a sticker once this phone has written its id to a tag or read it off one; stickers made elsewhere count after a single tap."
+  ]
+}

@@ -6,6 +6,7 @@ import com.mapgie.dash.data.model.ReminderDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.Instant
 
 /**
  * What Settings › NFC tags lists and resolves: every chore's tag with archived
@@ -57,6 +58,29 @@ class TagsUiStateTest {
         assertNull(state.identify("waterloo"))
         // An archived tag-alarm's tag is no longer anyone's.
         assertNull(state.identify("old-office"))
+    }
+
+    // ── On a sticker ──────────────────────────────────────────────────────────
+
+    private val withStickers = state.copy(
+        stickers = mapOf("laundry" to Instant.parse("2026-07-10T08:00:00Z"), "office-a" to Instant.parse("2026-07-10T08:00:00Z")),
+    )
+
+    @Test
+    fun `a chore is on a sticker only when this phone has written or read its id`() {
+        assertEquals(listOf(false, true, false), withStickers.choreTags.map { it.onSticker })
+        assertEquals(listOf(false, true), withStickers.tagAlarms.map { it.onSticker })
+    }
+
+    @Test
+    fun `the sticker chips split the chores and count each side`() {
+        assertEquals(listOf("Laundry"), withStickers.copy(choreFilter = ChoreTagFilter.ON_STICKER).filteredChoreTags.map { it.name })
+        assertEquals(listOf("Car service", "Bins"), withStickers.copy(choreFilter = ChoreTagFilter.NO_STICKER).filteredChoreTags.map { it.name })
+        assertEquals(3, withStickers.choreCount(ChoreTagFilter.ALL))
+        assertEquals(1, withStickers.choreCount(ChoreTagFilter.ON_STICKER))
+        assertEquals(2, withStickers.choreCount(ChoreTagFilter.NO_STICKER))
+        // Without any evidence, nothing is on a sticker and the All chip shows everything.
+        assertEquals(3, state.copy(choreFilter = ChoreTagFilter.NO_STICKER).filteredChoreTags.size)
     }
 
     @Test
