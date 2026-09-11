@@ -95,6 +95,10 @@ class ReminderRepository @Inject constructor(
     suspend fun disarmTagAlarm(id: String): ReminderDto? =
         update(id) { if (it.isTagAlarm) it.disarmed() else it }
 
+    /** Links (or, with null, unlinks) the NFC tag a tag-alarm answers to. Nothing else changes. */
+    suspend fun setTagAlarmTag(id: String, tagId: String?): ReminderDto? =
+        update(id) { if (it.isTagAlarm) it.copy(tagId = tagId?.trim()?.ifBlank { null }) else it }
+
     /**
      * Done from the notification or ring screen. A once-only memo completes; a
      * repeating one is unchanged, its next ring stays armed (see [afterDone]).

@@ -100,8 +100,7 @@ fun DashNavGraph(
     onReminderViewConsumed: () -> Unit = {},
     nfcWriteRequest: NfcWriteRequest?,
     nfcWriteResult: NfcWriteResult?,
-    onStartNfcWrite: (String) -> Unit,
-    onStartMemoTagWrite: (String) -> Unit = {},
+    onStartNfcWriteRequest: (NfcWriteRequest) -> Unit,
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
     nfcCapturedTagId: String? = null,
@@ -246,11 +245,14 @@ fun DashNavGraph(
                         ChoreListScreen(
                             pendingNfcTagId = pendingNfcTagId,
                             onNfcConsumed = onNfcConsumed,
-                            // Each tab shows the write dialog for its own kind only, so a memo
-                            // write started on Memos never pops a dialog here.
-                            nfcWriteRequest = nfcWriteRequest?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE }?.id,
+                            // Each tab shows the write dialog for its own writes only, so a memo
+                            // write started on Memos or Settings never pops a dialog here.
+                            nfcWriteRequest = nfcWriteRequest
+                                ?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE && !it.fromSettings }?.id,
                             nfcWriteResult = nfcWriteResult,
-                            onStartNfcWrite = onStartNfcWrite,
+                            onStartNfcWrite = { tagId ->
+                                onStartNfcWriteRequest(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId))
+                            },
                             onCancelNfcWrite = onCancelNfcWrite,
                             onNfcWriteResultConsumed = onNfcWriteResultConsumed,
                             pendingAddIntent = pendingAddIntent,
@@ -271,9 +273,13 @@ fun DashNavGraph(
                             onStartNfcCapture = onStartNfcCapture,
                             onCancelNfcCapture = onCancelNfcCapture,
                             onNfcCaptureConsumed = onNfcCaptureConsumed,
-                            memoTagWritePending = nfcWriteRequest?.kind == NfcWriteRequest.Kind.MEMO,
+                            memoTagWritePending = nfcWriteRequest?.let {
+                                it.kind == NfcWriteRequest.Kind.MEMO && !it.fromSettings
+                            } ?: false,
                             nfcWriteResult = nfcWriteResult,
-                            onStartMemoTagWrite = onStartMemoTagWrite,
+                            onStartMemoTagWrite = { tagId ->
+                                onStartNfcWriteRequest(NfcWriteRequest(NfcWriteRequest.Kind.MEMO, tagId))
+                            },
                             onCancelNfcWrite = onCancelNfcWrite,
                             onNfcWriteResultConsumed = onNfcWriteResultConsumed,
                             onOpenReminderSettings = {
@@ -287,6 +293,15 @@ fun DashNavGraph(
                             onNavigateToLicenses = { navController.navigate("licenses") },
                             pendingSubScreen = pendingSettingsSubScreen,
                             onPendingSubScreenConsumed = { pendingSettingsSubScreen = null },
+                            nfcCapturedTagId = nfcCapturedTagId,
+                            onStartNfcCapture = onStartNfcCapture,
+                            onCancelNfcCapture = onCancelNfcCapture,
+                            onNfcCaptureConsumed = onNfcCaptureConsumed,
+                            tagWritePending = nfcWriteRequest?.fromSettings == true,
+                            nfcWriteResult = nfcWriteResult,
+                            onStartTagWrite = { request -> onStartNfcWriteRequest(request.copy(fromSettings = true)) },
+                            onCancelNfcWrite = onCancelNfcWrite,
+                            onNfcWriteResultConsumed = onNfcWriteResultConsumed,
                         )
                     }
                     composable("licenses") {

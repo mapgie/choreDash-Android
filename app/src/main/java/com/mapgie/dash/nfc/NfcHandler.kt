@@ -18,11 +18,12 @@ sealed class NfcWriteResult {
 
 /**
  * A tag the app is waiting to write: a chore's tag id (`chordash://tag?tag=<id>`)
- * or a memo's own id (`chordash://memo?memo=<id>`). Both read back through
+ * or a tag-alarm's tag id (`chordash://memo?memo=<id>`). Both read back through
  * [NfcHandler.extractTagId] as the bare id, so one id space serves chores and
- * tag-alarms alike; the host only says which kind minted it.
+ * tag-alarms alike; the host only says which kind minted it. [fromSettings]
+ * marks a write started on Settings › NFC tags, which shows its own dialog.
  */
-data class NfcWriteRequest(val kind: Kind, val id: String) {
+data class NfcWriteRequest(val kind: Kind, val id: String, val fromSettings: Boolean = false) {
     enum class Kind { CHORE, MEMO }
 
     val uri: String

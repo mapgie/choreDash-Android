@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -82,6 +83,7 @@ import com.mapgie.dash.data.model.nextOccurrence
 import com.mapgie.dash.data.model.parseRepeatDays
 import com.mapgie.dash.data.model.parseRingTimes
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.suggestTagId
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.sheet.DraftResumeRow
@@ -177,11 +179,13 @@ fun AddReminderSheet(
     onArmTagAlarm: (() -> Unit)? = null,
     onDisarmTagAlarm: (() -> Unit)? = null,
     /**
-     * Write this memo's own id to a tag: the sheet saves the memo with its id as
-     * the linked tag, closes, and the caller waits for the tap. Only offered for
-     * a saved tag-alarm, since a new one has no id until it is saved.
+     * Write the tag-alarm's tag id to a blank tag: the sheet saves the memo with
+     * that id as its linked tag, closes, and hands the id to the caller, who
+     * waits for the tap. The id is the one named in the Tag row, or one made
+     * from the title ("Office A" becomes "office-a") when none was named, so a
+     * new memo can be written straight away.
      */
-    onWriteTag: (() -> Unit)? = null,
+    onWriteTag: ((tagId: String) -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
@@ -219,6 +223,7 @@ fun AddReminderSheet(
     var scanning by rememberSaveable { mutableStateOf(false) }
     var tagError by rememberSaveable { mutableStateOf<String?>(null) }
     var tagMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showTagNameDialog by rememberSaveable { mutableStateOf(false) }
     var showFollowUpPicker by rememberSaveable { mutableStateOf(false) }
 
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
@@ -691,26 +696,39 @@ fun AddReminderSheet(
                                                      else "Tag: ${tagIdValue.ifBlank { "none" }}. Change tag",
                             )
                             DropdownMenu(expanded = tagMenuOpen, onDismissRequest = { tagMenuOpen = false }) {
-                                // Writing stamps the memo's own id on the tag, so the record is
-                                // saved with that id first; the tap itself happens after the sheet
-                                // closes, in the write dialog the list screen shows.
-                                if (existing != null && onWriteTag != null) {
+                                DropdownMenuItem(
+                                    text = { Text(if (tagIdValue.isBlank()) "Name the tag" else "Rename the tag") },
+                                    onClick = { tagMenuOpen = false; showTagNameDialog = true },
+                                )
+                                // Writing stamps the tag id on the tag, so the record is saved with
+                                // that id first; the tap itself happens after the sheet closes, in
+                                // the write dialog the list screen shows. A memo with no title has
+                                // nothing to save yet, so the item waits for one.
+                                if (onWriteTag != null) {
+                                    val writeId = tagIdValue.ifBlank { suggestTagId(subject) }
+                                    val writeOwner = takenTagIds[writeId]
                                     DropdownMenuItem(
-                                        text = { Text("Write this ${kindWord.lowercase()} to a tag") },
+                                        text = { Text("Write \"$writeId\" to a blank tag") },
+                                        enabled = subject.isNotBlank(),
                                         onClick = {
                                             tagMenuOpen = false
-                                            tagIdValue = existing.id
+                                            if (writeOwner != null) {
+                                                tagError = "\"$writeId\" already belongs to $writeOwner. Name the tag something else first."
+                                                return@DropdownMenuItem
+                                            }
+                                            tagIdValue = writeId
+                                            tagError = null
                                             onDraftClear()
-                                            onSave(buildInsert(tagOverride = existing.id))
+                                            onSave(buildInsert(tagOverride = writeId))
                                             sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                                                onWriteTag()
+                                                onWriteTag(writeId)
                                                 onDismiss()
                                             }
                                         },
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text(if (tagIdValue.isBlank()) "Scan a tag" else "Scan a different tag") },
+                                    text = { Text(if (tagIdValue.isBlank()) "Scan a card that has an id" else "Scan a different card") },
                                     onClick = { tagMenuOpen = false; startScan() },
                                 )
                                 if (tagIdValue.isNotBlank()) {
@@ -724,8 +742,7 @@ fun AddReminderSheet(
                     }
                     if (!scanning && tagIdValue.isBlank() && tagError == null) {
                         Text(
-                            text = if (existing == null) "Save first, then write this ${kindWord.lowercase()} to a blank tag from the Tag row. Or scan a card that already has an id."
-                                   else "Write this ${kindWord.lowercase()} to a blank tag, or scan a card that already has an id.",
+                            text = "Name the tag, then write it to a blank sticker. Or scan a card that already carries an id.",
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                             color = tokens.inkFaint,
                             modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
@@ -890,6 +907,20 @@ fun AddReminderSheet(
         )
     }
 
+    if (showTagNameDialog) {
+        TagNameDialog(
+            current = tagIdValue,
+            suggested = suggestTagId(subject),
+            takenTagIds = takenTagIds,
+            onConfirm = { named ->
+                tagIdValue = named
+                tagError = null
+                showTagNameDialog = false
+            },
+            onDismiss = { showTagNameDialog = false },
+        )
+    }
+
     if (showFollowUpPicker) {
         // Opens a quarter of an hour after the last ring of the morning so far.
         val suggested = ringTimes.last().plusMinutes(15)
@@ -956,6 +987,58 @@ fun AddReminderSheet(
 }
 
 private fun Instant.withSecondsZeroed(): Instant = truncatedTo(ChronoUnit.MINUTES)
+
+/**
+ * Names a tag-alarm's tag. Whatever is typed is folded to a friendly id
+ * ("Waterloo office" becomes "waterloo-office") and shown as it will be
+ * written; an id a chore or another tag-alarm owns is refused with the owner named.
+ */
+@Composable
+private fun TagNameDialog(
+    current: String,
+    suggested: String,
+    takenTagIds: Map<String, String>,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var typed by rememberSaveable { mutableStateOf(current.ifBlank { suggested }) }
+    val folded = suggestTagId(typed)
+    val owner = takenTagIds[folded]
+    val tokens = LocalDashTokens.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Name the tag") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = typed,
+                    onValueChange = { typed = it },
+                    singleLine = true,
+                    label = { Text("Tag name") },
+                    isError = owner != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = if (owner != null) "\"$folded\" already belongs to $owner."
+                           else if (typed.isBlank()) "Something short: where you are heading, or the alarm's name."
+                           else "Written to the tag as \"$folded\".",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = if (owner != null) MaterialTheme.colorScheme.error else tokens.inkFaint,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = typed.isNotBlank() && owner == null,
+                onClick = { onConfirm(folded) },
+            ) { Text("Done") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
 
 /** The large serif time on the Time row ("7:00" with a smaller "AM"); tapping opens the picker. */
 @Composable
