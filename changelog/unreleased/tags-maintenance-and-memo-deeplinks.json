@@ -1,0 +1,9 @@
+{
+  "bump": "minor",
+  "added": [
+    "Settings › Tags: a list of every NFC tag the app recognises (chore tags and tag-alarms), where you can rename a tag, archive it, or release a tag-alarm's NFC tag to reuse it."
+  ],
+  "fixed": [
+    "Tapping a memo's NFC tag now opens or arms that memo instead of leaking its raw chordash:// link, and a memo written to a tag is no longer saved with the link as its name."
+  ]
+}

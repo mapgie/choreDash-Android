@@ -14,12 +14,15 @@ import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.preferences.AppSettings
 import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.nfc.TagKind
 import com.mapgie.dash.ui.theme.AppTheme
 import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,11 +49,31 @@ data class CategoryUsage(val chores: Int = 0, val tasks: Int = 0) {
         }
 }
 
+/**
+ * One NFC tag the app recognises, for Settings › Tags. Either a chore (the `tags`
+ * table row is the chore) or a tag-alarm memo (a reminder that carries a [nfcId]).
+ * Carries the fields each action needs so the screen stays declarative.
+ */
+data class TagRow(
+    val kind: TagKind,
+    val name: String,
+    val nfcId: String,
+    val archived: Boolean,
+    val detail: String,
+    // CHORE actions key off the tag id and must preserve the other columns.
+    val choreCategory: String? = null,
+    val choreOwner: String? = null,
+    val choreIntervalDays: Double? = null,
+    // MEMO actions key off the reminder id.
+    val reminderId: String? = null,
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val taskRepository: TaskRepository,
     private val choreRepository: ChoreRepository,
+    private val reminderRepository: ReminderRepository,
     private val categoryStyleStore: CategoryStyleStore,
     private val customColorThemeDao: CustomColorThemeDao,
     private val alarmScheduler: AlarmScheduler,
@@ -112,6 +135,92 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearSaveError() { _saveError.value = null }
+
+    // ── Tags (Settings › Tags) ────────────────────────────────────────────────
+
+    private val _tags = MutableStateFlow<List<TagRow>>(emptyList())
+    /** Every NFC tag the app recognises: chore tags first, then tag-alarm memos. */
+    val tags: StateFlow<List<TagRow>> = _tags.asStateFlow()
+
+    fun loadTags() {
+        viewModelScope.launch {
+            runCatching {
+                val chores = choreRepository.load()
+                val choreRows = (chores.active + chores.archived).map { c ->
+                    TagRow(
+                        kind = TagKind.CHORE,
+                        name = c.label,
+                        nfcId = c.tagId,
+                        archived = c.archivedAt != null,
+                        detail = listOfNotNull(
+                            c.category?.takeIf { it.isNotBlank() },
+                            c.intervalDays?.let { "every ${it.toInt()}d" },
+                        ).joinToString(" · "),
+                        choreCategory = c.category,
+                        choreOwner = c.owner,
+                        choreIntervalDays = c.intervalDays,
+                    )
+                }.sortedBy { it.name.lowercase() }
+                val memoRows = reminderRepository.loadReminders()
+                    .filter { it.isTagAlarm && !it.tagId.isNullOrBlank() }
+                    .map { r ->
+                        TagRow(
+                            kind = TagKind.MEMO,
+                            name = r.subject,
+                            nfcId = r.tagId!!,
+                            archived = r.archivedAt != null,
+                            detail = r.ringTimes.joinToString(" · "),
+                            reminderId = r.id,
+                        )
+                    }.sortedBy { it.name.lowercase() }
+                _tags.value = choreRows + memoRows
+            }.onFailure { _saveError.value = it.userFacingMessage() }
+        }
+    }
+
+    /** Renames the chore label or memo subject the tag stands for. */
+    fun renameTag(row: TagRow, newName: String) {
+        val name = newName.trim()
+        if (name.isBlank() || name == row.name) return
+        viewModelScope.launch {
+            runCatching {
+                when (row.kind) {
+                    TagKind.CHORE -> choreRepository.updateTag(
+                        row.nfcId, name, row.choreCategory, row.choreOwner, row.choreIntervalDays,
+                    )
+                    TagKind.MEMO -> reminderRepository.renameReminder(row.reminderId!!, name)
+                }
+            }.onFailure { _saveError.value = it.userFacingMessage() }
+            loadTags()
+        }
+    }
+
+    fun setTagArchived(row: TagRow, archived: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                when (row.kind) {
+                    TagKind.CHORE -> choreRepository.archiveTag(row.nfcId, archived)
+                    TagKind.MEMO -> reminderRepository.archiveReminder(row.reminderId!!, archived)
+                        ?.let { alarmScheduler.syncReminder(it) }
+                }
+            }.onFailure { _saveError.value = it.userFacingMessage() }
+            loadTags()
+        }
+    }
+
+    /**
+     * Frees a tag-alarm's physical tag for reuse, keeping the memo. A chore is its
+     * tag id, so there is nothing to release there (archive the chore instead).
+     */
+    fun releaseTag(row: TagRow) {
+        if (row.kind != TagKind.MEMO) return
+        viewModelScope.launch {
+            runCatching {
+                reminderRepository.unlinkTag(row.reminderId!!)?.let { alarmScheduler.syncReminder(it) }
+            }.onFailure { _saveError.value = it.userFacingMessage() }
+            loadTags()
+        }
+    }
 
     // ── Colour theme ──────────────────────────────────────────────────────────
 

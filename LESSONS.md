@@ -1340,3 +1340,24 @@ whole file on merge to main in one transaction:
   never exposed to pull requests.
 - `CREATE TABLE IF NOT EXISTS` never widens a constraint on an existing table, so a
   changed CHECK must be re-asserted with an explicit DROP/ADD lower in the file.
+
+---
+
+## 59. An NFC deep link can arrive as a text record, so parse the payload, don't trust the record type
+
+A `chordash://memo?memo=<id>` link written to a tag is not always an NDEF *URI*
+record. NFC Tools and similar writers store the same string as a plain *text*
+record. The old handler had a TEXT branch that returned the payload verbatim as a
+tag id, so a memo tag tapped in-app was matched (and, worse, saved) as the literal
+string `chordash://memo?memo=<uuid>` instead of the memo. Branching on the NDEF
+record type is the bug: the type does not tell you whether the bytes are a bare id
+or a deep link.
+
+The fix is one pure function, `parseTagPayload(raw)`, that both branches (text and
+URI) feed through. It reduces any `chordash://…` string (case-insensitive scheme,
+`?memo=`/`?tag=` query, or a path-style last segment, url-decoded) to a
+`ScannedTag(kind, id)`, and treats anything else as a bare chore tag id. Kept off
+`android.net.Uri` (uses `java.net.URLDecoder` + string ops) so it is JVM-testable;
+`TagScanTest` is the guard that a raw link never leaks through as an id or a name.
+Lesson: for any scanned/pasted payload that might be a deep link or a bare value,
+normalise the *content*, never the container.

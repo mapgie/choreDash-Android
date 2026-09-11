@@ -142,6 +142,18 @@ class ReminderRepository @Inject constructor(
     suspend fun archiveReminder(id: String, archived: Boolean): ReminderDto? =
         update(id) { it.copy(archivedAt = if (archived) Instant.now().toString() else null) }
 
+    /** Renames a memo (its subject only); the schedule is untouched. */
+    suspend fun renameReminder(id: String, subject: String): ReminderDto? =
+        update(id) { it.copy(subject = subject) }
+
+    /**
+     * Unlinks a tag-alarm's NFC tag so the physical tag can be reused, keeping the
+     * memo itself. The caller re-syncs the alarm (a tag-alarm with no tag stays
+     * dormant until Set for next arms it again).
+     */
+    suspend fun unlinkTag(id: String): ReminderDto? =
+        update(id) { it.copy(tagId = null) }
+
     suspend fun deleteReminder(id: String) {
         saveAll(loadReminders().filterNot { it.id == id })
     }

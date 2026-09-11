@@ -98,7 +98,7 @@ import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
 enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT, HELP
+    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, TAGS, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, ABOUT, HELP
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -148,6 +148,10 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.CATEGORIES -> CategoriesSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.TAGS -> TagsSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -242,6 +246,12 @@ private fun SettingsMainList(
                         title = "Widget customisation",
                         subtitle = "Choose what your home-screen widget shows",
                         onClick = { onNavigate(SettingsSubScreen.WIDGET) }
+                    )
+                    SettingsHairline()
+                    SettingsNavRow(
+                        title = "Tags",
+                        subtitle = "Every NFC tag the app recognises: rename, release or archive",
+                        onClick = { onNavigate(SettingsSubScreen.TAGS) }
                     )
                 }
 
