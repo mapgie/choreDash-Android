@@ -51,7 +51,8 @@ fun HelpContent(
                 title = "Chores repeat",
                 body = "A chore comes round again on its own cadence: every 3 days, every " +
                     "month. Log it with a tap, a swipe, or by holding the phone to its NFC " +
-                    "sticker. The colour spine and badge show how overdue it is.",
+                    "sticker. The colour spine and badge show how overdue it is. Chores sync " +
+                    "across your household, so everyone sees the same list.",
             )
             SheetRowDivider()
             HelpRow(
@@ -60,7 +61,8 @@ fun HelpContent(
                 content = accents.onTaskContainer,
                 title = "Tasks happen once",
                 body = "A task is a one-off with an optional due date and priority. Tick it " +
-                    "when it is done and it drops into the Done section.",
+                    "when it is done and it drops into the Done section. Tasks sync across " +
+                    "your household too.",
             )
             SheetRowDivider()
             HelpRow(
@@ -69,7 +71,8 @@ fun HelpContent(
                 content = accents.onReminderContainer,
                 title = "$reminderLabel nudge you",
                 body = "A ${reminderLabel.lowercase().trimEnd('s')} is a nudge at a set time, on its " +
-                    "own or linked to a chore or task. Snooze it or mark it done from the alert.",
+                    "own or linked to a chore or task. Snooze it or mark it done from the alert. " +
+                    "It stays on this phone, private to you, and never syncs.",
             )
         }
         if (showTips) {
