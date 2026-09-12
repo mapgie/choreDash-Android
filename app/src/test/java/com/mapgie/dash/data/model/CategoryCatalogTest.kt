@@ -42,7 +42,28 @@ class CategoryCatalogTest {
     fun `general is always listed last and cannot be added or reordered`() {
         val catalog = CategoryCatalog().added("General").added("Car").withOrder(listOf("General", "Car", "Plants"))
         assertEquals(listOf("Car", "Plants"), catalog.order)
-        assertEquals(listOf("Car", "Plants", "Kitchen", GENERAL_CATEGORY), catalog.allCategories(listOf("Kitchen", "General")))
+        assertEquals(
+            listOf("Car", "Plants", "Kitchen", PRIVATE_CATEGORY, GENERAL_CATEGORY),
+            catalog.allCategories(listOf("Kitchen", "General")),
+        )
+    }
+
+    @Test
+    fun `private is always listed, even before anything uses it, and can be reordered`() {
+        assertEquals(listOf(PRIVATE_CATEGORY, GENERAL_CATEGORY), CategoryCatalog().allCategories(emptyList()))
+        val ordered = CategoryCatalog().withOrder(listOf("Private", "Car"))
+        assertEquals(listOf("Private", "Car", GENERAL_CATEGORY), ordered.allCategories(listOf("Car")))
+        // The name in use wins over the constant's casing, but it is listed once.
+        assertEquals(listOf("Car", "private", GENERAL_CATEGORY), CategoryCatalog().allCategories(listOf("private", "Car")))
+    }
+
+    @Test
+    fun `private wears the padlock by default and can be restyled`() {
+        assertEquals(CategoryIcon.LOCK, CategoryCatalog().iconFor("Private"))
+        assertEquals(CategoryIcon.LOCK, CategoryCatalog().iconFor(" private "))
+        assertEquals(CategoryIcon.LOCK, CategoryCatalog().iconFor("Secret plans"))
+        val restyled = CategoryCatalog().withStyle("Private", CategoryStyle(icon = "GIFT"))
+        assertEquals(CategoryIcon.GIFT, restyled.iconFor("Private"))
     }
 
     @Test

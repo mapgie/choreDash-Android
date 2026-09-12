@@ -25,6 +25,12 @@ data class TaskDto(
 
 @Serializable
 data class TaskInsert(
+    /**
+     * Explicit row id, normally null so Postgres generates one. Set when a task
+     * moves out of the private category so it keeps the id its reminders and
+     * widget pin refer to.
+     */
+    @SerialName("id") val id: String? = null,
     @SerialName("title") val title: String,
     @SerialName("notes") val notes: String? = null,
     @SerialName("category") val category: String? = null,
@@ -32,7 +38,10 @@ data class TaskInsert(
     @SerialName("priority") val priority: String = "normal",
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("due_period") val duePeriod: String? = null,
-    @SerialName("reminder_at") val reminderAt: String? = null
+    @SerialName("reminder_at") val reminderAt: String? = null,
+    /** Only set when a row moves out of the private category with its state intact. */
+    @SerialName("completed_at") val completedAt: String? = null,
+    @SerialName("archived_at") val archivedAt: String? = null,
 )
 
 @Serializable
@@ -110,3 +119,6 @@ fun TaskDto.reminderInstant(): Instant? =
     reminderAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
 fun TaskDto.priorityEnum(): TaskPriority = TaskPriority.fromWire(priority)
+
+/** True for a task in the reserved private category: on this phone only, never in Supabase. */
+val TaskDto.isPrivate: Boolean get() = isPrivateCategory(category)

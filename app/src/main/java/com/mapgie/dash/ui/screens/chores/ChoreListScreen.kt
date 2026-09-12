@@ -58,6 +58,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.SwipeAction
 import com.mapgie.dash.data.model.SwipeDirection
@@ -396,6 +397,7 @@ fun ChoreListScreen(
                                 onSwipe = { action, c -> swipeChore(action, c) },
                                 snoozedUntil = uiState.snoozedUntil(chore),
                                 isPinned = chore.id == uiState.pinnedChoreId,
+                                isPrivate = chore.isPrivate,
                                 highlightQuery = query
                             )
                         }
@@ -483,6 +485,7 @@ fun ChoreListScreen(
                                                 text = category,
                                                 count = chores.size,
                                                 collapsed = collapsed,
+                                                icon = if (isPrivateCategory(category)) LucideIcons.Lock else null,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .background(MaterialTheme.colorScheme.background)
@@ -508,7 +511,8 @@ fun ChoreListScreen(
                                                 swipe = uiState.swipe,
                                                 onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
-                                                isPinned = chore.id == uiState.pinnedChoreId
+                                                isPinned = chore.id == uiState.pinnedChoreId,
+                                                isPrivate = chore.isPrivate,
                                             )
                                         }
                                     }
@@ -545,7 +549,8 @@ fun ChoreListScreen(
                                             swipe = uiState.swipe,
                                             onSwipe = { action, c -> swipeChore(action, c) },
                                             snoozedUntil = uiState.snoozedUntil(chore),
-                                            isPinned = chore.id == uiState.pinnedChoreId
+                                            isPinned = chore.id == uiState.pinnedChoreId,
+                                            isPrivate = chore.isPrivate,
                                         )
                                     }
                                 }
@@ -583,7 +588,8 @@ fun ChoreListScreen(
                                                 swipe = uiState.swipe,
                                                 onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
-                                                isPinned = chore.id == uiState.pinnedChoreId
+                                                isPinned = chore.id == uiState.pinnedChoreId,
+                                                isPrivate = chore.isPrivate,
                                             )
                                         }
                                     }
@@ -619,6 +625,7 @@ fun ChoreListScreen(
                                                 zenMode = uiState.zenMode,
                                                 showCategory = !uiState.groupByCategory,
                                                 isPinned = chore.id == uiState.pinnedChoreId,
+                                                isPrivate = chore.isPrivate,
                                                 modifier = Modifier
                                                     .semantics { role = Role.Button }
                                                     .combinedClickable(
@@ -662,6 +669,7 @@ fun ChoreListScreen(
             badgeSwatch = spineSwatchFor(chore),
             iconSwatch = iconSwatchFor(chore),
             isPinned = chore.id == uiState.pinnedChoreId,
+            isPrivate = chore.isPrivate,
             scanHistory = uiState.scanHistory,
             sheetState = logSheetState,
             onConfirmLog = { c, at ->
@@ -817,6 +825,7 @@ private fun SwipeToLogCard(
     onSwipe: (SwipeAction, Chore) -> Unit,
     snoozedUntil: Instant? = null,
     isPinned: Boolean = false,
+    isPrivate: Boolean = false,
     highlightQuery: String? = null
 ) {
     // Each direction does what Settings › Swipe actions says (out of the box:
@@ -859,6 +868,7 @@ private fun SwipeToLogCard(
             highlightQuery = highlightQuery,
             snoozedUntil = snoozedUntil,
             isPinned = isPinned,
+            isPrivate = isPrivate,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

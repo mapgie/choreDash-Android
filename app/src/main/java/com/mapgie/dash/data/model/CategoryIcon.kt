@@ -34,6 +34,7 @@ enum class CategoryIcon(val label: String) {
     BRIEFCASE("Work"),
     WALLET("Money"),
     GRADUATION_CAP("School"),
+    LOCK("Private"),
     CIRCLE_ALERT("Other");
 
     companion object {
@@ -42,6 +43,7 @@ enum class CategoryIcon(val label: String) {
             WASHING_MACHINE, BRUSH, HOME, DROPLET, SPROUT, UTENSILS, BATH, TREE_PINE, LEAF, LAMP,
             CAR, ZAP, PILL, PRINTER, PLANE, SHIELD, CALENDAR,
             PAW_PRINT, BABY, DUMBBELL, SHOPPING_CART, WRENCH, BOOK_OPEN, GIFT, BRIEFCASE, WALLET, GRADUATION_CAP,
+            LOCK,
         )
 
         fun fromName(name: String?): CategoryIcon? = name?.let { n -> entries.firstOrNull { it.name == n } }
@@ -55,6 +57,8 @@ enum class CategoryIcon(val label: String) {
             val key = category?.trim()?.lowercase() ?: return PRINTER
             fun has(vararg words: String) = words.any { key.contains(it) }
             return when {
+                // The reserved private category wears the padlock unless restyled.
+                isPrivateCategory(key) || has("private", "secret") -> LOCK
                 has("laundry", "wash", "cloth", "linen", "towel") -> WASHING_MACHINE
                 has("car", "vehicle", "bike", "garage") -> CAR
                 has("plant", "garden", "flower") -> SPROUT

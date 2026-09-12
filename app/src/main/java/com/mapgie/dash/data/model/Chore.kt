@@ -33,6 +33,12 @@ data class ScanInsert(
 
 @Serializable
 data class TagInsert(
+    /**
+     * Explicit row id, normally null so Postgres generates one. Set when a chore
+     * moves out of the private category so it keeps the id its widget pin and
+     * memos refer to.
+     */
+    @SerialName("id") val id: String? = null,
     @SerialName("tag_id") val tagId: String,
     @SerialName("label") val label: String,
     @SerialName("category") val category: String? = null,
@@ -54,6 +60,9 @@ data class Chore(
     val lastScanId: String?,
     val status: ChoreStatus
 ) {
+    /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
+    val isPrivate: Boolean get() = isPrivateCategory(category)
+
     /** Hours until this chore is considered no longer "fresh", per its own thresholds. */
     private fun freshThresholdHours(): Long {
         return if (intervalDays != null) {

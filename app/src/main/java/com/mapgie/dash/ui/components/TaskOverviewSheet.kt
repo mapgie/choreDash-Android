@@ -48,6 +48,8 @@ import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.sheet.DoneWhen
 import com.mapgie.dash.ui.components.sheet.DoneWhenControl
 import com.mapgie.dash.ui.components.sheet.NotesReadBlock
+import com.mapgie.dash.ui.components.sheet.PRIVATE_NOTE_STAYS
+import com.mapgie.dash.ui.components.sheet.PrivateNote
 import com.mapgie.dash.ui.components.sheet.SheetHeader
 import com.mapgie.dash.ui.components.sheet.SheetPadding
 import com.mapgie.dash.ui.components.sheet.SheetPrimaryRow
@@ -91,6 +93,8 @@ fun TaskOverviewSheet(
     /** Category colour for the icon chip (icon axis), or null to follow urgency. */
     iconSwatch: Swatch?,
     isPinned: Boolean,
+    /** True for a task in the Private category: a padlock note under the header says it never syncs. */
+    isPrivate: Boolean = false,
     sheetState: SheetState,
     reminders: List<ReminderDto> = emptyList(),
     onMarkDone: (TaskDto, Instant?) -> Unit,
@@ -185,6 +189,8 @@ fun TaskOverviewSheet(
                     )
                 }
             }
+
+            if (isPrivate) PrivateNote(text = PRIVATE_NOTE_STAYS)
 
             if (!isDone) {
                 DoneWhenControl(

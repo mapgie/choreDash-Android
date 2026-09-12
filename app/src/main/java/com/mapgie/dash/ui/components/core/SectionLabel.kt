@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +53,9 @@ fun SectionLabel(
  * When [collapsed] is non-null the header is collapsible: a chevron follows the
  * count, pointing down when the group is open and right when it is collapsed.
  * The caller owns the click (and its `Role.Button` semantics).
+ *
+ * An [icon] leads the label when the group needs a mark beyond its name: the
+ * Private group carries the padlock. It is decorative; the name says it all.
  */
 @Composable
 fun SectionHeaderRow(
@@ -59,6 +63,7 @@ fun SectionHeaderRow(
     modifier: Modifier = Modifier,
     count: Int? = null,
     collapsed: Boolean? = null,
+    icon: ImageVector? = null,
     color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Row(
@@ -66,7 +71,19 @@ fun SectionHeaderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = modifier.fillMaxWidth(),
     ) {
-        SectionLabel(text = text, color = color)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier
+                        .padding(end = 5.dp)
+                        .size(12.dp),
+                )
+            }
+            SectionLabel(text = text, color = color)
+        }
         Row(verticalAlignment = Alignment.Bottom) {
             if (count != null) {
                 Text(

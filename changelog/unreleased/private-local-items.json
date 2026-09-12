@@ -1,0 +1,11 @@
+{
+  "bump": "minor",
+  "added": [
+    "Private chores and tasks: give an item the Private category and it is kept on this phone only, never sent to the shared household list. Private is always in the category picker with a padlock, wears the padlock icon by default, groups under a padlocked PRIVATE heading, and shows a small padlock on its card in a flat list.",
+    "Changing an item's category into or out of Private moves it between this phone and the shared list; both edit sheets say so before you save.",
+    "Help explains that Private items stay on this phone and never sync."
+  ],
+  "changed": [
+    "Private is a reserved category: Settings > Categories can style and reorder it but not rename or delete it, and no other category can take its name."
+  ]
+}

@@ -5,6 +5,7 @@ import com.mapgie.dash.data.model.CategoryStyle
 import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.PRIVATE_CATEGORY
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.Swatch
@@ -33,6 +34,7 @@ class TaskUiStateTest {
         archivedAt: String? = null,
         dueDate: String? = null,
         priority: String = "normal",
+        category: String? = null,
     ) = TaskDto(
         id = id,
         title = id,
@@ -41,6 +43,7 @@ class TaskUiStateTest {
         archivedAt = archivedAt,
         dueDate = dueDate,
         priority = priority,
+        category = category,
     )
 
     private fun ids(tasks: List<TaskDto>) = tasks.map { it.id }
@@ -68,6 +71,28 @@ class TaskUiStateTest {
     fun `mine and unassigned lists my tasks and unclaimed ones`() {
         val state = TaskUiState(tasks = byOwner, ownerHandle = me, ownerFilter = OwnerFilter.MINE_AND_UNASSIGNED)
         assertEquals(listOf("mine", "unassigned"), ids(state.displayed))
+    }
+
+    @Test
+    fun `mine includes private tasks whoever they are assigned to`() {
+        // A private task lives on this phone, so it is mine even with no owner or
+        // someone else's handle on it.
+        val privateTasks = listOf(
+            task("secret", owner = null, category = PRIVATE_CATEGORY),
+            task("secret-mo", owner = "mo", category = "private"),
+        )
+        val state = TaskUiState(tasks = byOwner + privateTasks, ownerHandle = me, ownerFilter = OwnerFilter.MINE)
+        assertEquals(listOf("mine", "secret", "secret-mo"), ids(state.displayed))
+    }
+
+    @Test
+    fun `private tasks group under their own header`() {
+        val state = TaskUiState(
+            tasks = listOf(task("gift", category = PRIVATE_CATEGORY), task("bike", category = "Car")),
+            groupByCategory = true,
+        )
+        assertEquals(listOf("Car", PRIVATE_CATEGORY), state.grouped.map { it.first })
+        assertEquals(listOf("gift"), ids(state.grouped.first { it.first == PRIVATE_CATEGORY }.second))
     }
 
     // ── Open, done, archived ──────────────────────────────────────────────────

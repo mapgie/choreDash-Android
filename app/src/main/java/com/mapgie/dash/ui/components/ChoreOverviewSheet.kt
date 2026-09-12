@@ -52,6 +52,8 @@ import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.sheet.DoneWhen
 import com.mapgie.dash.ui.components.sheet.DoneWhenControl
 import com.mapgie.dash.ui.components.sheet.SheetBlock
+import com.mapgie.dash.ui.components.sheet.PRIVATE_NOTE_STAYS
+import com.mapgie.dash.ui.components.sheet.PrivateNote
 import com.mapgie.dash.ui.components.sheet.SheetHeader
 import com.mapgie.dash.ui.components.sheet.SheetPadding
 import com.mapgie.dash.ui.components.sheet.SheetPrimaryRow
@@ -94,6 +96,8 @@ fun ChoreOverviewSheet(
     /** Category colour for the icon chip (icon axis), or null to follow severity. */
     iconSwatch: Swatch?,
     isPinned: Boolean,
+    /** True for a chore in the Private category: a padlock note under the header says it never syncs. */
+    isPrivate: Boolean = false,
     scanHistory: List<ScanDto>,
     sheetState: SheetState,
     onConfirmLog: (Chore, Instant?) -> Unit,
@@ -206,6 +210,8 @@ fun ChoreOverviewSheet(
                     )
                 }
             }
+
+            if (isPrivate) PrivateNote(text = PRIVATE_NOTE_STAYS)
 
             DoneWhenControl(
                 selected = doneWhen,
