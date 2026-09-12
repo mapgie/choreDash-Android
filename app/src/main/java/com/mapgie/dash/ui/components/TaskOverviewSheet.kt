@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -32,10 +35,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
+import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.data.model.urgency
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.sheet.DoneWhen
@@ -80,10 +86,12 @@ fun TaskOverviewSheet(
     icon: ImageVector,
     isPinned: Boolean,
     sheetState: SheetState,
+    reminders: List<ReminderDto> = emptyList(),
     onMarkDone: (TaskDto, Instant?) -> Unit,
     onRestore: (TaskDto) -> Unit,
     onTogglePin: (TaskDto) -> Unit,
     onAddReminder: (TaskDto) -> Unit,
+    onDeleteReminder: (ReminderDto) -> Unit = {},
     onEdit: (TaskDto) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -221,6 +229,43 @@ fun TaskOverviewSheet(
                 ),
             )
 
+            if (reminders.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (reminders.size == 1) "1 reminder" else "${reminders.size} reminders",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                        color = tokens.inkFaint,
+                    )
+                    reminders.forEach { reminder ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = LucideIcons.Bell,
+                                contentDescription = null,
+                                tint = accents.onTaskContainer,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = reminderRowText(reminder),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { onDeleteReminder(reminder) }) {
+                                Icon(
+                                    imageVector = LucideIcons.X,
+                                    contentDescription = "Remove reminder",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             task.notes?.takeIf { it.isNotBlank() }?.let { NotesReadBlock(text = it) }
         }
     }
@@ -289,7 +334,6 @@ private fun taskCalendarInfo(task: TaskDto) = when {
 
 private val DAY_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
 private val DONE_AT_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM 'at' HH:mm")
-private val REMINDER_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM HH:mm")
 
 /** "2d late", "due today", "due Thu", "due 12 Sep", "due this week", or null. */
 private fun dueBadgeText(task: TaskDto): String? {
@@ -304,7 +348,7 @@ private fun dueBadgeText(task: TaskDto): String? {
     }
 }
 
-/** "added 12 Aug · no reminder" / "reminder 4 Sep 09:00" / "done Thu 4 Sep at 10:15". */
+/** "added 12 Aug" / "done Thu 4 Sep at 10:15". Reminders now live in their own section. */
 private fun metaText(task: TaskDto): String {
     task.completedAt?.let { raw ->
         val completedAt = runCatching { Instant.parse(raw) }.getOrNull() ?: return "done"
@@ -312,10 +356,14 @@ private fun metaText(task: TaskDto): String {
     }
     val added = runCatching { Instant.parse(task.createdAt) }.getOrNull()
         ?.atZone(ZoneId.systemDefault())?.format(DAY_MONTH_FORMATTER)
-    val reminder = task.reminderAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
-        ?.atZone(ZoneId.systemDefault())?.format(REMINDER_FORMATTER)
-    return listOfNotNull(
-        added?.let { "added $it" },
-        reminder?.let { "reminder $it" } ?: "no reminder",
-    ).joinToString(" · ")
+    return added?.let { "added $it" } ?: "task"
+}
+
+private val REMINDER_ROW_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM 'at' HH:mm")
+
+/** "Thu 4 Sep at 09:00", plus " · repeats" for a weekly memo. */
+private fun reminderRowText(reminder: ReminderDto): String {
+    val at = reminder.remindAtInstant()?.atZone(ZoneId.systemDefault())?.format(REMINDER_ROW_FORMATTER)
+        ?: return "reminder"
+    return if (reminder.repeats) "$at · repeats" else at
 }

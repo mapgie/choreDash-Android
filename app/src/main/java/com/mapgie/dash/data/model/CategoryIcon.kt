@@ -24,6 +24,16 @@ enum class CategoryIcon(val label: String) {
     BRUSH("Cleaning"),
     LEAF("Leaf"),
     LAMP("Lamp"),
+    PAW_PRINT("Pets"),
+    BABY("Baby"),
+    DUMBBELL("Fitness"),
+    SHOPPING_CART("Shopping"),
+    WRENCH("Repairs"),
+    BOOK_OPEN("Study"),
+    GIFT("Gifts"),
+    BRIEFCASE("Work"),
+    WALLET("Money"),
+    GRADUATION_CAP("School"),
     CIRCLE_ALERT("Other");
 
     companion object {
@@ -31,6 +41,7 @@ enum class CategoryIcon(val label: String) {
         val pickerSet: List<CategoryIcon> = listOf(
             WASHING_MACHINE, BRUSH, HOME, DROPLET, SPROUT, UTENSILS, BATH, TREE_PINE, LEAF, LAMP,
             CAR, ZAP, PILL, PRINTER, PLANE, SHIELD, CALENDAR,
+            PAW_PRINT, BABY, DUMBBELL, SHOPPING_CART, WRENCH, BOOK_OPEN, GIFT, BRIEFCASE, WALLET, GRADUATION_CAP,
         )
 
         fun fromName(name: String?): CategoryIcon? = name?.let { n -> entries.firstOrNull { it.name == n } }
@@ -56,6 +67,16 @@ enum class CategoryIcon(val label: String) {
                 has("insur") -> SHIELD
                 has("clean", "dust", "vacuum", "hoover", "mop") -> BRUSH
                 has("water", "filter", "softener", "boiler") -> DROPLET
+                has("pet", "dog", "cat", "animal", "vet") -> PAW_PRINT
+                has("baby", "infant", "nappy", "diaper", "pram", "stroller") -> BABY
+                has("gym", "fitness", "workout", "exercise") -> DUMBBELL
+                has("shop", "grocer", "market", "store") -> SHOPPING_CART
+                has("repair", "maintenance", "diy", "tool", "fix") -> WRENCH
+                has("study", "read", "book", "homework") -> BOOK_OPEN
+                has("gift", "present", "birthday", "christmas") -> GIFT
+                has("work", "office", "job", "meeting") -> BRIEFCASE
+                has("money", "bank", "budget", "wallet", "saving") -> WALLET
+                has("school", "class", "college", "uni", "course", "exam") -> GRADUATION_CAP
                 has("house", "home", "flat", "apartment") -> HOME
                 else -> PRINTER
             }

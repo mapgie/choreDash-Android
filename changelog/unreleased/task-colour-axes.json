@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Task cards now follow the Settings > Colours spine and icon axes, the same as chore cards, instead of always colouring by urgency."
+  ]
+}
