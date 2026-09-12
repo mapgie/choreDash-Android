@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.41.0] - 2026-09-12
+
+### Added
+- After an update, the What's New changelog now shows on open so you can see what changed.
+- The Help screen shows the app version at the foot; tap it to open What's New.
+- What's New links through to the how-to-use Help pages.
+
+### Changed
+- Says 'NFC tag' instead of 'NFC sticker' throughout the app, since a tag doesn't have to be a sticker (an office pass or fob works too). The NFC tags settings filter now reads 'On a tag' / 'No tag'.
+- Help explains that a memo can carry an NFC tag as a tag-alarm, where a tap sets it for its next ring.
+
+---
 ## [0.40.0] - 2026-09-12
 
 ### Added
