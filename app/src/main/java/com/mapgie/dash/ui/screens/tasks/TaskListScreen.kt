@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,22 +26,22 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,11 +50,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.SwipeAction
+import com.mapgie.dash.data.model.SwipeDirection
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.draftKeyFor
 import com.mapgie.dash.data.model.TaskSortKey
@@ -70,6 +74,8 @@ import com.mapgie.dash.ui.components.core.SectionHeaderRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
+import com.mapgie.dash.ui.components.core.SwipeActionBackground
+import com.mapgie.dash.ui.components.core.toSwipeDirection
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -128,6 +134,29 @@ fun TaskListScreen(
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) viewModel.markUndone(task.id)
+        }
+    }
+
+    // Settings › Swipe actions decides what each direction does. Delete is
+    // confirmed inside the card before it reaches here; archive gets an Undo.
+    fun swipeTask(action: SwipeAction, task: TaskDto) {
+        when (action) {
+            SwipeAction.DONE ->
+                if (task.completedAt != null) viewModel.markUndone(task.id) else completeTaskWithUndo(task)
+            SwipeAction.ARCHIVE -> {
+                viewModel.archiveTask(task.id, true)
+                scope.launch {
+                    snackbarHost.currentSnackbarData?.dismiss()
+                    val result = snackbarHost.showSnackbar(
+                        message = "“${task.title}” archived",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.archiveTask(task.id, false)
+                }
+            }
+            SwipeAction.DELETE -> viewModel.deleteTask(task.id)
+            SwipeAction.SNOOZE, SwipeAction.NONE -> Unit
         }
     }
 
@@ -287,6 +316,8 @@ fun TaskListScreen(
                                     if (task.completedAt != null) viewModel.markUndone(task.id)
                                     else completeTaskWithUndo(task)
                                 },
+                                swipe = uiState.swipe,
+                                onSwipe = { swipeTask(it, task) },
                                 isPinned = task.id == uiState.pinnedTaskId,
                                 highlightQuery = query
                             )
@@ -355,6 +386,8 @@ fun TaskListScreen(
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { completeTaskWithUndo(task) },
+                                            swipe = uiState.swipe,
+                                            onSwipe = { swipeTask(it, task) },
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
@@ -390,6 +423,8 @@ fun TaskListScreen(
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                         onToggleDone = { completeTaskWithUndo(task) },
+                                        swipe = uiState.swipe,
+                                        onSwipe = { swipeTask(it, task) },
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode,
@@ -426,6 +461,8 @@ fun TaskListScreen(
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markUndone(task.id) },
+                                            swipe = uiState.swipe,
+                                            onSwipe = { swipeTask(it, task) },
                                             showCategory = !uiState.groupByCategory,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
@@ -534,6 +571,8 @@ private fun SwipeToCompleteCard(
     onTap: (TaskDto) -> Unit,
     onLongPress: (TaskDto) -> Unit,
     onToggleDone: () -> Unit,
+    swipe: SwipePair,
+    onSwipe: (SwipeAction) -> Unit,
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
@@ -541,42 +580,41 @@ private fun SwipeToCompleteCard(
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
+    // Each direction does what Settings › Swipe actions says (out of the box:
+    // right completes, left does nothing). Delete asks first, here, so the
+    // caller only ever hears about a confirmed one.
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    // The dismiss state is remembered once per card, so its callback reads the
+    // latest setting and handler through rememberUpdatedState (LESSONS #49).
+    val currentSwipe by rememberUpdatedState(swipe)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    fun labelFor(action: SwipeAction): String = when (action) {
+        SwipeAction.DONE -> if (isDone) "Restore" else "Done"
+        else -> SwipeSubject.TASKS.label(action)
+    }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onToggleDone()
+            value.toSwipeDirection()?.let { direction ->
+                when (val action = currentSwipe.action(direction)) {
+                    SwipeAction.DELETE -> showDeleteConfirm = true
+                    else -> currentOnSwipe(action)
+                }
             }
             false // never actually dismiss the item
         },
-        // Require a deliberate swipe most of the way across the card before a
-        // completion registers, so a stray horizontal drag while scrolling the
+        // Require a deliberate swipe most of the way across the card before an
+        // action registers, so a stray horizontal drag while scrolling the
         // list doesn't silently tick a task off.
         positionalThreshold = { it * 0.6f }
     )
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
+        enableDismissFromStartToEnd = swipe.enabled(SwipeDirection.RIGHT),
+        enableDismissFromEndToStart = swipe.enabled(SwipeDirection.LEFT),
         backgroundContent = {
-            if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = Dimens.cardInset)
-                        .background(
-                            MaterialTheme.colorScheme.secondaryContainer,
-                            shape = MaterialTheme.shapes.medium
-                        ),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        if (isDone) "Restore" else "Done",
-                        modifier = Modifier.padding(start = 24.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
+            val direction = dismissState.dismissDirection.toSwipeDirection()
+            val action = direction?.let { swipe.action(it) } ?: SwipeAction.NONE
+            SwipeActionBackground(direction = direction, action = action, label = labelFor(action))
         }
     ) {
         TaskCard(
@@ -594,6 +632,23 @@ private fun SwipeToCompleteCard(
                     onClick = { onTap(task) },
                     onLongClick = { onLongPress(task) }
                 )
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete task?") },
+            text = { Text("“${task.title}” will be permanently removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    currentOnSwipe(SwipeAction.DELETE)
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
         )
     }
 }

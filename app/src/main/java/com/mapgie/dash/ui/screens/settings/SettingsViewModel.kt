@@ -12,6 +12,9 @@ import com.mapgie.dash.data.model.CategoryStyle
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.SwipeAction
+import com.mapgie.dash.data.model.SwipeDirection
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.preferences.AppSettings
@@ -385,5 +388,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setReminderLabel(style: ReminderLabelStyle) {
         viewModelScope.launch { settingsRepository.setReminderLabel(style) }
+    }
+
+    // ── Swipe actions ────────────────────────────────────────────────────────
+
+    fun setSwipeAction(subject: SwipeSubject, direction: SwipeDirection, action: SwipeAction) {
+        viewModelScope.launch { settingsRepository.setSwipeAction(subject, direction, action) }
     }
 }
