@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "changed": [
-    "Tapping a task now opens it (the same overview as a chore) instead of marking it done. Mark a task done with a swipe right or the Mark done button."
-  ]
-}

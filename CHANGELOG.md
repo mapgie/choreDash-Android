@@ -31,6 +31,30 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.40.0] - 2026-09-12
+
+### Added
+- Help now has a second page, Getting around, explaining the card actions, the list controls, and the display settings, grouped by where you find them.
+- More category and memo icons: pets, baby, fitness, shopping, repairs, study, gifts, work, money and school.
+- Four more category and memo colours: teal, coral, slate and clay.
+- Settings › Swipe actions: choose what swiping a card left or right does, separately for chores, tasks and reminders. Each swipe can log or mark done, snooze, archive, delete, or do nothing, within what that list supports.
+- Swipe to archive a chore, task or reminder without logging or completing it, with an Undo.
+- Swipe to snooze a reminder: its next ring moves back an hour, with an Undo.
+- Swipe to delete a task, behind the same confirmation as the edit sheet.
+- A task can now carry more than one reminder. The card shows how many, and the task overview lists them so you can add or remove each.
+- Deleting a task (from a swipe or the edit sheet) now offers an Undo that restores the task and its reminders.
+
+### Changed
+- The first-run welcome sheet includes the Getting around tour.
+- Help now explains that chores and tasks sync across your household while memos stay private on your phone.
+- Swiping a done reminder or task with the Done action now restores it instead of marking it done again.
+- Tapping a task now opens it (the same overview as a chore) instead of marking it done. Mark a task done with a swipe right or the Mark done button.
+
+### Fixed
+- Task cards now follow the Settings > Colours spine and icon axes, the same as chore cards, instead of always colouring by urgency.
+- Adding a reminder to a task no longer moves it out of the Tasks list, and editing a task no longer deletes the reminders you attached to it.
+
+---
 ## [0.39.0] - 2026-09-12
 
 ### Added

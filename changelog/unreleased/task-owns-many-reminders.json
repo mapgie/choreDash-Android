@@ -1,9 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "A task can now carry more than one reminder. The card shows how many, and the task overview lists them so you can add or remove each."
-  ],
-  "fixed": [
-    "Adding a reminder to a task no longer moves it out of the Tasks list, and editing a task no longer deletes the reminders you attached to it."
-  ]
-}

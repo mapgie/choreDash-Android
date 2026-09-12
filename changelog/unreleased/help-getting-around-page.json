@@ -1,9 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "Help now has a second page, Getting around, explaining the card actions, the list controls, and the display settings, grouped by where you find them."
-  ],
-  "changed": [
-    "The first-run welcome sheet includes the Getting around tour."
-  ]
-}

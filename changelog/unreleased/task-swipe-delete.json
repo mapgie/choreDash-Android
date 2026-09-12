@@ -1,6 +1,0 @@
-{
-  "bump": "minor",
-  "added": [
-    "Deleting a task (from a swipe or the edit sheet) now offers an Undo that restores the task and its reminders."
-  ]
-}
