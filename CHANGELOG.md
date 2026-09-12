@@ -31,6 +31,14 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.42.1] - 2026-09-12
+
+### Fixed
+- Settings > Categories and Settings > Colours: the colour swatches wrap onto a second line instead of the last ones being clipped off the edge of the screen.
+- The reminder permission banner now shows on Tasks as well as Memos and Chores, since a task's reminder rings through the same alarm path.
+- Every open task card now has a spine: a task with no due date wears the same quiet spine as one due later, instead of none at all.
+
+---
 ## [0.42.0] - 2026-09-12
 
 ### Added
