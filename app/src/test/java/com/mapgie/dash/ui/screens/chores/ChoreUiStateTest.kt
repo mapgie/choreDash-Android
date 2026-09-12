@@ -254,6 +254,25 @@ class ChoreUiStateTest {
         assertEquals(2, state.overdueCount)
     }
 
+    @Test
+    fun `overdue count leaves out archived chores`() {
+        val archivedStale = chore("archived-stale", lastScannedAgo = Duration.ofHours(300))
+        val archivedNever = chore("archived-never", lastScannedAgo = null)
+        val state = ChoreUiState(active = listOf(stale, fresh), archived = listOf(archivedStale, archivedNever))
+        assertEquals(1, state.overdueCount)
+    }
+
+    @Test
+    fun `overdue count leaves out snoozed chores so it matches the chip's list`() {
+        val state = ChoreUiState(
+            active = listOf(stale, never, fresh),
+            filter = ChoreFilter.OVERDUE,
+            snoozes = mapOf(never.tagId to Instant.now().plus(Duration.ofHours(36))),
+        )
+        assertEquals(listOf("stale"), ids(state.displayed))
+        assertEquals(state.displayed.size, state.overdueCount)
+    }
+
     // ── Swipe-to-snooze ───────────────────────────────────────────────────────
 
     private val inFuture = Instant.now().plus(Duration.ofHours(36))

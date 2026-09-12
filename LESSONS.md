@@ -1416,3 +1416,16 @@ When adding any "keep this on the device" flavour of a synced thing, grep for th
 repository's callers first; if there are more than the list screen, the seam is
 the repository.
 
+
+## 62. A chip's count is derived from the list the chip shows, never from a wider pool
+
+The Overdue chip read "Overdue · 6" while tapping it listed four cards. Archived
+chores were already split off at load, so the two extras were snoozed overdue
+chores: `overdueCount` counted from the owner-scoped pool, while `displayed`
+went on to drop snoozed and auto-hidden chores. Two paths that agree today drift
+apart the moment one gains a filter.
+
+Fix: give the `UiState` one private "what the list can show" set (`inList`) and
+one predicate (`isOverdue`), and derive both `displayed` and `overdueCount` from
+them. The guard test asserts `overdueCount == displayed.size` under the Overdue
+chip rather than a literal, so any future filter has to keep the two in step.

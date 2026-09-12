@@ -1,0 +1,4 @@
+{
+  "bump": "patch",
+  "fixed": ["The Overdue chip on Chores now counts only the chores it lists: archived and snoozed chores no longer inflate the tally."]
+}
