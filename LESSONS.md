@@ -1369,3 +1369,19 @@ rather than swallowing the event, so the card does not slide for no reason; and
 the reveal panel's label is a per-card function of the action (Wake vs Snooze,
 Restore vs Done, Turn off for a tag-alarm), not a property of the enum, which
 keeps the enum free of UI and testable.
+
+## 60. A colour axis is a seam that runs through the card *and* the sheets behind it
+
+Settings › Colours was wired into `TaskCard` (#137) and the list looked right,
+but tapping a task still opened `TaskOverviewSheet` and `EditTaskSheet` with
+their own hardcoded chip and badge colours. The chore side had already passed
+`badgeSwatch` / `iconSwatch` into `ChoreOverviewSheet` and `EditChoreSheet`; the
+task sheets were simply never given the parameters, so the "fixed" screen was
+only fixed until the first tap.
+
+When a setting decides the colour of an element, the seam is every composable
+that draws that element for the same item: the list card, the overview sheet,
+the edit sheet, the search results, the Done section. Grep the screen's
+`*Screen.kt` for every sheet it opens and check each takes the same swatch
+parameters as its sibling on the other tab; the `*UiState.spineSwatchFor` /
+`iconSwatchFor` helpers exist so every call site resolves the colour the same way.

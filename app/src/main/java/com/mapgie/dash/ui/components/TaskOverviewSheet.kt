@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
@@ -60,6 +61,7 @@ import com.mapgie.dash.ui.theme.StatusTone
 import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventForDate
 import com.mapgie.dash.util.calendarEventForInstant
@@ -84,6 +86,10 @@ import java.time.temporal.ChronoUnit
 fun TaskOverviewSheet(
     task: TaskDto,
     icon: ImageVector,
+    /** Category colour for the due badge (Settings › Colours spine+badge axis), or null to follow urgency. */
+    badgeSwatch: Swatch?,
+    /** Category colour for the icon chip (icon axis), or null to follow urgency. */
+    iconSwatch: Swatch?,
     isPinned: Boolean,
     sheetState: SheetState,
     reminders: List<ReminderDto> = emptyList(),
@@ -117,9 +123,13 @@ fun TaskOverviewSheet(
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
 
+    // Same resolution as TaskCard: the Settings › Colours icon axis wins, else
+    // the urgency tone, else the plain task accent.
     val signalling = tone != StatusTone.NEUTRAL && tone != StatusTone.NONE
-    val chipContainer = if (signalling) tone.badgeContainerColor()!! else accents.taskContainer
-    val chipContent = if (signalling) tone.textColor() else accents.onTaskContainer
+    val chipContainer = iconSwatch?.tintColor()
+        ?: if (signalling) tone.badgeContainerColor()!! else accents.taskContainer
+    val chipContent = iconSwatch?.textColor()
+        ?: if (signalling) tone.textColor() else accents.onTaskContainer
 
     ModalBottomSheet(
         onDismissRequest = { hideAndDismiss() },
@@ -157,7 +167,17 @@ fun TaskOverviewSheet(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    dueBadgeText(task)?.let { StatusBadge(text = it, tone = if (isDone) StatusTone.NEUTRAL else tone) }
+                    dueBadgeText(task)?.let { text ->
+                        // The badge follows the spine+badge axis like the card's; a done
+                        // task's badge stays neutral so the sheet matches the muted card.
+                        val swatch = badgeSwatch?.takeIf { !isDone }
+                        StatusBadge(
+                            text = text,
+                            tone = if (isDone) StatusTone.NEUTRAL else tone,
+                            containerOverride = swatch?.tintColor(),
+                            textOverride = if (swatch != null) MaterialTheme.colorScheme.onSurfaceVariant else null,
+                        )
+                    }
                     Text(
                         text = metaText(task),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),

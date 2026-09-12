@@ -513,6 +513,8 @@ fun TaskListScreen(
         EditTaskSheet(
             task = editingTask,
             icon = editingTask?.let { iconFor(it) } ?: LucideIcons.CircleCheck,
+            badgeSwatch = editingTask?.let { uiState.spineSwatchFor(it) },
+            iconSwatch = editingTask?.let { uiState.iconSwatchFor(it) },
             owners = uiState.owners,
             categories = uiState.categories,
             onSave = { insert -> viewModel.addTask(insert) },
@@ -530,6 +532,8 @@ fun TaskListScreen(
         TaskOverviewSheet(
             task = task,
             icon = iconFor(task),
+            badgeSwatch = uiState.spineSwatchFor(task),
+            iconSwatch = uiState.iconSwatchFor(task),
             isPinned = task.id == uiState.pinnedTaskId,
             sheetState = overviewSheetState,
             reminders = uiState.reminders

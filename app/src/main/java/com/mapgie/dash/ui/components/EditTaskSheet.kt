@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.DuePeriod
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskDueType
@@ -63,6 +64,8 @@ import com.mapgie.dash.ui.components.sheet.enumStateSaver
 import com.mapgie.dash.ui.components.sheet.jsonStateSaver
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
+import com.mapgie.dash.ui.theme.textColor
+import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventForDate
 import com.mapgie.dash.util.calendarEventForInstant
@@ -96,6 +99,10 @@ private const val DUE_PERIOD = TaskDueType.PERIOD
 fun EditTaskSheet(
     task: TaskDto?,
     icon: ImageVector,
+    /** Category colour for the category value chip (Settings › Colours spine+badge axis), or null. */
+    badgeSwatch: Swatch?,
+    /** Category colour for the header icon chip (icon axis), or null for the task accent. */
+    iconSwatch: Swatch?,
     owners: List<String>,
     categories: List<String>,
     onSave: (TaskInsert) -> Unit,
@@ -307,8 +314,8 @@ fun EditTaskSheet(
         ) {
             SheetHeader(
                 icon = icon,
-                chipContainer = accents.taskContainer,
-                chipContent = accents.onTaskContainer,
+                chipContainer = iconSwatch?.tintColor() ?: accents.taskContainer,
+                chipContent = iconSwatch?.textColor() ?: accents.onTaskContainer,
                 eyebrow = if (isNew) "New task" else "Edit task",
             ) {
                 TitleField(
@@ -334,8 +341,8 @@ fun EditTaskSheet(
                             text = category.ifBlank { "None" },
                             onClick = { categoryMenuOpen = true },
                             contentDescription = "Category: ${category.ifBlank { "none" }}. Change category",
-                            container = MaterialTheme.colorScheme.secondaryContainer,
-                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                            container = badgeSwatch?.tintColor() ?: MaterialTheme.colorScheme.secondaryContainer,
+                            content = badgeSwatch?.textColor() ?: MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                         CategoryMenu(
                             expanded = categoryMenuOpen,
