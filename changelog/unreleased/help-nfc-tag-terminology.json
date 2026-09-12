@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Help now says 'NFC tag' instead of 'NFC sticker', since a tag doesn't have to be a sticker.",
+    "Help explains that a memo can carry an NFC tag as a tag-alarm, where a tap sets it for its next ring."
+  ]
+}
