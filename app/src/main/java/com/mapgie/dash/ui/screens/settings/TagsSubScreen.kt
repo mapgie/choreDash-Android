@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -32,12 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.WriteTagDialog
 import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.theme.PillShape
 
 /**
  * Settings › NFC tags: tag maintenance in one place. An Identify card reads
@@ -46,6 +50,11 @@ import com.mapgie.dash.ui.components.sheet.ValueChip
  * tag-alarm, each with a Write chip that stamps its id on a blank sticker
  * through the same write dialog the chore sheet uses; a tag-alarm can also be
  * unlinked, or given an id here when it has none.
+ *
+ * "On a sticker" is this phone's own evidence ([com.mapgie.dash.data.preferences.TagStickerStore]):
+ * it wrote the id to a sticker, or read it off one. Every chore has a tag id in
+ * Supabase whether a sticker exists or not, so the chip row over Chores splits
+ * them on that evidence, and a sticker made elsewhere counts once it is tapped.
  *
  * Identify uses the activity's capture mode ([onStartNfcCapture] /
  * [nfcCapturedTagId]), the same one the memo sheet's scan uses, so a tap while
@@ -59,6 +68,8 @@ internal fun TagsSubScreen(
     onCancelNfcCapture: () -> Unit,
     onNfcCaptureConsumed: () -> Unit,
     tagWritePending: Boolean,
+    /** The pending write from Settings is an erase; the dialog says so. */
+    tagErasePending: Boolean = false,
     nfcWriteResult: NfcWriteResult?,
     onStartTagWrite: (NfcWriteRequest) -> Unit,
     onCancelNfcWrite: () -> Unit,
@@ -72,6 +83,7 @@ internal fun TagsSubScreen(
     // The last tag read on this page: its id, and what it resolved to (null for unknown).
     var readId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingUnlink by remember { mutableStateOf<TagEntry?>(null) }
+    var confirmErase by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -138,27 +150,75 @@ internal fun TagsSubScreen(
                             .weight(1f)
                             .semantics { liveRegion = LiveRegionMode.Polite },
                     )
-                    ValueChip(
-                        text = if (scanning) "Cancel" else "Scan",
-                        onClick = { scanning = !scanning },
-                        contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to identify it",
-                        chevron = false,
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        ValueChip(
+                            text = if (scanning) "Cancel" else "Scan",
+                            onClick = { scanning = !scanning },
+                            contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to identify it",
+                            chevron = false,
+                        )
+                        if (!scanning) {
+                            ValueChip(
+                                text = "Erase",
+                                onClick = { confirmErase = true },
+                                contentDescription = "Erase the next tag held to the phone",
+                                chevron = false,
+                            )
+                        }
+                    }
+                }
+            }
+            SettingsCaption("Erase wipes whatever a sticker carries so it can be written for something else. The chore or tag-alarm it belonged to is untouched.")
+
+            SettingsSectionLabel("Chores")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ChoreTagFilter.entries.forEach { f ->
+                    val count = uiState.choreCount(f)
+                    FilterChip(
+                        selected = uiState.choreFilter == f,
+                        onClick = { viewModel.setChoreFilter(f) },
+                        label = {
+                            Text(
+                                text = if (count > 0) "${f.label} · $count" else f.label,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
+                        },
+                        shape = PillShape,
+                        border = null,
+                        // Explicit high-contrast fills (LESSONS.md #3), as on the Memos list.
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+                        ),
                     )
                 }
             }
-
-            SettingsSectionLabel("Chores")
             SettingsCard {
+                val shown = uiState.filteredChoreTags
                 if (uiState.loading && uiState.chores.isEmpty()) {
                     SettingsCardRow(title = "Loading chores", subtitle = "From Supabase.")
                 } else if (uiState.choreTags.isEmpty()) {
                     SettingsCardRow(title = "No chores", subtitle = if (uiState.error != null) "They couldn't be loaded." else "Add one from the Chores tab.")
+                } else if (shown.isEmpty()) {
+                    SettingsCardRow(
+                        title = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER) "No chores on a sticker yet" else "Every chore is on a sticker",
+                        subtitle = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER)
+                            "A chore counts once this phone writes its id to a sticker or reads it off one." else null,
+                    )
                 } else {
-                    uiState.choreTags.forEachIndexed { index, entry ->
+                    shown.forEachIndexed { index, entry ->
                         if (index > 0) SettingsHairline()
                         SettingsCardRow(
                             title = entry.name,
-                            subtitle = entry.tagId + if (entry.archived) " · archived" else "",
+                            subtitle = entry.tagId +
+                                (if (entry.onSticker) " · on a sticker" else "") +
+                                (if (entry.archived) " · archived" else ""),
                         ) {
                             ValueChip(
                                 text = "Write",
@@ -180,7 +240,7 @@ internal fun TagsSubScreen(
                         if (index > 0) SettingsHairline()
                         SettingsCardRow(
                             title = entry.name,
-                            subtitle = entry.tagId ?: "No tag yet",
+                            subtitle = entry.tagId?.let { it + if (entry.onSticker) " · on a sticker" else "" } ?: "No tag yet",
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 ValueChip(
@@ -211,7 +271,7 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Write stamps the id on a blank sticker. A card that can't be written (an office pass) is linked by scanning it from the tag-alarm's own sheet instead.")
+            SettingsCaption("Write stamps the id on a blank sticker. A card that can't be written (an office pass) is linked by scanning it from the tag-alarm's own sheet instead. \"On a sticker\" is what this phone has written or read; a sticker made elsewhere counts once you tap it.")
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -219,9 +279,27 @@ internal fun TagsSubScreen(
     if (tagWritePending) {
         WriteTagDialog(
             result = nfcWriteResult,
+            erasing = tagErasePending,
             onDismiss = {
                 if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
             }
+        )
+    }
+
+    if (confirmErase) {
+        AlertDialog(
+            onDismissRequest = { confirmErase = false },
+            title = { Text("Erase a tag?") },
+            text = { Text("The next tag you hold to the phone is wiped. Whatever chore or tag-alarm it pointed at stays in the app and can be written to a tag again.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmErase = false
+                    onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.ERASE, ""))
+                }) { Text("Erase", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmErase = false }) { Text("Cancel") }
+            },
         )
     }
 

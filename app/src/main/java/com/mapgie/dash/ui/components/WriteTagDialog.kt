@@ -25,23 +25,27 @@ import com.mapgie.dash.nfc.NfcWriteResult
 @Composable
 fun WriteTagDialog(
     result: NfcWriteResult?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** True while erasing rather than writing: the title and success line say so. */
+    erasing: Boolean = false,
+    /** Why this write is happening, shown above the hold-the-tag line while waiting. */
+    note: String? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Write tag") },
+        title = { Text(if (erasing) "Erase tag" else "Write tag") },
         text = {
             when (result) {
                 null -> Row {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Hold the NFC tag near the back of your phone.",
+                        (note?.let { "$it\n\n" } ?: "") + "Hold the NFC tag near the back of your phone.",
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     )
                 }
                 NfcWriteResult.Success -> Text(
-                    "Tag written successfully.",
+                    if (erasing) "Tag erased. It's blank and ready to be written again." else "Tag written successfully.",
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                 )
                 NfcWriteResult.NotWritable -> Text(

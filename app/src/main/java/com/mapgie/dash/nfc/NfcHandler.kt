@@ -24,12 +24,15 @@ sealed class NfcWriteResult {
  * marks a write started on Settings › NFC tags, which shows its own dialog.
  */
 data class NfcWriteRequest(val kind: Kind, val id: String, val fromSettings: Boolean = false) {
-    enum class Kind { CHORE, MEMO }
+    /** What to put on the tag; [ERASE] wipes it instead, [id] unused. */
+    enum class Kind { CHORE, MEMO, ERASE }
 
-    val uri: String
+    /** The URI to write; null for an erase. */
+    val uri: String?
         get() = when (kind) {
             Kind.CHORE -> NfcHandler.choreTagUri(id)
             Kind.MEMO -> NfcHandler.memoTagUri(id)
+            Kind.ERASE -> null
         }
 }
 
@@ -79,8 +82,29 @@ object NfcHandler {
     fun writeTagId(tag: Tag, tagId: String): NfcWriteResult = writeUri(tag, choreTagUri(tagId))
 
     /** Writes [uri] onto [tag] as a single NDEF URI record, formatting blank tags if needed. */
-    fun writeUri(tag: Tag, uri: String): NfcWriteResult {
-        val message = NdefMessage(arrayOf(NdefRecord.createUri(uri)))
+    fun writeUri(tag: Tag, uri: String): NfcWriteResult =
+        writeMessage(tag, NdefMessage(arrayOf(NdefRecord.createUri(uri))))
+
+    /**
+     * The id [tag] currently carries, read from its cached NDEF message without
+     * connecting, or null when it has none the app can read. Used before an
+     * erase to say which id is leaving the sticker.
+     */
+    fun currentTagId(tag: Tag): String? =
+        Ndef.get(tag)?.cachedNdefMessage?.records?.firstNotNullOfOrNull { extractFromRecord(it) }
+
+    /**
+     * Wipes [tag]: its NDEF message becomes a single empty record, so the next
+     * read finds nothing and the sticker is ready to be written for something
+     * else. A tag that was never formatted has nothing on it and counts as done.
+     */
+    fun eraseTag(tag: Tag): NfcWriteResult {
+        if (Ndef.get(tag) == null) return NfcWriteResult.Success
+        val empty = NdefRecord(NdefRecord.TNF_EMPTY, ByteArray(0), ByteArray(0), ByteArray(0))
+        return writeMessage(tag, NdefMessage(arrayOf(empty)))
+    }
+
+    private fun writeMessage(tag: Tag, message: NdefMessage): NfcWriteResult {
         return try {
             val ndef = Ndef.get(tag)
             if (ndef != null) {

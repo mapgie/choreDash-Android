@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Renaming a tag-alarm's tag no longer leaves its sticker answering to the old name: Save goes straight on to writing the sticker, and the rename dialog says so up front."
+  ]
+}

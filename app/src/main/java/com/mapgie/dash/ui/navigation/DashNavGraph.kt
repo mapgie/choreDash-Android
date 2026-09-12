@@ -298,6 +298,7 @@ fun DashNavGraph(
                             onCancelNfcCapture = onCancelNfcCapture,
                             onNfcCaptureConsumed = onNfcCaptureConsumed,
                             tagWritePending = nfcWriteRequest?.fromSettings == true,
+                            tagErasePending = nfcWriteRequest?.kind == NfcWriteRequest.Kind.ERASE,
                             nfcWriteResult = nfcWriteResult,
                             onStartTagWrite = { request -> onStartNfcWriteRequest(request.copy(fromSettings = true)) },
                             onCancelNfcWrite = onCancelNfcWrite,

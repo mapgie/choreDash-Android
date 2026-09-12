@@ -6,6 +6,7 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.freeTagId
 import com.mapgie.dash.data.model.isTagAlarm
+import com.mapgie.dash.data.preferences.TagStickerStore
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.supabase.userFacingMessage
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 
 /** What owns an NFC tag id: a chore row in Supabase, or an on-device tag-alarm. */
@@ -34,7 +36,16 @@ data class TagEntry(
     val kind: TagOwnerKind,
     val ownerId: String,
     val archived: Boolean = false,
+    /** This phone has written the id to a sticker, or read it off one. */
+    val onSticker: Boolean = false,
 )
+
+/** The chip row over the Chores list: every chore, only those on a sticker, or only those without. */
+enum class ChoreTagFilter(val label: String) {
+    ALL("All"),
+    ON_STICKER("On a sticker"),
+    NO_STICKER("No sticker"),
+}
 
 /**
  * What Settings › NFC tags shows, as pure state so `TagsUiStateTest` can pin it:
@@ -46,16 +57,40 @@ data class TagsUiState(
     val error: String? = null,
     val chores: List<Chore> = emptyList(),
     val reminders: List<ReminderDto> = emptyList(),
+    /** Tag ids this phone has met on a sticker, with when ([TagStickerStore]). */
+    val stickers: Map<String, Instant> = emptyMap(),
+    val choreFilter: ChoreTagFilter = ChoreTagFilter.ALL,
 ) {
     val choreTags: List<TagEntry>
         get() = chores
-            .map { TagEntry(it.tagId, it.label, TagOwnerKind.CHORE, it.tagId, archived = it.archivedAt != null) }
+            .map {
+                TagEntry(
+                    it.tagId, it.label, TagOwnerKind.CHORE, it.tagId,
+                    archived = it.archivedAt != null,
+                    onSticker = it.tagId in stickers,
+                )
+            }
             .sortedWith(compareBy({ it.archived }, { it.name.lowercase() }))
+
+    /** The chores under the selected chip. */
+    val filteredChoreTags: List<TagEntry>
+        get() = when (choreFilter) {
+            ChoreTagFilter.ALL -> choreTags
+            ChoreTagFilter.ON_STICKER -> choreTags.filter { it.onSticker }
+            ChoreTagFilter.NO_STICKER -> choreTags.filterNot { it.onSticker }
+        }
+
+    /** How many chores each chip would show, for its "· N". */
+    fun choreCount(filter: ChoreTagFilter): Int = when (filter) {
+        ChoreTagFilter.ALL -> choreTags.size
+        ChoreTagFilter.ON_STICKER -> choreTags.count { it.onSticker }
+        ChoreTagFilter.NO_STICKER -> choreTags.count { !it.onSticker }
+    }
 
     val tagAlarms: List<TagEntry>
         get() = reminders
             .filter { it.isTagAlarm && it.archivedAt == null }
-            .map { TagEntry(it.tagId, it.subject, TagOwnerKind.TAG_ALARM, it.id) }
+            .map { TagEntry(it.tagId, it.subject, TagOwnerKind.TAG_ALARM, it.id, onSticker = it.tagId in stickers) }
             .sortedBy { it.name.lowercase() }
 
     /** Every id some chore or tag-alarm answers to. */
@@ -74,6 +109,7 @@ data class TagsUiState(
 class TagsViewModel @Inject constructor(
     private val choreRepository: ChoreRepository,
     private val reminderRepository: ReminderRepository,
+    private val tagStickerStore: TagStickerStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TagsUiState())
@@ -87,7 +123,17 @@ class TagsViewModel @Inject constructor(
                 _uiState.update { it.copy(reminders = reminders) }
             }
         }
+        // A tap or a write on this page changes the sticker evidence at once.
+        viewModelScope.launch {
+            tagStickerStore.seen.collect { stickers ->
+                _uiState.update { it.copy(stickers = stickers) }
+            }
+        }
         load()
+    }
+
+    fun setChoreFilter(filter: ChoreTagFilter) {
+        _uiState.update { it.copy(choreFilter = filter) }
     }
 
     /** Loads the chores. A Supabase failure is reported but leaves the tag-alarms showing. */

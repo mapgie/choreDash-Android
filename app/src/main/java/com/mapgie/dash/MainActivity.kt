@@ -28,6 +28,7 @@ import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.TagAlarmText
 import com.mapgie.dash.data.preferences.SettingsRepository
+import com.mapgie.dash.data.preferences.TagStickerStore
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var choreRepository: ChoreRepository
     @Inject lateinit var tagAlarmService: TagAlarmService
+    @Inject lateinit var tagStickerStore: TagStickerStore
 
     private var nfcAdapter: NfcAdapter? = null
     private var nfcPendingIntent: PendingIntent? = null
@@ -223,12 +225,25 @@ class MainActivity : ComponentActivity() {
         if (writeRequest != null) {
             val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
             if (tag != null) {
-                nfcWriteResult = NfcHandler.writeUri(tag, writeRequest.uri)
+                val uri = writeRequest.uri
+                if (uri == null) {
+                    // An erase: note which id is leaving the sticker, then wipe it.
+                    val leaving = NfcHandler.currentTagId(tag)
+                    val result = NfcHandler.eraseTag(tag)
+                    nfcWriteResult = result
+                    if (result == NfcWriteResult.Success && leaving != null) forgetSticker(leaving)
+                } else {
+                    val result = NfcHandler.writeUri(tag, uri)
+                    nfcWriteResult = result
+                    if (result == NfcWriteResult.Success) recordSticker(writeRequest.id)
+                }
             }
             return
         }
         val tagId = NfcHandler.extractTagId(intent)
         if (tagId != null) {
+            // Whatever happens next, this id was just read off a real sticker.
+            recordSticker(tagId)
             when {
                 nfcCaptureRequested -> {
                     nfcCaptureRequested = false
@@ -238,6 +253,14 @@ class MainActivity : ComponentActivity() {
             }
         }
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
+    }
+
+    private fun recordSticker(tagId: String) {
+        lifecycleScope.launch { runCatching { tagStickerStore.record(tagId) } }
+    }
+
+    private fun forgetSticker(tagId: String) {
+        lifecycleScope.launch { runCatching { tagStickerStore.forget(tagId) } }
     }
 
     // A tag-alarm's tag is resolved first, on-device and offline, so the chore path
