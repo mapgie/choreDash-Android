@@ -1369,3 +1369,29 @@ rather than swallowing the event, so the card does not slide for no reason; and
 the reveal panel's label is a per-card function of the action (Wake vs Snooze,
 Restore vs Done, Turn off for a tag-alarm), not a property of the enum, which
 keeps the enum free of UI and testable.
+
+## 60. Special-access grants live on the signing certificate, so a debug-signed "release" resets them every update
+
+Full-screen intent, exact alarm, Do Not Disturb access and notification grants
+survive an update only when the new APK is signed with the same key as the one
+installed. Shipping `assembleDebug` as the release, even with a committed
+`debug.keystore` (#12), means every user is one uninstall away from losing
+those grants and all on-device data, and the key is public in the repo.
+
+Fix: a `release` signingConfig that reads `RELEASE_STORE_FILE` and the three
+`RELEASE_*` password/alias variables from the environment, applied to the
+`release` build type with `findByName("release") ?: getByName("debug")` as the
+fallback so `assembleRelease` never fails for want of the secret. CI decodes
+the keystore from a base64 secret into `RUNNER_TEMP`, exports the variables,
+and refuses to publish if `apksigner verify --print-certs` shows
+`CN=Android Debug`.
+
+Two things to plan for, not discover:
+- Moving from the debug key to the release key is itself a signature change.
+  The first signed release forces one uninstall, which wipes local-only data
+  (memos, settings, snoozes, custom themes, NFC records). Say so in that
+  release's notes and decide the bump on purpose.
+- The release keystore and passwords must be backed up offline. Lose them and
+  every future update is a forced reinstall again, permanently.
+
+Runbook: `docs/release-signing/README.md`.

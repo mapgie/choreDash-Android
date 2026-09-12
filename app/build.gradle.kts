@@ -20,12 +20,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release signing. CI decodes the release keystore from a repository secret and
+    // exports these four variables (see docs/release-signing/README.md). When they are absent
+    // (local builds, contributors, PR builds without the secret) the release build type
+    // falls back to the committed debug key so `assembleRelease` still succeeds. Only a
+    // build with the real key produces an APK that updates in place over the previous
+    // release and keeps the user's special-access grants (full-screen alarms, exact
+    // alarms, Do Not Disturb access).
+    val releaseStoreFile: String? = System.getenv("RELEASE_STORE_FILE")?.takeIf { it.isNotBlank() }
+
     signingConfigs {
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
         }
     }
 
@@ -39,6 +56,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 

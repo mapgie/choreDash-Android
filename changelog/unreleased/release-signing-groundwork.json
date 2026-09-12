@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Groundwork for signing release builds with a dedicated release key, so that future app updates can keep your granted permissions (full-screen alarms, exact alarms, Do Not Disturb access) instead of resetting them. Nothing changes in this version; the switch itself will be announced in the release that makes it."
+  ]
+}
