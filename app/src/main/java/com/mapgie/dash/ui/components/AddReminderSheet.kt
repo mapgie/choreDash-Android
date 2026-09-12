@@ -185,7 +185,7 @@ fun AddReminderSheet(
      * from the title ("Office A" becomes "office-a") when none was named, so a
      * new memo can be written straight away.
      */
-    onWriteTag: ((tagId: String) -> Unit)? = null,
+    onWriteTag: ((tagId: String, note: String?) -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
@@ -721,7 +721,7 @@ fun AddReminderSheet(
                                             onDraftClear()
                                             onSave(buildInsert(tagOverride = writeId))
                                             sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
-                                                onWriteTag(writeId)
+                                                onWriteTag(writeId, null)
                                                 onDismiss()
                                             }
                                         },
@@ -813,14 +813,25 @@ fun AddReminderSheet(
                 ExistingMeta(existing = existing)
             }
 
+            // A renamed tag is only half done until the sticker says the new name too:
+            // Save goes straight on to the write dialog for it, with a note saying why.
+            val renamedTag = tagAlarmOn && onWriteTag != null &&
+                opened.tagId.isNotBlank() && tagIdValue.isNotBlank() && tagIdValue != opened.tagId
             SheetPrimaryRow(
-                actionLabel = "Save",
+                actionLabel = if (renamedTag) "Save and write tag" else "Save",
                 actionEnabled = canSave,
                 onCancel = { requestDismiss() },
                 onAction = {
                     onDraftClear()
                     onSave(buildInsert())
-                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                    val newId = tagIdValue
+                    val oldId = opened.tagId
+                    sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (renamedTag && onWriteTag != null) {
+                            onWriteTag(newId, "The sticker still says \"$oldId\". Hold it to the phone to change it to \"$newId\".")
+                        }
+                        onDismiss()
+                    }
                 },
             )
 
@@ -1019,9 +1030,13 @@ private fun TagNameDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    text = if (owner != null) "\"$folded\" already belongs to $owner."
-                           else if (typed.isBlank()) "Something short: where you are heading, or the alarm's name."
-                           else "Written to the tag as \"$folded\".",
+                    text = when {
+                        owner != null -> "\"$folded\" already belongs to $owner."
+                        typed.isBlank() -> "Something short: where you are heading, or the alarm's name."
+                        current.isNotBlank() && folded != current ->
+                            "Written to the tag as \"$folded\". A sticker already written keeps the old name until you write it again; Save will ask you to."
+                        else -> "Written to the tag as \"$folded\"."
+                    },
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     color = if (owner != null) MaterialTheme.colorScheme.error else tokens.inkFaint,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

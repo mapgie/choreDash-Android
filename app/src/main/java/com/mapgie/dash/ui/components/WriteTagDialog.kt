@@ -28,6 +28,8 @@ fun WriteTagDialog(
     onDismiss: () -> Unit,
     /** True while erasing rather than writing: the title and success line say so. */
     erasing: Boolean = false,
+    /** Why this write is happening, shown above the hold-the-tag line while waiting. */
+    note: String? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -38,7 +40,7 @@ fun WriteTagDialog(
                     CircularProgressIndicator(modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Hold the NFC tag near the back of your phone.",
+                        (note?.let { "$it\n\n" } ?: "") + "Hold the NFC tag near the back of your phone.",
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     )
                 }

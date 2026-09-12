@@ -151,6 +151,8 @@ fun RemindersListScreen(
     // The id, not the record, so the open sheet survives process death and
     // always shows the freshest copy after a reload.
     var editTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Why the pending tag write is happening (a renamed tag), for the write dialog.
+    var writeNote by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(pendingAddIntent) {
         if (pendingAddIntent == AddMenuOption.REMINDER) {
@@ -355,7 +357,7 @@ fun RemindersListScreen(
             onStartScan = onStartNfcCapture,
             onCancelScan = onCancelNfcCapture,
             onScanConsumed = onNfcCaptureConsumed,
-            onWriteTag = { tagId -> onStartMemoTagWrite(tagId) },
+            onWriteTag = { tagId, note -> writeNote = note; onStartMemoTagWrite(tagId) },
         )
     }
 
@@ -379,14 +381,16 @@ fun RemindersListScreen(
             onScanConsumed = onNfcCaptureConsumed,
             onArmTagAlarm = { viewModel.armTagAlarm(reminder.id) },
             onDisarmTagAlarm = { viewModel.disarmTagAlarm(reminder.id) },
-            onWriteTag = { tagId -> onStartMemoTagWrite(tagId) },
+            onWriteTag = { tagId, note -> writeNote = note; onStartMemoTagWrite(tagId) },
         )
     }
 
     if (memoTagWritePending) {
         WriteTagDialog(
             result = nfcWriteResult,
+            note = writeNote,
             onDismiss = {
+                writeNote = null
                 if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
             }
         )
