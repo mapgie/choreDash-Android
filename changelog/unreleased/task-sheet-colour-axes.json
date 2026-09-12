@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "Opening or editing a task now colours the sheet's icon chip, due badge and category chip by the Settings > Colours axes, matching the task card and the chore sheets."
+  ]
+}
