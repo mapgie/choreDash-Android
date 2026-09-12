@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.draftKeyFor
 import com.mapgie.dash.data.model.TaskSortKey
@@ -281,6 +282,8 @@ fun TaskListScreen(
                             SwipeToCompleteCard(
                                 task = task,
                                 icon = iconFor(task),
+                                spineSwatch = uiState.spineSwatchFor(task),
+                                iconSwatch = uiState.iconSwatchFor(task),
                                 onTap = { overviewTask = it; showOverviewSheet = true },
                                 onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                 onToggleDone = {
@@ -352,6 +355,8 @@ fun TaskListScreen(
                                         SwipeToCompleteCard(
                                             task = task,
                                             icon = iconFor(task),
+                                            spineSwatch = uiState.spineSwatchFor(task),
+                                            iconSwatch = uiState.iconSwatchFor(task),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { completeTaskWithUndo(task) },
@@ -387,6 +392,8 @@ fun TaskListScreen(
                                     SwipeToCompleteCard(
                                         task = task,
                                         icon = iconFor(task),
+                                        spineSwatch = uiState.spineSwatchFor(task),
+                                        iconSwatch = uiState.iconSwatchFor(task),
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                         onToggleDone = { completeTaskWithUndo(task) },
@@ -423,6 +430,8 @@ fun TaskListScreen(
                                         SwipeToCompleteCard(
                                             task = task,
                                             icon = iconFor(task),
+                                            spineSwatch = uiState.spineSwatchFor(task),
+                                            iconSwatch = uiState.iconSwatchFor(task),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markUndone(task.id) },
@@ -537,6 +546,8 @@ private fun SwipeToCompleteCard(
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
+    spineSwatch: Swatch? = null,
+    iconSwatch: Swatch? = null,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
@@ -586,6 +597,8 @@ private fun SwipeToCompleteCard(
             showCategory = showCategory,
             showOwner = showOwner,
             zenMode = zenMode,
+            spineSwatch = spineSwatch,
+            iconSwatch = iconSwatch,
             isPinned = isPinned,
             highlightQuery = highlightQuery,
             modifier = Modifier

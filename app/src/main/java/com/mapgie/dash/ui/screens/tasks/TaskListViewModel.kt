@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
@@ -60,8 +62,20 @@ data class TaskUiState(
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
     val catalog: CategoryCatalog = CategoryCatalog(),
+    val colourAxes: ChoreColourAxes = ChoreColourAxes(),
     val pinChooser: PinChooserState? = null,
 ) {
+    /**
+     * The swatch the task card's spine and due badge wear, or null to follow the
+     * urgency tone. Mirrors the Chores card so both lists obey Settings › Colours'
+     * "spine + badge" axis instead of each doing its own thing.
+     */
+    fun spineSwatchFor(task: TaskDto): Swatch? =
+        colourAxes.spineSwatch(catalog.effectiveSwatch(task.category))
+
+    /** The swatch the task's round icon chip wears, or null to follow the urgency tone. */
+    fun iconSwatchFor(task: TaskDto): Swatch? =
+        colourAxes.iconSwatch(catalog.effectiveSwatch(task.category))
     val displayed: List<TaskDto>
         get() {
             // Archived tasks never show; open and done tasks are split into the
@@ -194,6 +208,7 @@ class TaskListViewModel @Inject constructor(
                         hideThresholdDays = s.taskHideThresholdDays,
                         zenMode = s.taskZenMode,
                         sort = s.taskSort,
+                        colourAxes = s.colourAxes,
                     )
                 }
             }

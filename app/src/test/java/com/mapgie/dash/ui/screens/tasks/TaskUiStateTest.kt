@@ -1,13 +1,18 @@
 package com.mapgie.dash.ui.screens.tasks
 
 import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.CategoryStyle
+import com.mapgie.dash.data.model.ChoreColourAxes
+import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskSortKey
 import java.time.LocalDate
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -195,5 +200,39 @@ class TaskUiStateTest {
         val state = TaskUiState(tasks = listOf(doneToday, open), zenMode = true)
         assertEquals(listOf("open"), ids(state.zenRows))
         assertEquals(listOf("done_today"), ids(state.doneTasks))
+    }
+
+    // ── Colour axes (Settings › Colours) ──────────────────────────────────────
+    // The Tasks list must obey the same spine/icon axes as the Chores list, not
+    // colour itself purely by urgency.
+
+    private val kitchen = TaskDto(id = "k", title = "k", category = "Kitchen")
+    private val uncategorised = TaskDto(id = "u", title = "u", category = null)
+    private val kitchenCatalog = CategoryCatalog(styles = mapOf("Kitchen" to CategoryStyle(swatch = Swatch.PEACH.name)))
+
+    @Test
+    fun `by default a task colours its icon by category and its spine by severity`() {
+        // Fresh install defaults: spine + badge by severity, icon by category.
+        val state = TaskUiState(catalog = kitchenCatalog)
+        assertEquals(Swatch.PEACH, state.iconSwatchFor(kitchen))
+        assertNull(state.spineSwatchFor(kitchen))
+    }
+
+    @Test
+    fun `colouring the spine by category gives the task its category swatch`() {
+        val state = TaskUiState(
+            catalog = kitchenCatalog,
+            colourAxes = ChoreColourAxes(ColourChoresBy.CATEGORY, ColourChoresBy.CATEGORY),
+        )
+        assertEquals(Swatch.PEACH, state.spineSwatchFor(kitchen))
+        assertEquals(Swatch.PEACH, state.iconSwatchFor(kitchen))
+    }
+
+    @Test
+    fun `an uncategorised task still gets a stable fallback swatch when colouring by category`() {
+        val state = TaskUiState(colourAxes = ChoreColourAxes(ColourChoresBy.CATEGORY, ColourChoresBy.CATEGORY))
+        // effectiveSwatch(null) is a fixed fallback, never null, so the chip is always coloured.
+        assertEquals(Swatch.SAGE, state.iconSwatchFor(uncategorised))
+        assertEquals(Swatch.SAGE, state.spineSwatchFor(uncategorised))
     }
 }
