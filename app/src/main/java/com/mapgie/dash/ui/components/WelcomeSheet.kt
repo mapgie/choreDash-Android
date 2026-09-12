@@ -57,7 +57,9 @@ fun WelcomeSheet(
                 "Three kinds of thing.",
                 style = MaterialTheme.typography.headlineMedium,
             )
-            HelpContent(reminderLabel = reminderLabel, showTips = false)
+            HelpContent(reminderLabel = reminderLabel)
+            SectionLabel(text = "Getting around")
+            HelpGettingAround(reminderLabel = reminderLabel)
             Spacer(Modifier.height(2.dp))
             Button(
                 onClick = onDismiss,
