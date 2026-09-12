@@ -28,20 +28,21 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,6 +59,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
+import com.mapgie.dash.data.model.SwipeAction
+import com.mapgie.dash.data.model.SwipeDirection
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.Swatch
@@ -78,6 +83,8 @@ import com.mapgie.dash.ui.components.core.SectionHeaderRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
+import com.mapgie.dash.ui.components.core.SwipeActionBackground
+import com.mapgie.dash.ui.components.core.toSwipeDirection
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -92,6 +99,7 @@ import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.util.formatAbsoluteDate
 import java.time.Instant
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -232,6 +240,31 @@ fun ChoreListScreen(
         viewModel.clearRecentSnooze()
     }
 
+    // Settings › Swipe actions decides what each direction does. Log and snooze
+    // already show their own Undo via recentScan / recentSnooze; archive shows
+    // its own here, since it takes the chore out of the list without a log.
+    val scope = rememberCoroutineScope()
+    fun swipeChore(action: SwipeAction, chore: Chore) {
+        when (action) {
+            SwipeAction.DONE -> viewModel.logChore(chore.tagId)
+            SwipeAction.SNOOZE -> viewModel.toggleSnooze(chore)
+            SwipeAction.ARCHIVE -> {
+                val restoring = chore.archivedAt != null
+                viewModel.archiveChore(chore.tagId, !restoring)
+                scope.launch {
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    val result = snackbarHostState.showSnackbar(
+                        message = if (restoring) "${chore.label} restored" else "${chore.label} archived",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.archiveChore(chore.tagId, restoring)
+                }
+            }
+            SwipeAction.DELETE, SwipeAction.NONE -> Unit
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
@@ -359,8 +392,8 @@ fun ChoreListScreen(
                                 showCategory = true,
                                 onTap = { logTargetChore = it; showLogSheet = true },
                                 onLongPress = { editTargetId = it.id; showEditSheet = true },
-                                onSwipeLog = { viewModel.logChore(it.tagId) },
-                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                swipe = uiState.swipe,
+                                onSwipe = { action, c -> swipeChore(action, c) },
                                 snoozedUntil = uiState.snoozedUntil(chore),
                                 isPinned = chore.id == uiState.pinnedChoreId,
                                 highlightQuery = query
@@ -472,8 +505,8 @@ fun ChoreListScreen(
                                                 showCategory = false,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
                                                 onLongPress = { editTargetId = it.id; showEditSheet = true },
-                                                onSwipeLog = { viewModel.logChore(it.tagId) },
-                                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                                swipe = uiState.swipe,
+                                                onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
                                                 isPinned = chore.id == uiState.pinnedChoreId
                                             )
@@ -509,8 +542,8 @@ fun ChoreListScreen(
                                             showCategory = !uiState.groupByCategory,
                                             onTap = { logTargetChore = it; showLogSheet = true },
                                             onLongPress = { editTargetId = it.id; showEditSheet = true },
-                                            onSwipeLog = { viewModel.logChore(it.tagId) },
-                                            onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                            swipe = uiState.swipe,
+                                            onSwipe = { action, c -> swipeChore(action, c) },
                                             snoozedUntil = uiState.snoozedUntil(chore),
                                             isPinned = chore.id == uiState.pinnedChoreId
                                         )
@@ -547,8 +580,8 @@ fun ChoreListScreen(
                                                 showCategory = !uiState.groupByCategory,
                                                 onTap = { logTargetChore = it; showLogSheet = true },
                                                 onLongPress = { editTargetId = it.id; showEditSheet = true },
-                                                onSwipeLog = { viewModel.logChore(it.tagId) },
-                                                onSwipeSnooze = { viewModel.toggleSnooze(it) },
+                                                swipe = uiState.swipe,
+                                                onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
                                                 isPinned = chore.id == uiState.pinnedChoreId
                                             )
@@ -780,58 +813,39 @@ private fun SwipeToLogCard(
     showCategory: Boolean,
     onTap: (Chore) -> Unit,
     onLongPress: (Chore) -> Unit,
-    onSwipeLog: (Chore) -> Unit,
-    onSwipeSnooze: (Chore) -> Unit,
+    swipe: SwipePair,
+    onSwipe: (SwipeAction, Chore) -> Unit,
     snoozedUntil: Instant? = null,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
-    // Swipe right (start to end) logs the chore; swipe left (end to start)
-    // snoozes it, or wakes it if it is already snoozed.
+    // Each direction does what Settings › Swipe actions says (out of the box:
+    // right logs, left snoozes or wakes). A direction set to Nothing is not
+    // draggable at all, so the card does not slide for no reason.
+    // The dismiss state is remembered once per card, so its callback reads the
+    // latest setting and handler through rememberUpdatedState (LESSONS #49).
+    val currentSwipe by rememberUpdatedState(swipe)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    fun labelFor(action: SwipeAction): String = when (action) {
+        SwipeAction.SNOOZE -> if (snoozedUntil != null) "Wake" else "Snooze"
+        SwipeAction.ARCHIVE -> if (chore.archivedAt != null) "Restore" else "Archive"
+        else -> SwipeSubject.CHORES.label(action)
+    }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> onSwipeLog(chore)
-                SwipeToDismissBoxValue.EndToStart -> onSwipeSnooze(chore)
-                SwipeToDismissBoxValue.Settled -> Unit
-            }
+            value.toSwipeDirection()?.let { currentOnSwipe(currentSwipe.action(it), chore) }
             false // never actually dismiss the item
         },
         positionalThreshold = { it * 0.3f }
     )
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true,
+        enableDismissFromStartToEnd = swipe.enabled(SwipeDirection.RIGHT),
+        enableDismissFromEndToStart = swipe.enabled(SwipeDirection.LEFT),
         backgroundContent = {
-            // Only drawn mid-swipe so nothing sits behind a resting card.
-            val direction = dismissState.dismissDirection
-            if (direction != SwipeToDismissBoxValue.Settled) {
-                val snoozing = direction == SwipeToDismissBoxValue.EndToStart
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = Dimens.cardInset)
-                        .background(
-                            if (snoozing) MaterialTheme.colorScheme.tertiaryContainer
-                            else MaterialTheme.colorScheme.secondaryContainer,
-                            shape = MaterialTheme.shapes.medium
-                        ),
-                    contentAlignment = if (snoozing) Alignment.CenterEnd else Alignment.CenterStart
-                ) {
-                    Text(
-                        when {
-                            !snoozing -> "Log"
-                            snoozedUntil != null -> "Wake"
-                            else -> "Snooze"
-                        },
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (snoozing) MaterialTheme.colorScheme.onTertiaryContainer
-                                else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
+            val direction = dismissState.dismissDirection.toSwipeDirection()
+            val action = direction?.let { swipe.action(it) } ?: SwipeAction.NONE
+            SwipeActionBackground(direction = direction, action = action, label = labelFor(action))
         }
     ) {
         ChoreCard(

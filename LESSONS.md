@@ -1340,3 +1340,32 @@ whole file on merge to main in one transaction:
   never exposed to pull requests.
 - `CREATE TABLE IF NOT EXISTS` never widens a constraint on an existing table, so a
   changed CHECK must be re-asserted with an explicit DROP/ADD lower in the file.
+
+---
+
+## 59. A user-configurable gesture is a per-list allow-list, read live inside the remembered callback
+
+Settings › Swipe actions lets each list (chores, tasks, memos) map left and
+right swipes to Done / Snooze / Archive / Delete / Nothing. Two things kept it
+from becoming a bug farm:
+
+- **Each list declares what it can offer, and the stored value is sanitised at
+  read time** (`SwipeSubject.offered` + `resolve`). A chore has no delete (it is
+  a `tags` row; it retires by archiving), a task has no snooze. Storing the raw
+  enum name and dropping anything the list does not offer when reading means a
+  value written by a newer build, or a hand-edited preference, degrades to the
+  list's default for that direction instead of crashing a `when` or firing an
+  action the list cannot do. The defaults are the pre-setting behaviour, pinned
+  by `SwipeActionTest` so nobody changes them by accident.
+- **`rememberSwipeToDismissBoxState` captures `confirmValueChange` once per
+  card**, the same trap as `ModalBottomSheet`'s `onDismissRequest` (#49). Read
+  the setting and the handler inside it through `rememberUpdatedState`, or a
+  card that stays in composition keeps acting on the old mapping after the user
+  changes it. The `enableDismissFrom*` flags are plain parameters and update on
+  every recomposition, so only the callback needs the indirection.
+
+A direction set to Nothing disables the drag (`enableDismissFrom* = false`)
+rather than swallowing the event, so the card does not slide for no reason; and
+the reveal panel's label is a per-card function of the action (Wake vs Snooze,
+Restore vs Done, Turn off for a tag-alarm), not a property of the enum, which
+keeps the enum free of UI and testable.

@@ -10,6 +10,10 @@ import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.ReminderLabelStyle
+import com.mapgie.dash.data.model.SwipeAction
+import com.mapgie.dash.data.model.SwipeDirection
+import com.mapgie.dash.data.model.SwipeSettings
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.SortOrder
@@ -85,6 +89,8 @@ data class AppSettings(
     val fabOrder: List<AddMenuOption> = DEFAULT_FAB_ORDER,
     // Wording used for the reminders feature throughout the UI
     val reminderLabel: ReminderLabelStyle = ReminderLabelStyle.REMINDERS,
+    /** Settings › Swipe actions: what swiping a card left or right does, per list. */
+    val swipeActions: SwipeSettings = SwipeSettings(),
     // Whether the first-run welcome sheet (chores vs tasks vs memos) has been dismissed
     val helpSeen: Boolean = false,
 )
@@ -145,6 +151,9 @@ class SettingsRepository @Inject constructor(
 
         fun severitySwatch(severity: Severity) =
             stringPreferencesKey("severity_swatch_${severity.name.lowercase()}")
+
+        fun swipeAction(subject: SwipeSubject, direction: SwipeDirection) =
+            stringPreferencesKey("swipe_${subject.key}_${direction.name.lowercase()}")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data
@@ -223,6 +232,11 @@ class SettingsRepository @Inject constructor(
                 reminderLabel               = prefs[Keys.REMINDER_LABEL]
                     ?.let { runCatching { ReminderLabelStyle.valueOf(it) }.getOrNull() }
                     ?: ReminderLabelStyle.REMINDERS,
+                swipeActions                = SwipeSettings(
+                    chores = readSwipePair(prefs, SwipeSubject.CHORES),
+                    tasks = readSwipePair(prefs, SwipeSubject.TASKS),
+                    memos = readSwipePair(prefs, SwipeSubject.MEMOS),
+                ),
                 helpSeen                    = prefs[Keys.HELP_SEEN] ?: false,
             )
         }
@@ -389,5 +403,16 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setReminderLabel(style: ReminderLabelStyle) {
         context.dataStore.edit { it[Keys.REMINDER_LABEL] = style.name }
+    }
+
+    // A name the list does not offer is stored as read and dropped at read time,
+    // so a value from a newer app version never has to be migrated away.
+    private fun readSwipePair(prefs: Preferences, subject: SwipeSubject) = subject.resolve(
+        leftName = prefs[Keys.swipeAction(subject, SwipeDirection.LEFT)],
+        rightName = prefs[Keys.swipeAction(subject, SwipeDirection.RIGHT)],
+    )
+
+    suspend fun setSwipeAction(subject: SwipeSubject, direction: SwipeDirection, action: SwipeAction) {
+        context.dataStore.edit { it[Keys.swipeAction(subject, direction)] = action.name }
     }
 }

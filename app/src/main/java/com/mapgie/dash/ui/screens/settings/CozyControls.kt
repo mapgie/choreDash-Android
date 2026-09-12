@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -261,6 +263,63 @@ fun <T> CozySegmented(
                     .semantics { role = Role.RadioButton }
                     .selectable(selected = isSelected, onClick = { onSelect(option) })
                     .padding(horizontal = 6.dp),
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = LucideIcons.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Box(Modifier.width(5.dp))
+                }
+                Text(
+                    label(option),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                    ),
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A wrapping row of pill choices for a single-select with more options than a
+ * segmented control fits (four or five words). Same grammar as [CozySegmented]:
+ * outline pills, the selected one filled with the accent tint and led by a
+ * check, each a 44dp+ radio target.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun <T> CozyChoiceChips(
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = LocalDashTokens.current
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { option ->
+            val isSelected = option == selected
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .heightIn(min = 44.dp)
+                    .clip(PillShape)
+                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .border(1.5.dp, tokens.pillOutline, PillShape)
+                    .semantics { role = Role.RadioButton }
+                    .selectable(selected = isSelected, onClick = { onSelect(option) })
+                    .padding(horizontal = 16.dp),
             ) {
                 if (isSelected) {
                     Icon(

@@ -27,6 +27,9 @@ import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
 import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.notification.DeliveryMode
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
+import com.mapgie.dash.data.model.snoozedBy
 import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
 
@@ -69,6 +73,8 @@ data class ReminderUiState(
     val tagAlarmConflicts: List<ReminderDto> = emptyList(),
     /** Settings › Reminders & alerts style; decides which missing permissions the list warns about. */
     val deliveryMode: String = DeliveryMode.NOTIFICATION,
+    /** Settings › Swipe actions for memo cards. */
+    val swipe: SwipePair = SwipeSubject.MEMOS.default,
 ) {
     val active: List<ReminderDto>
         get() = sorted(reminders.filter { it.archivedAt == null && !it.isDone })
@@ -178,6 +184,7 @@ class RemindersListViewModel @Inject constructor(
                         sort = settings.reminderSort,
                         colourAxes = settings.colourAxes,
                         deliveryMode = settings.deliveryMode,
+                        swipe = settings.swipeActions.memos,
                     )
                 }
             }
@@ -329,6 +336,37 @@ class RemindersListViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Swipe-to-snooze: the memo's next ring moves back an hour (see
+     * [snoozedBy]); a once-only memo that had rung comes back to Active. The
+     * caller keeps the record from before for [restoreReminder] on Undo.
+     */
+    fun snoozeReminder(id: String) {
+        viewModelScope.launch {
+            runCatching {
+                val memo = _uiState.value.reminders.find { it.id == id } ?: return@runCatching
+                val snoozed = memo.snoozedBy(SWIPE_SNOOZE, Instant.now())
+                if (snoozed == memo) return@runCatching
+                reminderRepository.replace(snoozed)?.let { alarmScheduler.syncReminder(it) }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Undo for [snoozeReminder]: writes the earlier copy back and re-arms from it. */
+    fun restoreReminder(record: ReminderDto) {
+        viewModelScope.launch {
+            runCatching {
+                reminderRepository.replace(record)?.let { alarmScheduler.syncReminder(it) }
+                load()
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
     fun deleteReminder(id: String) {
         viewModelScope.launch {
             runCatching {
@@ -343,3 +381,6 @@ class RemindersListViewModel @Inject constructor(
 
     fun clearError() = _uiState.update { it.copy(error = null) }
 }
+
+/** How far a swipe-to-snooze on the list pushes a memo's next ring. */
+private val SWIPE_SNOOZE: Duration = Duration.ofHours(1)

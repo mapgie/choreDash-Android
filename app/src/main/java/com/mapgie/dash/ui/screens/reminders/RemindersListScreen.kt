@@ -1,6 +1,5 @@
 package com.mapgie.dash.ui.screens.reminders
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,20 +23,20 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,6 +56,11 @@ import com.mapgie.dash.data.model.ReminderAppearance
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderSortKey
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.SwipeAction
+import com.mapgie.dash.data.model.SwipeDirection
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.AddReminderSheet
@@ -72,6 +76,8 @@ import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
+import com.mapgie.dash.ui.components.core.SwipeActionBackground
+import com.mapgie.dash.ui.components.core.toSwipeDirection
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -141,6 +147,45 @@ fun RemindersListScreen(
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) viewModel.setReminderDone(reminder.id, false)
+        }
+    }
+
+    // Settings › Swipe actions decides what each direction does. Delete is
+    // confirmed inside the card before it reaches here; snooze and archive
+    // each leave an Undo like Done does.
+    fun swipeReminder(action: SwipeAction, reminder: ReminderDto) {
+        when (action) {
+            SwipeAction.DONE ->
+                if (!reminder.isTagAlarm && reminder.isDone) viewModel.setReminderDone(reminder.id, false)
+                else markReminderDoneWithUndo(reminder)
+            SwipeAction.SNOOZE -> {
+                if (reminder.isTagAlarm) return
+                viewModel.snoozeReminder(reminder.id)
+                scope.launch {
+                    snackbarHost.currentSnackbarData?.dismiss()
+                    val result = snackbarHost.showSnackbar(
+                        message = "“${reminder.subject}” snoozed for an hour",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.restoreReminder(reminder)
+                }
+            }
+            SwipeAction.ARCHIVE -> {
+                val restoring = reminder.archivedAt != null
+                viewModel.archiveReminder(reminder.id, !restoring)
+                scope.launch {
+                    snackbarHost.currentSnackbarData?.dismiss()
+                    val result = snackbarHost.showSnackbar(
+                        message = if (restoring) "“${reminder.subject}” restored" else "“${reminder.subject}” archived",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.archiveReminder(reminder.id, restoring)
+                }
+            }
+            SwipeAction.DELETE -> viewModel.deleteReminder(reminder.id)
+            SwipeAction.NONE -> Unit
         }
     }
 
@@ -325,8 +370,8 @@ fun RemindersListScreen(
                         spineSwatch = look.spineSwatch,
                         iconSwatch = look.iconSwatch,
                         onClick = { editTargetId = reminder.id },
-                        onDelete = { viewModel.deleteReminder(reminder.id) },
-                        onMarkDone = { markReminderDoneWithUndo(reminder) },
+                        swipe = uiState.swipe,
+                        onSwipe = { swipeReminder(it, reminder) },
                     )
                 }
             }
@@ -414,10 +459,11 @@ private fun ReminderAppearance.glyph(): ImageVector =
     icon?.let { LucideIcons.forCategory(it) } ?: LucideIcons.Bell
 
 /**
- * A memo card with two swipes: left (end to start) marks it done / turns it off
- * (a tag-alarm goes dormant); right (start to end) deletes it, behind a confirm.
- * Done is reversible from the Undo snackbar the caller shows, so it needs no
- * confirm of its own.
+ * A memo card whose two swipes do what Settings › Swipe actions says (out of
+ * the box: left marks it done or turns a tag-alarm off, right deletes behind a
+ * confirm). Delete is the only action confirmed here; the others are reversible
+ * from the Undo snackbar the caller shows. A tag-alarm has no snooze, so that
+ * direction is turned off on its card.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -428,16 +474,31 @@ private fun SwipeReminderCard(
     spineSwatch: Swatch?,
     iconSwatch: Swatch?,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
-    onMarkDone: () -> Unit,
+    swipe: SwipePair,
+    onSwipe: (SwipeAction) -> Unit,
 ) {
+    val effective = if (reminder.isTagAlarm) swipe.without(SwipeAction.SNOOZE) else swipe
+    // The dismiss state is remembered once per card, so its callback reads the
+    // latest setting and handler through rememberUpdatedState (LESSONS #49).
+    val currentEffective by rememberUpdatedState(effective)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    fun labelFor(action: SwipeAction): String = when (action) {
+        SwipeAction.DONE -> when {
+            reminder.isTagAlarm -> "Turn off"
+            reminder.isDone -> "Restore"
+            else -> "Done"
+        }
+        SwipeAction.ARCHIVE -> if (reminder.archivedAt != null) "Restore" else "Archive"
+        else -> SwipeSubject.MEMOS.label(action)
+    }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> showDeleteConfirm = true
-                SwipeToDismissBoxValue.EndToStart -> onMarkDone()
-                SwipeToDismissBoxValue.Settled -> Unit
+            value.toSwipeDirection()?.let { direction ->
+                when (val action = currentEffective.action(direction)) {
+                    SwipeAction.DELETE -> showDeleteConfirm = true
+                    else -> currentOnSwipe(action)
+                }
             }
             false // never actually dismiss the item
         },
@@ -445,33 +506,12 @@ private fun SwipeReminderCard(
     )
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true,
+        enableDismissFromStartToEnd = effective.enabled(SwipeDirection.RIGHT),
+        enableDismissFromEndToStart = effective.enabled(SwipeDirection.LEFT),
         backgroundContent = {
-            val direction = dismissState.dismissDirection
-            if (direction != SwipeToDismissBoxValue.Settled) {
-                // Swipe right (start to end) deletes; swipe left (end to start) marks done.
-                val deleting = direction == SwipeToDismissBoxValue.StartToEnd
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = Dimens.cardInset)
-                        .background(
-                            if (deleting) MaterialTheme.colorScheme.errorContainer
-                            else MaterialTheme.colorScheme.secondaryContainer,
-                            shape = MaterialTheme.shapes.medium
-                        ),
-                    contentAlignment = if (deleting) Alignment.CenterStart else Alignment.CenterEnd
-                ) {
-                    Text(
-                        if (deleting) "Delete" else if (reminder.isTagAlarm) "Turn off" else "Done",
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (deleting) MaterialTheme.colorScheme.onErrorContainer
-                                else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
+            val direction = dismissState.dismissDirection.toSwipeDirection()
+            val action = direction?.let { effective.action(it) } ?: SwipeAction.NONE
+            SwipeActionBackground(direction = direction, action = action, label = labelFor(action))
         }
     ) {
         ReminderCard(
@@ -493,7 +533,7 @@ private fun SwipeReminderCard(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
-                    onDelete()
+                    currentOnSwipe(SwipeAction.DELETE)
                 }) { Text("Delete") }
             },
             dismissButton = {
