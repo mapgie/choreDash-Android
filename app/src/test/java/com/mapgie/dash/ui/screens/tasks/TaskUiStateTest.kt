@@ -5,6 +5,7 @@ import com.mapgie.dash.data.model.CategoryStyle
 import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
@@ -234,5 +235,27 @@ class TaskUiStateTest {
         // effectiveSwatch(null) is a fixed fallback, never null, so the chip is always coloured.
         assertEquals(Swatch.SAGE, state.iconSwatchFor(uncategorised))
         assertEquals(Swatch.SAGE, state.spineSwatchFor(uncategorised))
+    }
+
+    // ── Reminders a task owns ─────────────────────────────────────────────────
+    // A task can carry several reminders (memos linked by task_id); the card
+    // counts the live ones so adding a reminder never hides the task.
+
+    private fun memo(id: String, taskId: String?, archivedAt: String? = null, completedAt: String? = null) =
+        ReminderDto(id = id, subject = "s", remindAt = "2026-09-20T09:00:00Z", taskId = taskId, archivedAt = archivedAt, completedAt = completedAt)
+
+    @Test
+    fun `a task counts its live reminders and ignores archived, done and other tasks'`() {
+        val reminders = listOf(
+            memo("a", taskId = "t1"),
+            memo("b", taskId = "t1"),
+            memo("c", taskId = "t1", archivedAt = "2026-09-01T00:00:00Z"),
+            memo("d", taskId = "t1", completedAt = "2026-09-01T00:00:00Z"),
+            memo("e", taskId = "other"),
+        )
+        val state = TaskUiState(reminders = reminders)
+        assertEquals(2, state.activeReminderCountFor("t1"))
+        assertEquals(1, state.activeReminderCountFor("other"))
+        assertEquals(0, state.activeReminderCountFor("none"))
     }
 }

@@ -18,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,7 +49,6 @@ import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -79,6 +77,7 @@ fun TaskCard(
     zenMode: Boolean = false,
     spineSwatch: Swatch? = null,
     iconSwatch: Swatch? = null,
+    reminderCount: Int = 0,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
@@ -175,20 +174,20 @@ fun TaskCard(
                                 modifier = Modifier.size(14.dp)
                             )
                         }
-                        if (task.reminderAt != null && task.reminded != true && !isDone) {
-                            val reminderInstant = remember(task.reminderAt) {
-                                runCatching { Instant.parse(task.reminderAt) }.getOrNull()
-                            }
-                            val isReminderPast = reminderInstant != null && reminderInstant.isBefore(Instant.now())
+                        if (reminderCount > 0 && !isDone) {
                             Icon(
                                 imageVector = LucideIcons.Bell,
-                                contentDescription = if (isReminderPast) "Reminder passed" else "Reminder set",
-                                tint = if (isReminderPast)
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else
-                                    MaterialTheme.colorScheme.primary,
+                                contentDescription = if (reminderCount == 1) "1 reminder" else "$reminderCount reminders",
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
+                            if (reminderCount > 1) {
+                                Text(
+                                    text = reminderCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                     if (zenMode) {

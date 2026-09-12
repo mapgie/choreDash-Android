@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.draftKeyFor
@@ -284,6 +285,7 @@ fun TaskListScreen(
                                 icon = iconFor(task),
                                 spineSwatch = uiState.spineSwatchFor(task),
                                 iconSwatch = uiState.iconSwatchFor(task),
+                                reminderCount = uiState.activeReminderCountFor(task.id),
                                 onTap = { overviewTask = it; showOverviewSheet = true },
                                 onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                 onToggleDone = {
@@ -357,6 +359,7 @@ fun TaskListScreen(
                                             icon = iconFor(task),
                                             spineSwatch = uiState.spineSwatchFor(task),
                                             iconSwatch = uiState.iconSwatchFor(task),
+                                            reminderCount = uiState.activeReminderCountFor(task.id),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { completeTaskWithUndo(task) },
@@ -394,6 +397,7 @@ fun TaskListScreen(
                                         icon = iconFor(task),
                                         spineSwatch = uiState.spineSwatchFor(task),
                                         iconSwatch = uiState.iconSwatchFor(task),
+                                        reminderCount = uiState.activeReminderCountFor(task.id),
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                         onToggleDone = { completeTaskWithUndo(task) },
@@ -432,6 +436,7 @@ fun TaskListScreen(
                                             icon = iconFor(task),
                                             spineSwatch = uiState.spineSwatchFor(task),
                                             iconSwatch = uiState.iconSwatchFor(task),
+                                            reminderCount = uiState.activeReminderCountFor(task.id),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markUndone(task.id) },
@@ -484,6 +489,10 @@ fun TaskListScreen(
             icon = iconFor(task),
             isPinned = task.id == uiState.pinnedTaskId,
             sheetState = overviewSheetState,
+            reminders = uiState.reminders
+                .filter { it.taskId == task.id && it.archivedAt == null && !it.isDone }
+                .sortedBy { it.remindAt },
+            onDeleteReminder = { viewModel.deleteTaskReminder(it.id) },
             onMarkDone = { t, at ->
                 viewModel.markDone(t.id, at)
                 showOverviewSheet = false
@@ -548,6 +557,7 @@ private fun SwipeToCompleteCard(
     zenMode: Boolean = false,
     spineSwatch: Swatch? = null,
     iconSwatch: Swatch? = null,
+    reminderCount: Int = 0,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
@@ -599,6 +609,7 @@ private fun SwipeToCompleteCard(
             zenMode = zenMode,
             spineSwatch = spineSwatch,
             iconSwatch = iconSwatch,
+            reminderCount = reminderCount,
             isPinned = isPinned,
             highlightQuery = highlightQuery,
             modifier = Modifier

@@ -19,6 +19,8 @@ import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskSortKey
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.TaskUrgency
+import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
@@ -63,8 +65,17 @@ data class TaskUiState(
     val zenSortAscending: Boolean = true,
     val catalog: CategoryCatalog = CategoryCatalog(),
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
+    /** Every reminder (memo) linked to a task, so a task can carry more than one. */
+    val reminders: List<ReminderDto> = emptyList(),
     val pinChooser: PinChooserState? = null,
 ) {
+    /**
+     * How many live reminders a task carries: its linked memos that are neither
+     * archived nor already done. A task can own several, so the card shows a
+     * count, and adding one never moves the task out of the Tasks list.
+     */
+    fun activeReminderCountFor(taskId: String): Int =
+        reminders.count { it.taskId == taskId && it.archivedAt == null && !it.isDone }
     /**
      * The swatch the task card's spine and due badge wear, or null to follow the
      * urgency tone. Mirrors the Chores card so both lists obey Settings › Colours'
@@ -224,6 +235,11 @@ class TaskListViewModel @Inject constructor(
                 _uiState.update { it.copy(pinnedTaskId = pinnedTaskId) }
             }
         }
+        viewModelScope.launch {
+            reminderRepository.remindersFlow.collect { all ->
+                _uiState.update { state -> state.copy(reminders = all.filter { it.taskId != null }) }
+            }
+        }
         load()
     }
 
@@ -293,17 +309,21 @@ class TaskListViewModel @Inject constructor(
     fun updateTask(id: String, update: TaskUpdate) {
         viewModelScope.launch {
             runCatching {
+                val old = _uiState.value.tasks.find { it.id == id }
+                val oldReminderAt = old?.reminderAt
                 // Cancel old-style task alarm (backward compat for reminders created before this change)
-                _uiState.value.tasks.find { it.id == id }?.let { old ->
-                    if (old.reminderAt != null) alarmScheduler.cancelTask(id)
+                if (oldReminderAt != null) alarmScheduler.cancelTask(id)
+                // Reconcile only the memo that mirrors this task's own reminder_at (it
+                // carries the exact same fire time); leave every other reminder the user
+                // attached to the task in place, so editing a task never wipes them.
+                if (oldReminderAt != null) {
+                    reminderRepository.loadReminders()
+                        .filter { it.taskId == id && it.archivedAt == null && it.remindAt == oldReminderAt }
+                        .forEach { reminder ->
+                            alarmScheduler.cancelReminder(reminder.id)
+                            reminderRepository.deleteReminder(reminder.id)
+                        }
                 }
-                // Cancel and delete any existing ReminderDto linked to this task
-                reminderRepository.loadReminders()
-                    .filter { it.taskId == id && it.archivedAt == null }
-                    .forEach { reminder ->
-                        alarmScheduler.cancelReminder(reminder.id)
-                        reminderRepository.deleteReminder(reminder.id)
-                    }
                 val task = taskRepository.updateTask(id, update)
                 if (task.reminderAt != null) {
                     task.reminderInstant()?.let { at ->
@@ -329,6 +349,20 @@ class TaskListViewModel @Inject constructor(
                 reminder.remindAtInstant()?.let { at ->
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, insert.taskId)
                 }
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Removes one reminder from a task (from the overview's reminders list). */
+    fun deleteTaskReminder(reminderId: String) {
+        viewModelScope.launch {
+            runCatching {
+                alarmScheduler.cancelReminder(reminderId)
+                reminderRepository.deleteReminder(reminderId)
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
