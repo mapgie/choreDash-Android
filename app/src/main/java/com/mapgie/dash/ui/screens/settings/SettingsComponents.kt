@@ -1,5 +1,8 @@
 package com.mapgie.dash.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,9 +18,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+/** Where "View full changelog" sends the user: the repo's CHANGELOG.md. */
+const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -153,29 +166,45 @@ fun ChangelogDialog(
     entries: List<ChangelogEntry>,
     onDismiss: () -> Unit,
     onViewFullChangelog: () -> Unit,
+    onOpenHelp: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("What's New") },
         text = {
-            if (entries.isEmpty()) {
-                Text("No changelog available.")
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight(0.7f)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    entries.forEachIndexed { index, entry ->
-                        if (index > 0) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Column(modifier = Modifier.fillMaxHeight(0.7f)) {
+                if (onOpenHelp != null) {
+                    Text(
+                        "How to use the app ›",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { role = Role.Button }
+                            .clickable(onClick = onOpenHelp)
+                            .padding(vertical = 10.dp),
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+                }
+                if (entries.isEmpty()) {
+                    Text("No changelog available.")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        entries.forEachIndexed { index, entry ->
+                            if (index > 0) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                            Text(
+                                entry.header,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            ChangelogBody(entry.body)
                         }
-                        Text(
-                            entry.header,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        ChangelogBody(entry.body)
                     }
                 }
             }
@@ -186,5 +215,32 @@ fun ChangelogDialog(
         dismissButton = {
             TextButton(onClick = onViewFullChangelog) { Text("View full changelog") }
         }
+    )
+}
+
+/**
+ * The "What's New" dialog wired to `assets/CHANGELOG.md` and the full-changelog
+ * link. One place so Settings › About, Help, and the on-update prompt share it.
+ */
+@Composable
+fun WhatsNewDialog(
+    onDismiss: () -> Unit,
+    onOpenHelp: (() -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    val entries = remember {
+        runCatching {
+            context.assets.open("CHANGELOG.md").use { input ->
+                BufferedReader(InputStreamReader(input)).readText()
+            }
+        }.map(::parseChangelog).getOrDefault(emptyList())
+    }
+    ChangelogDialog(
+        entries = entries,
+        onDismiss = onDismiss,
+        onViewFullChangelog = {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CHANGELOG_URL)))
+        },
+        onOpenHelp = onOpenHelp,
     )
 }

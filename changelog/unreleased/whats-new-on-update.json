@@ -1,0 +1,8 @@
+{
+  "bump": "minor",
+  "added": [
+    "After an update, the What's New changelog now shows on open so you can see what changed.",
+    "The Help screen shows the app version at the foot; tap it to open What's New.",
+    "What's New links through to the how-to-use Help pages."
+  ]
+}

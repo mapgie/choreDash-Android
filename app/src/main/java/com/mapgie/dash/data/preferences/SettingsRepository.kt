@@ -93,6 +93,8 @@ data class AppSettings(
     val swipeActions: SwipeSettings = SwipeSettings(),
     // Whether the first-run welcome sheet (chores vs tasks vs memos) has been dismissed
     val helpSeen: Boolean = false,
+    // The app versionCode last opened; drives the "What's New" prompt on update (0 = never recorded)
+    val lastSeenVersionCode: Int = 0,
 )
 
 @Singleton
@@ -106,6 +108,7 @@ class SettingsRepository @Inject constructor(
         val THEME_MODE                     = stringPreferencesKey("theme_mode")
         val WCAG_MODE                      = booleanPreferencesKey("wcag_mode")
         val HELP_SEEN                      = booleanPreferencesKey("help_seen")
+        val LAST_SEEN_VERSION_CODE         = intPreferencesKey("last_seen_version_code")
         val ZEN_MODE                       = booleanPreferencesKey("zen_mode")
         val TASK_ZEN_MODE                  = booleanPreferencesKey("task_zen_mode")
         val DELIVERY_MODE                  = stringPreferencesKey("delivery_mode")
@@ -238,6 +241,7 @@ class SettingsRepository @Inject constructor(
                     memos = readSwipePair(prefs, SwipeSubject.MEMOS),
                 ),
                 helpSeen                    = prefs[Keys.HELP_SEEN] ?: false,
+                lastSeenVersionCode         = prefs[Keys.LAST_SEEN_VERSION_CODE] ?: 0,
             )
         }
 
@@ -268,6 +272,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setHelpSeen(seen: Boolean) {
         context.dataStore.edit { it[Keys.HELP_SEEN] = seen }
+    }
+
+    suspend fun setLastSeenVersionCode(code: Int) {
+        context.dataStore.edit { it[Keys.LAST_SEEN_VERSION_CODE] = code }
     }
 
     suspend fun setZenMode(enabled: Boolean) {
