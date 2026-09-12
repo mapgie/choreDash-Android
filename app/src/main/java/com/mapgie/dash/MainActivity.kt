@@ -225,9 +225,18 @@ class MainActivity : ComponentActivity() {
         if (writeRequest != null) {
             val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
             if (tag != null) {
-                val result = NfcHandler.writeUri(tag, writeRequest.uri)
-                nfcWriteResult = result
-                if (result == NfcWriteResult.Success) recordSticker(writeRequest.id)
+                val uri = writeRequest.uri
+                if (uri == null) {
+                    // An erase: note which id is leaving the sticker, then wipe it.
+                    val leaving = NfcHandler.currentTagId(tag)
+                    val result = NfcHandler.eraseTag(tag)
+                    nfcWriteResult = result
+                    if (result == NfcWriteResult.Success && leaving != null) forgetSticker(leaving)
+                } else {
+                    val result = NfcHandler.writeUri(tag, uri)
+                    nfcWriteResult = result
+                    if (result == NfcWriteResult.Success) recordSticker(writeRequest.id)
+                }
             }
             return
         }
@@ -248,6 +257,10 @@ class MainActivity : ComponentActivity() {
 
     private fun recordSticker(tagId: String) {
         lifecycleScope.launch { runCatching { tagStickerStore.record(tagId) } }
+    }
+
+    private fun forgetSticker(tagId: String) {
+        lifecycleScope.launch { runCatching { tagStickerStore.forget(tagId) } }
     }
 
     // A tag-alarm's tag is resolved first, on-device and offline, so the chore path

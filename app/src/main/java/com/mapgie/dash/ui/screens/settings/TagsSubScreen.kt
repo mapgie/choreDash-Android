@@ -68,6 +68,8 @@ internal fun TagsSubScreen(
     onCancelNfcCapture: () -> Unit,
     onNfcCaptureConsumed: () -> Unit,
     tagWritePending: Boolean,
+    /** The pending write from Settings is an erase; the dialog says so. */
+    tagErasePending: Boolean = false,
     nfcWriteResult: NfcWriteResult?,
     onStartTagWrite: (NfcWriteRequest) -> Unit,
     onCancelNfcWrite: () -> Unit,
@@ -81,6 +83,7 @@ internal fun TagsSubScreen(
     // The last tag read on this page: its id, and what it resolved to (null for unknown).
     var readId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingUnlink by remember { mutableStateOf<TagEntry?>(null) }
+    var confirmErase by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -147,14 +150,25 @@ internal fun TagsSubScreen(
                             .weight(1f)
                             .semantics { liveRegion = LiveRegionMode.Polite },
                     )
-                    ValueChip(
-                        text = if (scanning) "Cancel" else "Scan",
-                        onClick = { scanning = !scanning },
-                        contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to identify it",
-                        chevron = false,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        ValueChip(
+                            text = if (scanning) "Cancel" else "Scan",
+                            onClick = { scanning = !scanning },
+                            contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to identify it",
+                            chevron = false,
+                        )
+                        if (!scanning) {
+                            ValueChip(
+                                text = "Erase",
+                                onClick = { confirmErase = true },
+                                contentDescription = "Erase the next tag held to the phone",
+                                chevron = false,
+                            )
+                        }
+                    }
                 }
             }
+            SettingsCaption("Erase wipes whatever a sticker carries so it can be written for something else. The chore or tag-alarm it belonged to is untouched.")
 
             SettingsSectionLabel("Chores")
             Row(
@@ -265,9 +279,27 @@ internal fun TagsSubScreen(
     if (tagWritePending) {
         WriteTagDialog(
             result = nfcWriteResult,
+            erasing = tagErasePending,
             onDismiss = {
                 if (nfcWriteResult != null) onNfcWriteResultConsumed() else onCancelNfcWrite()
             }
+        )
+    }
+
+    if (confirmErase) {
+        AlertDialog(
+            onDismissRequest = { confirmErase = false },
+            title = { Text("Erase a tag?") },
+            text = { Text("The next tag you hold to the phone is wiped. Whatever chore or tag-alarm it pointed at stays in the app and can be written to a tag again.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmErase = false
+                    onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.ERASE, ""))
+                }) { Text("Erase", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmErase = false }) { Text("Cancel") }
+            },
         )
     }
 

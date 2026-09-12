@@ -1,0 +1,6 @@
+{
+  "bump": "minor",
+  "added": [
+    "Settings > NFC tags can erase a sticker: tap Erase, hold the tag, and it is wiped and ready to be written for something else. The chore or tag-alarm it pointed at is untouched."
+  ]
+}

@@ -54,6 +54,14 @@ class TagStickerStore @Inject constructor(
         }
     }
 
+    /** Drops [tagId] after the sticker carrying it was erased. */
+    suspend fun forget(tagId: String) {
+        context.tagStickerDataStore.edit { prefs ->
+            val current = decode(prefs[Keys.SEEN]).mapValues { it.value.toString() }
+            prefs[Keys.SEEN] = json.encodeToString(current - tagId)
+        }
+    }
+
     suspend fun current(): Map<String, Instant> = seen.first()
 
     private fun decode(raw: String?): Map<String, Instant> =

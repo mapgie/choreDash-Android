@@ -25,11 +25,13 @@ import com.mapgie.dash.nfc.NfcWriteResult
 @Composable
 fun WriteTagDialog(
     result: NfcWriteResult?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** True while erasing rather than writing: the title and success line say so. */
+    erasing: Boolean = false,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Write tag") },
+        title = { Text(if (erasing) "Erase tag" else "Write tag") },
         text = {
             when (result) {
                 null -> Row {
@@ -41,7 +43,7 @@ fun WriteTagDialog(
                     )
                 }
                 NfcWriteResult.Success -> Text(
-                    "Tag written successfully.",
+                    if (erasing) "Tag erased. It's blank and ready to be written again." else "Tag written successfully.",
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                 )
                 NfcWriteResult.NotWritable -> Text(
