@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.DuePeriod
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
@@ -47,6 +48,8 @@ import com.mapgie.dash.ui.components.sheet.DraftResumeRow
 import com.mapgie.dash.ui.components.sheet.LocalDateStateSaver
 import com.mapgie.dash.ui.components.sheet.NotesBlock
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
+import com.mapgie.dash.ui.components.sheet.PrivateNote
+import com.mapgie.dash.ui.components.sheet.privateNoteFor
 import com.mapgie.dash.ui.components.sheet.SegmentPill
 import com.mapgie.dash.ui.components.sheet.SettingsRow
 import com.mapgie.dash.ui.components.sheet.SheetBlock
@@ -422,6 +425,11 @@ fun EditTaskSheet(
                     }
                 }
             }
+
+            privateNoteFor(
+                wasPrivate = isPrivateCategory(opened.category),
+                isPrivateNow = isPrivateCategory(category),
+            )?.let { PrivateNote(text = it) }
 
             NotesBlock(
                 value = notes,

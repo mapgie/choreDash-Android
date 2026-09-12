@@ -55,6 +55,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.isDone
+import com.mapgie.dash.data.model.isPrivate
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.SwipeAction
 import com.mapgie.dash.data.model.SwipeDirection
@@ -333,6 +335,7 @@ fun TaskListScreen(
                                 swipe = uiState.swipe,
                                 onSwipe = { swipeTask(it, task) },
                                 isPinned = task.id == uiState.pinnedTaskId,
+                                isPrivate = task.isPrivate,
                                 highlightQuery = query
                             )
                         }
@@ -382,6 +385,7 @@ fun TaskListScreen(
                                             text = cat,
                                             count = tasks.size,
                                             collapsed = collapsed,
+                                            icon = if (isPrivateCategory(cat)) LucideIcons.Lock else null,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.background)
@@ -407,7 +411,8 @@ fun TaskListScreen(
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
-                                            isPinned = task.id == uiState.pinnedTaskId
+                                            isPinned = task.id == uiState.pinnedTaskId,
+                                            isPrivate = task.isPrivate,
                                         )
                                     }
                                 }
@@ -446,7 +451,8 @@ fun TaskListScreen(
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode,
-                                        isPinned = task.id == uiState.pinnedTaskId
+                                        isPinned = task.id == uiState.pinnedTaskId,
+                                        isPrivate = task.isPrivate,
                                     )
                                 }
                             }
@@ -485,7 +491,8 @@ fun TaskListScreen(
                                             onSwipe = { swipeTask(it, task) },
                                             showCategory = !uiState.groupByCategory,
                                             showOwner = uiState.ownerFilter.showsOwner,
-                                            zenMode = uiState.zenMode
+                                            zenMode = uiState.zenMode,
+                                            isPrivate = task.isPrivate,
                                         )
                                     }
                                 }
@@ -535,6 +542,7 @@ fun TaskListScreen(
             badgeSwatch = uiState.spineSwatchFor(task),
             iconSwatch = uiState.iconSwatchFor(task),
             isPinned = task.id == uiState.pinnedTaskId,
+            isPrivate = task.isPrivate,
             sheetState = overviewSheetState,
             reminders = uiState.reminders
                 .filter { it.taskId == task.id && it.archivedAt == null && !it.isDone }
@@ -608,6 +616,7 @@ private fun SwipeToCompleteCard(
     iconSwatch: Swatch? = null,
     reminderCount: Int = 0,
     isPinned: Boolean = false,
+    isPrivate: Boolean = false,
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
@@ -658,6 +667,7 @@ private fun SwipeToCompleteCard(
             iconSwatch = iconSwatch,
             reminderCount = reminderCount,
             isPinned = isPinned,
+            isPrivate = isPrivate,
             highlightQuery = highlightQuery,
             modifier = Modifier
                 .semantics { role = Role.Button }

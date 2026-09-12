@@ -67,6 +67,10 @@ import java.time.temporal.ChronoUnit
  * neutral) or, when it is null, the urgency status tone; the round icon chip does
  * the same with [iconSwatch]. Priority is always carried by the caption text, and
  * the badge words restate the state, so colour is never the only signal.
+ *
+ * A private task ([isPrivate]) sits under a padlocked PRIVATE header when the
+ * list is grouped; in a flat list it carries the padlock itself, beside the
+ * title, like the pin marker.
  */
 @Composable
 fun TaskCard(
@@ -80,6 +84,13 @@ fun TaskCard(
     iconSwatch: Swatch? = null,
     reminderCount: Int = 0,
     isPinned: Boolean = false,
+    /**
+     * True for an item in the Private category (on this phone only). The card
+     * then wears a small padlock beside the title whenever the category is not
+     * already announced by a group header, that is in a flat list, mirroring
+     * the pin marker.
+     */
+    isPrivate: Boolean = false,
     highlightQuery: String? = null
 ) {
     val isDone = task.completedAt != null
@@ -165,6 +176,14 @@ fun TaskCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (isPrivate && showCategory) {
+                            Icon(
+                                imageVector = LucideIcons.Lock,
+                                contentDescription = "Private, only on this phone",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                         if (isPinned) {
                             Icon(
                                 imageVector = LucideIcons.PinFilled,

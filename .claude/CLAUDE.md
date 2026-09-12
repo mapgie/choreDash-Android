@@ -104,6 +104,7 @@ reading code.
 | Scheduling, ringing, boot, snooze | `alarm/AlarmScheduler.kt` (`syncReminder` after every mutation), `AlarmReceiver`, `AlarmActionReceiver`, `BootWorker`, `AlarmActivity` + `AlarmRinger` | `notification/NotificationHelper.kt` for channels and the full-screen intent |
 | A Settings page | `ui/screens/settings/SettingsScreen.kt` (the `SettingsSubScreen` enum and dispatch) + one `<Name>SubScreen.kt`; controls in `CozyControls.kt` | Its own `<Name>ViewModel.kt` if it has state worth testing (`TagsViewModel` is the pattern) |
 | Supabase reads/writes | `data/repository/ChoreRepository.kt`, `TaskRepository.kt` | `supabase/schema.sql` for tables, RLS, grants |
+| Private (phone-only) chores and tasks | `data/model/PrivateItems.kt` (the document and `privateMove`), `data/preferences/PrivateItemStore.kt` | The routing in both repositories; `PrivateItemsTest` |
 | Widgets | `widget/` (Glance); destinations in `WidgetNav.kt` | `WidgetUpdater.updateAll` after data changes |
 | Theme, palettes, contrast | `ui/theme/Theme.kt`, `Color.kt`, `DashTokens.kt`, `Contrast.kt` | |
 
@@ -113,6 +114,12 @@ Facts that save a detour:
   NFC id. Chore ids and tag-alarm tag ids share one id space; a tag has one job.
 - **Memos are on-device** (`ReminderRepository`, DataStore). They never reach
   Supabase. So are settings, category styles, snoozes and the sticker record.
+- **Private chores and tasks are on-device too** (`PrivateItemStore`, DataStore):
+  anything in the reserved `Private` category (`PRIVATE_CATEGORY`,
+  `isPrivateCategory`). `TaskRepository` and `ChoreRepository` route every read
+  and write by where the row lives, so widgets, alarms, NFC taps and Settings
+  need no private-specific code. An edit across the boundary moves the row and
+  keeps its id (`privateMove`).
 - **State that crosses tabs lives on `MainActivity`** as `mutableStateOf` and is
   handed through `DashNavGraph` as parameters plus "consumed" callbacks: pending
   NFC tag, NFC write request, NFC capture, notification deep link, tag-alarm

@@ -23,6 +23,7 @@ import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.isDone
+import com.mapgie.dash.data.model.isPrivate
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
@@ -107,8 +108,9 @@ data class TaskUiState(
         get() {
             // Archived tasks never show; open and done tasks are split into the
             // main list and the collapsible Done section by activeTasks/doneTasks.
+            // A private task is on this phone, so it is mine whatever its owner field says.
             val filtered = tasks.filter { task ->
-                task.archivedAt == null && ownerFilter.matches(task.owner, ownerHandle)
+                task.archivedAt == null && (task.isPrivate || ownerFilter.matches(task.owner, ownerHandle))
             }
             if (zenMode) {
                 // Zen sort: ascending = most urgent (overdue) first, matching the due sort order

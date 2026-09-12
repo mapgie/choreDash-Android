@@ -98,8 +98,9 @@ data class ChoreUiState(
     /** Settings › Swipe actions for chore cards. */
     val swipe: SwipePair = SwipeSubject.CHORES.default,
 ) {
+    // A private chore is on this phone, so it is mine whatever its owner field says.
     private val ownerFiltered: List<Chore>
-        get() = active.filter { ownerFilter.matches(it.owner, ownerHandle) }
+        get() = active.filter { it.isPrivate || ownerFilter.matches(it.owner, ownerHandle) }
 
     /** When [chore] wakes from a swipe-to-snooze, or null if it is not snoozed. */
     fun snoozedUntil(chore: Chore): Instant? =

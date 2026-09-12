@@ -1385,3 +1385,34 @@ the edit sheet, the search results, the Done section. Grep the screen's
 `*Screen.kt` for every sheet it opens and check each takes the same swatch
 parameters as its sibling on the other tab; the `*UiState.spineSwatchFor` /
 `iconSwatchFor` helpers exist so every call site resolves the colour the same way.
+
+## 61. A "local-only" variant of a synced entity is routed inside the repository, not in the ViewModel
+
+Private chores and tasks (the reserved `Private` category) must never reach
+Supabase. The obvious place to branch was `TaskListViewModel.addTask` / `updateTask`,
+but the repositories have nine other callers: two widgets, the alarm receivers,
+`BootWorker`, `DailyStaleChoreWorker`, the NFC auto-log in `MainActivity`, the
+reminders screens and Settings › Categories. Branching in one ViewModel would
+have left a private task invisible to the widget and its reminder unable to mark
+itself delivered.
+
+So the branch lives in `TaskRepository` / `ChoreRepository`: each method asks the
+on-device store whether the id (or tag id) is stored privately and routes there,
+otherwise to Postgrest, and `load*` merges both. Every existing caller got
+private items for free, with no signature change. Three things made that clean:
+
+- **Storage is decided by one field** (`isPrivateCategory(category)`), and an edit
+  that changes it is a *move* (`privateMove` names the four cases). Copy first,
+  delete second, so a failure leaves a duplicate rather than a lost row.
+- **Ids are UUIDs on both sides**, so a moved row keeps its id and the memos and
+  widget pin that point at it keep working. `TaskInsert`/`TagInsert` grew an
+  optional `id` (null by default, so a normal insert still lets Postgres generate
+  one) purely for the move.
+- **The name is reserved end to end**: the catalog always lists it, Settings will
+  not rename or delete it or rename another category to it, and `moveCategory`
+  therefore never needs to touch the local store.
+
+When adding any "keep this on the device" flavour of a synced thing, grep for the
+repository's callers first; if there are more than the list screen, the seam is
+the repository.
+

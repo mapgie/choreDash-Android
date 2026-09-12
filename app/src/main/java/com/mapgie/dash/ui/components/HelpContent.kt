@@ -29,9 +29,10 @@ import com.mapgie.dash.ui.theme.LucideIcons
 
 /**
  * Page one of Help: the one explanation of what a chore, a task and a memo
- * are. The speed dial carries no hint text (handoff 7a): this is taught once
- * in the first-run welcome sheet and repeated under Settings › Help, so both
- * render this. The controls tour lives in [HelpGettingAround].
+ * are, and that the Private category keeps an item on this phone. The speed
+ * dial carries no hint text (handoff 7a): this is taught once in the first-run
+ * welcome sheet and repeated under Settings › Help, so both render this. The
+ * controls tour lives in [HelpGettingAround].
  *
  * [reminderLabel] is the user's chosen name for the reminders feature
  * ("Memos", "Alarms" or "Reminders").
@@ -63,6 +64,19 @@ fun HelpContent(
             body = "A task is a one-off with an optional due date and priority. Tick it " +
                 "when it is done and it drops into the Done section. Tasks sync across " +
                 "your household too.",
+        )
+        SheetRowDivider()
+        HelpRow(
+            icon = LucideIcons.Lock,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh,
+            content = MaterialTheme.colorScheme.onSurfaceVariant,
+            title = "Private stays on this phone",
+            body = "Give a chore or task the Private category and it is kept on this " +
+                "phone only. It is never sent to the shared household list, so nobody " +
+                "else sees it: \"buy a present\" stays a surprise. Private items sit " +
+                "under a padlocked PRIVATE heading, or wear a small padlock in a flat " +
+                "list. Change the category later and the item moves into (or out of) " +
+                "the shared list.",
         )
         SheetRowDivider()
         HelpRow(

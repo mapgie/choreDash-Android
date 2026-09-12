@@ -61,6 +61,7 @@ import com.mapgie.dash.data.model.CategoryIcon
 import com.mapgie.dash.data.model.CategoryStyle
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TagDto
 import com.mapgie.dash.ui.components.ChoreCard
@@ -85,6 +86,8 @@ import kotlin.math.roundToInt
  * expands it inline: rename field, icon picker, colour picker, Delete (which
  * says where the items go) and Done. General is the default category: it is
  * always last, cannot be renamed, deleted or reordered, but can be styled.
+ * Private is reserved for items kept on this phone: it can be styled and
+ * reordered but never renamed or deleted.
  *
  * Reordering also works without a drag: the expanded editor has Move up / Move
  * down chips so the order is reachable with TalkBack and a keyboard.
@@ -267,16 +270,19 @@ private fun ReorderableCategoryList(
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         displayOrder.forEachIndexed { index, name ->
             val isDragged = index == draggedIndex
+            // Private is reserved (its items live on this phone only): it can be
+            // styled and moved about, but never renamed or deleted.
+            val reserved = isPrivateCategory(name)
             CategoryRow(
                 name = name,
-                subtitle = usageFor(name).label,
+                subtitle = if (reserved) "On this phone only · can't be deleted" else usageFor(name).label,
                 catalog = catalog,
                 isExpanded = expanded.equals(name, ignoreCase = true),
                 reorderable = true,
                 onExpand = { onExpand(name) },
                 onStyle = { style -> onStyle(name, style) },
-                onRename = { to -> onRename(name, to) },
-                onDelete = { onDelete(name) },
+                onRename = if (reserved) null else { { to -> onRename(name, to) } },
+                onDelete = if (reserved) null else { { onDelete(name) } },
                 onMoveUp = if (index > 0) {
                     { moveItem(index, index - 1); onReorder(displayOrder) }
                 } else null,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -15,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -45,9 +47,13 @@ import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
+import com.mapgie.dash.data.model.PRIVATE_CATEGORY
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.sheet.DraftResumeRow
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
+import com.mapgie.dash.ui.components.sheet.PrivateNote
+import com.mapgie.dash.ui.components.sheet.privateNoteFor
 import com.mapgie.dash.ui.components.sheet.SettingsRow
 import com.mapgie.dash.ui.components.sheet.SheetBlock
 import com.mapgie.dash.ui.components.sheet.SheetHeader
@@ -301,6 +307,11 @@ fun EditChoreSheet(
                 }
             }
 
+            privateNoteFor(
+                wasPrivate = isPrivateCategory(opened.category),
+                isPrivateNow = isPrivateCategory(category),
+            )?.let { PrivateNote(text = it) }
+
             SheetPrimaryRow(
                 actionLabel = "Save",
                 actionEnabled = canSave,
@@ -460,7 +471,8 @@ private fun TagIdField(value: String, onValueChange: (String) -> Unit) {
 
 /**
  * Category picker shared by both edit sheets: the known categories, General
- * when it is not among them, and "New category…".
+ * when it is not among them, Private (always offered, with its padlock, so a
+ * phone-only item is one pick away) and "New category…".
  */
 @Composable
 internal fun CategoryMenu(
@@ -470,11 +482,18 @@ internal fun CategoryMenu(
     onNew: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val options = if (categories.any { it.equals(GENERAL_CATEGORY, ignoreCase = true) }) categories
-                  else categories + GENERAL_CATEGORY
+    val withGeneral = if (categories.any { it.equals(GENERAL_CATEGORY, ignoreCase = true) }) categories
+                      else categories + GENERAL_CATEGORY
+    val options = if (withGeneral.any { isPrivateCategory(it) }) withGeneral else withGeneral + PRIVATE_CATEGORY
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         options.forEach { option ->
-            DropdownMenuItem(text = { Text(option) }, onClick = { onPick(option) })
+            DropdownMenuItem(
+                text = { Text(option) },
+                leadingIcon = if (isPrivateCategory(option)) {
+                    { Icon(LucideIcons.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else null,
+                onClick = { onPick(option) },
+            )
         }
         DropdownMenuItem(
             text = { Text("New category…", color = MaterialTheme.colorScheme.onSecondaryContainer) },

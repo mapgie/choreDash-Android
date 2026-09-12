@@ -6,6 +6,7 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.PRIVATE_CATEGORY
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TagDto
 import java.time.Duration
@@ -31,8 +32,9 @@ class ChoreUiStateTest {
         owner: String? = null,
         intervalDays: Double = 10.0,
         lastScannedAgo: Duration? = Duration.ofHours(36),
+        category: String? = null,
     ): Chore = Chore.from(
-        tag = TagDto(id = id, tagId = "tag-$id", label = id, owner = owner, intervalDays = intervalDays),
+        tag = TagDto(id = id, tagId = "tag-$id", label = id, owner = owner, intervalDays = intervalDays, category = category),
         lastScanned = lastScannedAgo?.let { Instant.now().minus(it) },
         lastScanId = null,
     )
@@ -56,6 +58,18 @@ class ChoreUiStateTest {
     fun `everyone lists every owner`() {
         val state = ChoreUiState(active = byOwner, ownerHandle = me, ownerFilter = OwnerFilter.EVERYONE)
         assertEquals(listOf("mine", "theirs", "unassigned"), ids(state.displayed))
+    }
+
+    @Test
+    fun `mine includes private chores whoever they are assigned to`() {
+        // A private chore lives on this phone, so it is mine even with no owner or
+        // someone else's handle on it.
+        val privateChores = listOf(
+            chore("secret", owner = null, category = PRIVATE_CATEGORY),
+            chore("secret-mo", owner = "mo", category = "private"),
+        )
+        val state = ChoreUiState(active = byOwner + privateChores, ownerHandle = me, ownerFilter = OwnerFilter.MINE)
+        assertEquals(setOf("mine", "secret", "secret-mo"), ids(state.displayed).toSet())
     }
 
     @Test

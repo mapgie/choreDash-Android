@@ -5,6 +5,18 @@ import kotlinx.serialization.Serializable
 /** The default category. Cannot be deleted or reordered; always listed last. */
 const val GENERAL_CATEGORY = "General"
 
+/**
+ * The private category. A chore or task in it lives only on this phone
+ * ([com.mapgie.dash.data.preferences.PrivateItemStore]) and is never written to
+ * Supabase, so the rest of the household never sees it. The name is reserved:
+ * it cannot be renamed or deleted, and no other category can be renamed to it.
+ */
+const val PRIVATE_CATEGORY = "Private"
+
+/** True when [category] is the reserved [PRIVATE_CATEGORY], however it is cased or spaced. */
+fun isPrivateCategory(category: String?): Boolean =
+    category?.trim()?.equals(PRIVATE_CATEGORY, ignoreCase = true) == true
+
 /** A user's styling for one category: which glyph and which colour it wears. */
 @Serializable
 data class CategoryStyle(
@@ -69,10 +81,13 @@ data class CategoryCatalog(
 
     /**
      * All categories to show in Settings › Categories: the ones in use (from
-     * chores and tasks) plus any created but unused, in catalog order, General last.
+     * chores and tasks) plus any created but unused, in catalog order, General
+     * last. [PRIVATE_CATEGORY] is always present so it can be styled and
+     * reordered even before anything private exists.
      */
     fun allCategories(inUse: Collection<String>): List<String> {
-        val known = (order + styles.keys + inUse).filter { it.isNotBlank() && key(it) != key(GENERAL_CATEGORY) }
+        val known = (order + styles.keys + inUse + PRIVATE_CATEGORY)
+            .filter { it.isNotBlank() && key(it) != key(GENERAL_CATEGORY) }
         return sorted(known) + GENERAL_CATEGORY
     }
 

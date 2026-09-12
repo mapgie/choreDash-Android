@@ -334,6 +334,11 @@ object LucideIcons {
         lucide("PinFilled", strokes = listOf("M12 17v5M9 3h6l-1 7 3 3H7l3-3z"), fills = listOf("M9 3h6l-1 7 3 3H7l3-3z"))
     }
 
+    /** Padlock: the Private category's default glyph and the private marker on a card. */
+    val Lock: ImageVector by lazy {
+        lucide("Lock", listOf(rect(3f, 11f, 18f, 11f, 2f), "M7 11V7a5 5 0 0 1 10 0v4"))
+    }
+
     val Undo: ImageVector by lazy {
         lucide("Undo", listOf("M3 7v6h6", "M21 17a9 9 0 0 0-15-6.7L3 13"), strokeWidth = 2.4f)
     }
@@ -523,6 +528,7 @@ object LucideIcons {
         CategoryIcon.BRIEFCASE -> Briefcase
         CategoryIcon.WALLET -> Wallet
         CategoryIcon.GRADUATION_CAP -> GraduationCap
+        CategoryIcon.LOCK -> Lock
         CategoryIcon.CIRCLE_ALERT -> CircleAlert
     }
 }

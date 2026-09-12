@@ -11,6 +11,8 @@ import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.CategoryStyle
 import com.mapgie.dash.data.model.ColourChoresBy
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
+import com.mapgie.dash.data.model.PRIVATE_CATEGORY
+import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.SwipeAction
 import com.mapgie.dash.data.model.SwipeDirection
@@ -313,10 +315,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { categoryStyleStore.update { it.added(name) } }
     }
 
-    /** Renames the category on every chore and task that carries it, then in the catalog. */
+    /**
+     * Renames the category on every chore and task that carries it, then in the
+     * catalog. Private is reserved: renaming it would strand its phone-only
+     * items, and renaming another category to it would leave shared rows wearing
+     * the private name in Supabase, so both are refused with a message.
+     */
     fun renameCategory(from: String, to: String) {
         val target = to.trim()
         if (target.isBlank() || target.equals(from, ignoreCase = false)) return
+        if (isPrivateCategory(from) || isPrivateCategory(target)) {
+            _saveError.value = "$PRIVATE_CATEGORY is reserved for items kept on this phone and cannot be renamed or reused."
+            return
+        }
         viewModelScope.launch {
             runCatching {
                 choreRepository.moveCategory(from, target)
@@ -329,7 +340,7 @@ class SettingsViewModel @Inject constructor(
 
     /** Deletes a category: its chores and tasks move to General, then the catalog forgets it. */
     fun deleteCategory(name: String) {
-        if (name.equals(GENERAL_CATEGORY, ignoreCase = true)) return
+        if (name.equals(GENERAL_CATEGORY, ignoreCase = true) || isPrivateCategory(name)) return
         viewModelScope.launch {
             runCatching {
                 choreRepository.moveCategory(name, GENERAL_CATEGORY)

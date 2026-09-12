@@ -63,6 +63,10 @@ import java.time.Instant
  * A snoozed chore ([snoozedUntil] set) swaps the chip glyph for a muted bell on
  * a neutral tint and replaces the badge with "Snoozed until <date>"; the spine
  * keeps telling the truth about its status underneath.
+ *
+ * A private chore ([isPrivate]) sits under a padlocked PRIVATE header when the
+ * list is grouped; in a flat list it carries the padlock itself, beside the
+ * title, like the pin marker.
  */
 @Composable
 fun ChoreCard(
@@ -77,6 +81,13 @@ fun ChoreCard(
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
     isPinned: Boolean = false,
+    /**
+     * True for an item in the Private category (on this phone only). The card
+     * then wears a small padlock beside the title whenever the category is not
+     * already announced by a group header, that is in a flat list, mirroring
+     * the pin marker.
+     */
+    isPrivate: Boolean = false,
     inset: Dp = Dimens.cardInset,
 ) {
     val tone = chore.statusTone()
@@ -151,6 +162,14 @@ fun ChoreCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (isPrivate && showCategory) {
+                            Icon(
+                                imageVector = LucideIcons.Lock,
+                                contentDescription = "Private, only on this phone",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                         if (isPinned) {
                             Icon(
                                 imageVector = LucideIcons.PinFilled,
