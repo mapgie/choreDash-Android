@@ -1,6 +1,6 @@
 {
   "bump": "minor",
   "added": [
-    "Swipe a task left to delete it. A prompt confirms, and an Undo snackbar restores the task and its reminders if you change your mind."
+    "Deleting a task (from a swipe or the edit sheet) now offers an Undo that restores the task and its reminders."
   ]
 }

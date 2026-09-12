@@ -12,6 +12,8 @@ import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.TaskDraft
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskInsert
@@ -80,6 +82,8 @@ data class TaskUiState(
     /** A task just deleted by swipe, awaiting its Undo snackbar. */
     val recentDelete: RecentTaskDelete? = null,
     val pinChooser: PinChooserState? = null,
+    /** Settings › Swipe actions for task cards. */
+    val swipe: SwipePair = SwipeSubject.TASKS.default,
 ) {
     /**
      * How many live reminders a task carries: its linked memos that are neither
@@ -232,6 +236,7 @@ class TaskListViewModel @Inject constructor(
                         zenMode = s.taskZenMode,
                         sort = s.taskSort,
                         colourAxes = s.colourAxes,
+                        swipe = s.swipeActions.tasks,
                     )
                 }
             }
@@ -385,13 +390,7 @@ class TaskListViewModel @Inject constructor(
     fun markDone(id: String, at: Instant? = null) {
         viewModelScope.launch {
             runCatching {
-                alarmScheduler.cancelTask(id)
-                reminderRepository.loadReminders()
-                    .filter { it.taskId == id && it.archivedAt == null }
-                    .forEach { reminder ->
-                        alarmScheduler.cancelReminder(reminder.id)
-                        reminderRepository.archiveReminder(reminder.id, true)
-                    }
+                silenceLinkedReminders(id)
                 taskRepository.markDone(id, at ?: Instant.now())
                 load()
                 WidgetUpdater.updateAll(appContext)
@@ -405,32 +404,70 @@ class TaskListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 taskRepository.markUndone(id)
-                val archivedReminders = reminderRepository.loadReminders()
-                    .filter { it.taskId == id && it.archivedAt != null }
-                archivedReminders.forEach { reminder ->
-                    reminderRepository.archiveReminder(reminder.id, false)
-                    if (!reminder.reminded && reminder.completedAt == null) {
-                        reminder.remindAtInstant()?.let { at ->
-                            if (at.isAfter(Instant.now())) {
-                                alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, id)
-                            }
-                        }
-                    }
-                }
-                if (archivedReminders.isEmpty()) {
-                    // Old-style task: reschedule via task alarm
-                    taskRepository.loadTasks().find { it.id == id }?.let { task ->
-                        task.reminderInstant()?.let { at ->
-                            if (at.isAfter(Instant.now())) {
-                                alarmScheduler.scheduleTask(id, task.title, at)
-                            }
-                        }
-                    }
+                restoreLinkedReminders(id)
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /**
+     * Archives a task from a swipe (or restores it from the Undo). Its reminders
+     * go quiet like a done task's, and come back with it, so nothing rings for a
+     * task that is out of the list.
+     */
+    fun archiveTask(id: String, archived: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                if (archived) silenceLinkedReminders(id)
+                taskRepository.archiveTask(id, archived)
+                if (!archived) restoreLinkedReminders(id)
+                if (archived && _uiState.value.pinnedTaskId == id) {
+                    pinnedItemStore.setPinned(null)
                 }
                 load()
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Cancels the task's own alarm and archives (silencing) every memo linked to it. */
+    private suspend fun silenceLinkedReminders(id: String) {
+        alarmScheduler.cancelTask(id)
+        reminderRepository.loadReminders()
+            .filter { it.taskId == id && it.archivedAt == null }
+            .forEach { reminder ->
+                alarmScheduler.cancelReminder(reminder.id)
+                reminderRepository.archiveReminder(reminder.id, true)
+            }
+    }
+
+    /** Unarchives the task's memos and re-arms whatever is still in the future. */
+    private suspend fun restoreLinkedReminders(id: String) {
+        val archivedReminders = reminderRepository.loadReminders()
+            .filter { it.taskId == id && it.archivedAt != null }
+        archivedReminders.forEach { reminder ->
+            reminderRepository.archiveReminder(reminder.id, false)
+            if (!reminder.reminded && reminder.completedAt == null) {
+                reminder.remindAtInstant()?.let { at ->
+                    if (at.isAfter(Instant.now())) {
+                        alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, id)
+                    }
+                }
+            }
+        }
+        if (archivedReminders.isEmpty()) {
+            // Old-style task: reschedule via task alarm
+            taskRepository.loadTasks().find { it.id == id }?.let { task ->
+                task.reminderInstant()?.let { at ->
+                    if (at.isAfter(Instant.now())) {
+                        alarmScheduler.scheduleTask(id, task.title, at)
+                    }
+                }
             }
         }
     }

@@ -54,6 +54,17 @@ class TaskPayloadTest {
     }
 
     @Test
+    fun `archiving sends only archived_at, restoring sends it as an explicit null`() {
+        val archived = archivedAtPayload("2026-08-26T12:00:00Z")
+        assertEquals(setOf("archived_at"), archived.keys)
+        assertEquals("2026-08-26T12:00:00Z", archived["archived_at"])
+
+        val restored = archivedAtPayload(null)
+        assertEquals(setOf("archived_at"), restored.keys)
+        assertNull(restored["archived_at"])
+    }
+
+    @Test
     fun `serializing TaskUpdate drops null fields, which is why payloads are maps`() {
         // Documents the kotlinx.serialization behaviour behind the bug: with
         // encodeDefaults=false (the Supabase client's setting), a field set to

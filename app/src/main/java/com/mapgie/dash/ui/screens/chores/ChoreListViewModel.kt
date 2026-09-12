@@ -17,6 +17,8 @@ import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.SwipePair
+import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.defaultSnoozeDuration
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.CategoryStyleStore
@@ -92,7 +94,9 @@ data class ChoreUiState(
     val recentSnooze: RecentSnooze? = null,
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList(),
-    val pinChooser: PinChooserState? = null
+    val pinChooser: PinChooserState? = null,
+    /** Settings › Swipe actions for chore cards. */
+    val swipe: SwipePair = SwipeSubject.CHORES.default,
 ) {
     private val ownerFiltered: List<Chore>
         get() = active.filter { ownerFilter.matches(it.owner, ownerHandle) }
@@ -289,6 +293,7 @@ class ChoreListViewModel @Inject constructor(
                         smartVisibility = settings.smartChoreVisibility,
                         choreLeadDays = settings.choreLeadDays,
                         colourAxes = settings.colourAxes,
+                        swipe = settings.swipeActions.chores,
                     )
                 }
             }

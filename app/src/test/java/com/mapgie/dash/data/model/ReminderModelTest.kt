@@ -1,6 +1,7 @@
 package com.mapgie.dash.data.model
 
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
@@ -162,5 +163,39 @@ class ReminderModelTest {
         val legacy = reminder(remindAt = "2026-07-10T07:00:00Z", reminded = true)
         assertTrue(legacy.isDone)
         assertEquals(Instant.parse("2026-07-10T07:00:00Z"), legacy.rangAt())
+    }
+
+    // ── Swipe-to-snooze on the list ─────────────────────────────────────────
+
+    @Test
+    fun `snoozing a memo still waiting to ring pushes that ring back by the duration`() {
+        val memo = reminder(remindAt = "2026-07-10T12:00:00Z")
+        val snoozed = memo.snoozedBy(Duration.ofHours(1), now)
+        assertEquals(Instant.parse("2026-07-10T13:00:00Z"), snoozed.remindAtInstant())
+    }
+
+    @Test
+    fun `snoozing a memo that already rang brings it back to ring an hour from now`() {
+        val memo = reminder(remindAt = "2026-07-10T09:00:00Z", reminded = true, completedAt = "2026-07-10T09:05:00Z")
+        val snoozed = memo.snoozedBy(Duration.ofHours(1), now)
+        assertEquals(now.plus(Duration.ofHours(1)), snoozed.remindAtInstant())
+        assertFalse(snoozed.reminded)
+        assertNull(snoozed.completedAt)
+        assertFalse(snoozed.isDone)
+    }
+
+    @Test
+    fun `snoozing a repeating memo shifts only the next ring and keeps its rota`() {
+        val memo = reminder(remindAt = "2026-07-13T09:00:00Z", repeatDays = monWedFri)
+        val snoozed = memo.snoozedBy(Duration.ofHours(1), now)
+        assertEquals(Instant.parse("2026-07-13T10:00:00Z"), snoozed.remindAtInstant())
+        assertEquals(monWedFri, snoozed.repeatDays)
+        assertTrue(snoozed.repeats)
+    }
+
+    @Test
+    fun `a tag-alarm is not snoozed from the list`() {
+        val alarm = reminder(remindAt = "2026-07-11T05:15:00Z").copy(tagAlarm = true, ringTimes = listOf("05:15"))
+        assertEquals(alarm, alarm.snoozedBy(Duration.ofHours(1), now))
     }
 }

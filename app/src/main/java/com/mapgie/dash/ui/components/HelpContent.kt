@@ -76,6 +76,8 @@ fun HelpContent(
             SheetBlock {
                 HelpTip("Tap a card to log or finish it. Long-press to edit.")
                 SheetRowDivider()
+                HelpTip("Swipe a card sideways to log, snooze, archive or delete it. Settings › Swipe actions chooses which.")
+                SheetRowDivider()
                 HelpTip("Tap the + to add to the page you're on. Long-press it to pick any type from the menu.")
                 SheetRowDivider()
                 HelpTip("The sort pill above each list names its order in words. Tap it to change the key or direction.")

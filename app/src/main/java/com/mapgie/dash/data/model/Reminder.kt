@@ -3,6 +3,7 @@ package com.mapgie.dash.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -197,3 +198,17 @@ fun ReminderDto.afterRing(now: Instant, zone: ZoneId = ZoneId.systemDefault()): 
  */
 fun ReminderDto.afterDone(now: Instant): ReminderDto =
     if (!repeats && !isTagAlarm) copy(completedAt = now.toString()) else this
+
+/**
+ * The record after a swipe-to-snooze on the list at [now]: the next ring moves
+ * [by] later than whichever is later, now or the ring it was waiting for. A
+ * once-only memo that has already rung (or was marked done) comes back to life
+ * and rings again; a repeating memo keeps its rota, only this ring shifts. A
+ * tag-alarm is not snoozed this way (its morning is set by its ring times), so
+ * it is returned unchanged.
+ */
+fun ReminderDto.snoozedBy(by: Duration, now: Instant): ReminderDto {
+    if (isTagAlarm) return this
+    val waitingFor = remindAtInstant()?.takeIf { it.isAfter(now) } ?: now
+    return copy(remindAt = waitingFor.plus(by).toString(), reminded = false, completedAt = null)
+}

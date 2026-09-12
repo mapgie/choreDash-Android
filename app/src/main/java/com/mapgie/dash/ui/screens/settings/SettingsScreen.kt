@@ -100,7 +100,7 @@ import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
 enum class SettingsSubScreen {
-    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, REMINDERS, WIDGET, TAGS, ABOUT, HELP
+    NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, SWIPE, REMINDERS, WIDGET, TAGS, ABOUT, HELP
 }
 
 private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
@@ -170,6 +170,10 @@ fun SettingsScreen(
             viewModel = viewModel,
         )
         SettingsSubScreen.QUICK_ADD -> QuickAddSubScreen(
+            onBack = { subScreen = SettingsSubScreen.NONE },
+            viewModel = viewModel,
+        )
+        SettingsSubScreen.SWIPE -> SwipeSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             viewModel = viewModel,
         )
@@ -266,6 +270,12 @@ private fun SettingsMainList(
                     )
                     SettingsHairline()
                     SettingsNavRow(
+                        title = "Swipe actions",
+                        subtitle = "What swiping a card left or right does",
+                        onClick = { onNavigate(SettingsSubScreen.SWIPE) }
+                    )
+                    SettingsHairline()
+                    SettingsNavRow(
                         title = "Widget customisation",
                         subtitle = "Choose what your home-screen widget shows",
                         onClick = { onNavigate(SettingsSubScreen.WIDGET) }
@@ -318,7 +328,7 @@ private fun SettingsMainList(
 
 /** Scrolling column every sub-screen uses: page inset, 14dp section gap. */
 @Composable
-private fun SubScreenColumn(
+internal fun SubScreenColumn(
     innerPadding: PaddingValues,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {

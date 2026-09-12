@@ -143,6 +143,14 @@ class ReminderRepository @Inject constructor(
         return requireNotNull(updated) { "Reminder $id not found" }
     }
 
+    /**
+     * Writes [reminder] back over the stored record with the same id (a swipe's
+     * snooze, or its Undo restoring the copy taken before). The caller re-syncs
+     * the alarm from the returned record.
+     */
+    suspend fun replace(reminder: ReminderDto): ReminderDto? =
+        update(reminder.id) { reminder }
+
     suspend fun archiveReminder(id: String, archived: Boolean): ReminderDto? =
         update(id) { it.copy(archivedAt = if (archived) Instant.now().toString() else null) }
 
