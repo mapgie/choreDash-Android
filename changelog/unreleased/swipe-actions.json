@@ -1,0 +1,12 @@
+{
+  "bump": "minor",
+  "added": [
+    "Settings › Swipe actions: choose what swiping a card left or right does, separately for chores, tasks and reminders. Each swipe can log or mark done, snooze, archive, delete, or do nothing, within what that list supports.",
+    "Swipe to archive a chore, task or reminder without logging or completing it, with an Undo.",
+    "Swipe to snooze a reminder: its next ring moves back an hour, with an Undo.",
+    "Swipe to delete a task, behind the same confirmation as the edit sheet."
+  ],
+  "changed": [
+    "Swiping a done reminder or task with the Done action now restores it instead of marking it done again."
+  ]
+}

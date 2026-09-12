@@ -43,6 +43,10 @@ class TaskRepository @Inject constructor(
     suspend fun markUndone(taskId: String): TaskDto =
         patchTask(taskId, completedAtPayload(null))
 
+    /** Archives (or restores) a task without touching its completion. */
+    suspend fun archiveTask(taskId: String, archived: Boolean): TaskDto =
+        patchTask(taskId, archivedAtPayload(if (archived) Instant.now().toString() else null))
+
     private suspend fun patchTask(taskId: String, payload: Map<String, String?>): TaskDto {
         val client = requireClient()
         return client.from("todos")
@@ -121,3 +125,7 @@ internal fun editTaskPayload(update: TaskUpdate): Map<String, String?> = mapOf(
 /** Single-column payload flipping completion; null restores the task to active. */
 internal fun completedAtPayload(completedAt: String?): Map<String, String?> =
     mapOf("completed_at" to completedAt)
+
+/** Single-column payload flipping archival; null brings the task back to the list. */
+internal fun archivedAtPayload(archivedAt: String?): Map<String, String?> =
+    mapOf("archived_at" to archivedAt)

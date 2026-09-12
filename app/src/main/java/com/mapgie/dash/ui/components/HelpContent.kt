@@ -104,6 +104,13 @@ fun HelpGettingAround(
             )
             SheetRowDivider()
             HelpRow(
+                icon = LucideIcons.GripVertical, container = container, content = content,
+                title = "Swipe",
+                body = "Swipe a card sideways to log, snooze, archive, or delete it. " +
+                    "Settings › Swipe actions sets which direction does what.",
+            )
+            SheetRowDivider()
+            HelpRow(
                 icon = LucideIcons.Calendar, container = container, content = content,
                 title = "Calendar",
                 body = "Add the item to your phone's calendar as an event.",
