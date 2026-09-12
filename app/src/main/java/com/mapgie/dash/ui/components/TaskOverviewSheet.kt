@@ -57,10 +57,10 @@ import com.mapgie.dash.ui.components.sheet.SheetTimePickerDialog
 import com.mapgie.dash.ui.components.sheet.UtilityAction
 import com.mapgie.dash.ui.components.sheet.UtilityRow
 import com.mapgie.dash.ui.theme.LocalDashTokens
+import com.mapgie.dash.ui.theme.LocalSeverityColors
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.StatusTone
-import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
@@ -128,12 +128,11 @@ fun TaskOverviewSheet(
     }
 
     // Same resolution as TaskCard: the Settings › Colours icon axis wins, else
-    // the urgency tone, else the plain task accent.
-    val signalling = tone != StatusTone.NEUTRAL && tone != StatusTone.NONE
-    val chipContainer = iconSwatch?.tintColor()
-        ?: if (signalling) tone.badgeContainerColor()!! else accents.taskContainer
-    val chipContent = iconSwatch?.textColor()
-        ?: if (signalling) tone.textColor() else accents.onTaskContainer
+    // the tone's swatch (null for a quiet tone or a severity set to "None"),
+    // else the plain task accent.
+    val toneSwatch = LocalSeverityColors.current.swatchFor(tone)
+    val chipContainer = iconSwatch?.tintColor() ?: toneSwatch?.tintColor() ?: accents.taskContainer
+    val chipContent = iconSwatch?.textColor() ?: toneSwatch?.textColor() ?: accents.onTaskContainer
 
     ModalBottomSheet(
         onDismissRequest = { hideAndDismiss() },

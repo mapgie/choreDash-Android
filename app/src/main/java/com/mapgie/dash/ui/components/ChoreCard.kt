@@ -34,9 +34,9 @@ import com.mapgie.dash.ui.components.core.OwnerAvatar
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.theme.Dimens
+import com.mapgie.dash.ui.theme.LocalSeverityColors
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
-import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.spineColor
@@ -91,6 +91,9 @@ fun ChoreCard(
     inset: Dp = Dimens.cardInset,
 ) {
     val tone = chore.statusTone()
+    // Null when the severity is set to "None": the chip then keeps the chore
+    // accent, matching the outline spine barColor() draws for it.
+    val toneSwatch = LocalSeverityColors.current.swatchFor(tone)
     val accents = LocalTypeAccents.current
     val dark = isDarkScheme()
     val snoozed = snoozedUntil != null
@@ -104,12 +107,14 @@ fun ChoreCard(
         zenMode -> Color.Transparent
         snoozed -> MaterialTheme.colorScheme.surfaceContainerHigh
         iconSwatch != null -> iconSwatch.tintColor()
-        else -> tone.badgeContainerColor() ?: accents.choreContainer
+        toneSwatch != null -> toneSwatch.tintColor()
+        else -> accents.choreContainer
     }
     val chipContent: Color = when {
         zenMode || snoozed -> MaterialTheme.colorScheme.onSurfaceVariant
         iconSwatch != null -> iconSwatch.textColor()
-        else -> tone.textColor()
+        toneSwatch != null -> toneSwatch.textColor()
+        else -> accents.onChoreContainer
     }
 
     Card(

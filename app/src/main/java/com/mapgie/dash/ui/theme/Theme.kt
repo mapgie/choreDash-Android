@@ -35,7 +35,7 @@ fun DashTheme(
     darkTheme: Boolean  = isSystemInDarkTheme(),
     wcag:      Boolean  = false,
     customHSL: CustomHSL? = null,
-    severitySwatches: Map<Severity, Swatch> = Severity.defaults,
+    severitySwatches: Map<Severity, Swatch?> = Severity.defaults,
     content:   @Composable () -> Unit,
 ) {
     // The WCAG lift is a transform on any scheme, so a custom palette takes it too.
@@ -106,7 +106,7 @@ fun DashTheme(
     CompositionLocalProvider(
         LocalTypeAccents provides typeAccents,
         LocalDashTokens provides tokens,
-        LocalSeverityColors provides SeverityColors.from(severitySwatches),
+        LocalSeverityColors provides SeverityColors(severitySwatches),
         LocalWcagContrast provides wcagActive,
     ) {
         MaterialTheme(

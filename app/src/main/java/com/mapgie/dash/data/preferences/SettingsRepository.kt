@@ -50,7 +50,7 @@ data class AppSettings(
     val reminderSort: SortOrder<ReminderSortKey> = SortOrder(ReminderSortKey.NEXT_RING),
     // Settings › Colours: what tints a chore card's spine+badge and its icon, and which swatch each severity wears
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
-    val severitySwatches: Map<Severity, Swatch> = Severity.defaults,
+    val severitySwatches: Map<Severity, Swatch?> = Severity.defaults,
     // Colour theme selection — name of AppTheme enum entry (SAGE, CORAL, TEAL, CUSTOM)
     val appTheme: String = "CREAM",
     // Custom HSL values for AppTheme.CUSTOM
@@ -195,7 +195,7 @@ class SettingsRepository @Inject constructor(
                     icon = prefs[Keys.COLOUR_ICON_BY],
                 ),
                 severitySwatches            = Severity.entries.associateWith { severity ->
-                    Swatch.fromName(prefs[Keys.severitySwatch(severity)]) ?: severity.defaultSwatch
+                    Severity.fromStored(severity, prefs[Keys.severitySwatch(severity)])
                 },
                 // Normalise old per-mode entries to palette names for backward compatibility
                 appTheme                    = when (val raw = prefs[Keys.APP_THEME] ?: "CREAM") {
@@ -315,8 +315,9 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[Keys.COLOUR_ICON_BY] = mode.name }
     }
 
-    suspend fun setSeveritySwatch(severity: Severity, swatch: Swatch) {
-        context.dataStore.edit { it[Keys.severitySwatch(severity)] = swatch.name }
+    /** Sets the swatch a severity wears; null stores "None" so the element stays plain. */
+    suspend fun setSeveritySwatch(severity: Severity, swatch: Swatch?) {
+        context.dataStore.edit { it[Keys.severitySwatch(severity)] = Severity.storedName(swatch) }
     }
 
     suspend fun setDeliveryMode(mode: String) {

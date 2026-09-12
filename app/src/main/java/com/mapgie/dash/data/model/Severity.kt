@@ -1,10 +1,17 @@
 package com.mapgie.dash.data.model
 
 /**
- * The three chore severities the user can recolour in Settings › Colours.
- * Maps one-to-one onto the signalling tones of the shared status scale
- * (`StatusTone.CRITICAL` / `ATTENTION` / `OK` in `ui/theme`); kept as its own
- * plain-Kotlin enum so settings persistence never depends on UI code.
+ * The four severities the user can recolour in Settings › Colours. Maps
+ * one-to-one onto the signalling tones of the shared status scale
+ * (`StatusTone.CRITICAL` / `ATTENTION` / `OK` / `LOW` in `ui/theme`); kept as
+ * its own plain-Kotlin enum so settings persistence never depends on UI code.
+ *
+ * Chores and memos use the first three. Tasks use all four, because on Tasks
+ * priority folds into the same ladder: a high-priority task counts as due soon
+ * and a low-priority one with nothing pressing wears [LOW].
+ *
+ * Any severity can also be set to no colour at all; that is stored as
+ * [NO_COLOUR] rather than a swatch name and resolves to a null swatch.
  */
 enum class Severity(
     val label: String,
@@ -14,10 +21,29 @@ enum class Severity(
 ) {
     OVERDUE("Overdue", "35d over", Swatch.ROSE),
     DUE_SOON("Due soon", "1d left", Swatch.AMBER),
-    FRESH("Fresh", "12d left", Swatch.SAGE);
+    FRESH("Fresh", "12d left", Swatch.SAGE),
+
+    /** Tasks only: low priority with no pressing due date. */
+    LOW("Low priority", "eventually", Swatch.BLUE);
 
     companion object {
-        val defaults: Map<Severity, Swatch> = entries.associateWith { it.defaultSwatch }
+        val defaults: Map<Severity, Swatch?> = entries.associateWith { it.defaultSwatch }
+
+        /** Stored in place of a swatch name when the user picks "None" for a severity. */
+        const val NO_COLOUR = "NONE"
+
+        /** The value written to settings for a severity's choice; null is "None". */
+        fun storedName(swatch: Swatch?): String = swatch?.name ?: NO_COLOUR
+
+        /**
+         * Resolves a stored choice: nothing stored means the design default, [NO_COLOUR]
+         * means no colour, and a name that no longer exists falls back to the default.
+         */
+        fun fromStored(severity: Severity, raw: String?): Swatch? = when (raw) {
+            null -> severity.defaultSwatch
+            NO_COLOUR -> null
+            else -> Swatch.fromName(raw) ?: severity.defaultSwatch
+        }
     }
 }
 

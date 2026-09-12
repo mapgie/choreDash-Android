@@ -1,0 +1,10 @@
+{
+  "bump": "minor",
+  "added": [
+    "A fourth severity colour, Low priority (blue by default), worn by low-priority tasks with nothing pressing.",
+    "Settings > Colours can set any severity colour to None, leaving that element plain."
+  ],
+  "changed": [
+    "Tasks always carry a colour: fresh unless the due date is close, and priority joins in. High priority counts as due soon, low priority wears the fourth colour."
+  ]
+}

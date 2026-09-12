@@ -275,7 +275,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setColourIconBy(mode) }
     }
 
-    fun setSeveritySwatch(severity: Severity, swatch: Swatch) {
+    fun setSeveritySwatch(severity: Severity, swatch: Swatch?) {
         viewModelScope.launch { settingsRepository.setSeveritySwatch(severity, swatch) }
     }
 
