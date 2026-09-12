@@ -661,7 +661,6 @@ private fun SwipeToCompleteCard(
     ) {
         TaskCard(
             task = task,
-            onToggleDone = onToggleDone,
             icon = icon,
             showCategory = showCategory,
             showOwner = showOwner,

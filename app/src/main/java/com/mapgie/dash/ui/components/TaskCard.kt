@@ -31,7 +31,7 @@ import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
-import com.mapgie.dash.ui.components.core.DoneToggleChip
+import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
@@ -55,10 +55,12 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 /**
- * The revised (turn 5a) list card for a task: urgency spine, a circular
- * done-toggle chip carrying the category's Lucide [icon] on the urgency tint,
- * title with an uppercase "CATEGORY · HIGH" caption beneath, and a single
- * right-hand row of owner avatar then due badge.
+ * The revised (turn 5a) list card for a task: urgency spine, a circular icon
+ * chip carrying the category's Lucide [icon] (a check once done) on the urgency
+ * tint, title with an uppercase "CATEGORY · HIGH" caption beneath, and a single
+ * right-hand row of owner avatar then due badge. Tapping the card opens the task;
+ * completion is a swipe-right or the overview's Mark done, so a tap never
+ * silently ticks the task off.
  *
  * Colour follows Settings › Colours' two axes, exactly as the Chores card does:
  * the spine and due badge take [spineSwatch] (the category colour, badge text
@@ -69,7 +71,6 @@ import java.time.temporal.ChronoUnit
 @Composable
 fun TaskCard(
     task: TaskDto,
-    onToggleDone: () -> Unit,
     icon: ImageVector,
     modifier: Modifier = Modifier,
     showCategory: Boolean = true,
@@ -139,10 +140,8 @@ fun TaskCard(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DoneToggleChip(
-                    isDone = isDone,
-                    onToggle = onToggleDone,
-                    icon = icon,
+                CardIconChip(
+                    icon = if (isDone) LucideIcons.Check else icon,
                     containerColor = chipContainer,
                     contentColor = chipContent,
                 )
