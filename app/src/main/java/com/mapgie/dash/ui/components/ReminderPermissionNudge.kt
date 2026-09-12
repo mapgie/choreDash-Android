@@ -29,8 +29,8 @@ import javax.inject.Inject
 /**
  * A list-screen banner that appears when a permission an alarm-style reminder
  * needs is missing, and disappears the moment the user grants it (grants are
- * re-read on every resume). Shared by the Memos and Chores lists so both nudge
- * the same way. Stays quiet for an established empty list: it shows only when a
+ * re-read on every resume). Shared by the Memos, Chores and Tasks lists so all
+ * three nudge the same way. Stays quiet for an established empty list: it shows only when a
  * reminder already exists or this is first run (see [ReminderPermissionGrants.nudgeFor]).
  *
  * When the only gap is the full-screen grant the tap opens that system toggle
