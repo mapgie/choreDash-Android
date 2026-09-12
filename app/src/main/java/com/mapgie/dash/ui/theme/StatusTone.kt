@@ -151,7 +151,10 @@ fun TaskDto.statusTone(): StatusTone {
         TaskUrgency.TODAY -> StatusTone.ATTENTION
         TaskUrgency.THIS_WEEK -> StatusTone.OK
         TaskUrgency.LATER -> StatusTone.NEUTRAL
-        TaskUrgency.NONE -> StatusTone.NONE
+        // No due date is "not pressing", the same as later: the card keeps its
+        // spine (every chore card has one) rather than going bare. Only a done
+        // task has no tone at all.
+        TaskUrgency.NONE -> StatusTone.NEUTRAL
     }
 }
 

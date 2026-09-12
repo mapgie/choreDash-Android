@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -260,6 +262,7 @@ private fun previewChore(id: String, label: String, intervalDays: Double, doneHo
  * 2dp gap. Each swatch is a 44dp radio target named after its colour, so the
  * choice is never colour-only.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SwatchRow(
     swatches: List<Swatch>,
@@ -270,7 +273,13 @@ internal fun SwatchRow(
 ) {
     val ring = MaterialTheme.colorScheme.onBackground
     val gap = LocalDashTokens.current.sheetBlock
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = modifier) {
+    // Eleven 44dp targets are wider than a phone, so the row wraps rather than
+    // clipping the last swatches to slivers at the edge.
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
         swatches.forEach { swatch ->
             val isSelected = swatch == selected
             Box(

@@ -268,7 +268,11 @@ fun DashNavGraph(
                     composable(Screen.Tasks.route) {
                         TaskListScreen(
                             pendingAddIntent = pendingAddIntent,
-                            onPendingAddIntentConsumed = { pendingAddIntent = null }
+                            onPendingAddIntentConsumed = { pendingAddIntent = null },
+                            onOpenReminderSettings = {
+                                pendingSettingsSubScreen = SettingsSubScreen.REMINDERS
+                                navigateTo(Screen.Settings.route)
+                            },
                         )
                     }
                     composable(Screen.Reminders.route) {

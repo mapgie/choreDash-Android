@@ -68,6 +68,7 @@ import com.mapgie.dash.data.model.TaskSortKey
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.EditTaskSheet
 import com.mapgie.dash.ui.components.PinWidgetChooserDialog
+import com.mapgie.dash.ui.components.ReminderPermissionNudge
 import com.mapgie.dash.ui.components.TaskCard
 import com.mapgie.dash.ui.components.TaskOverviewSheet
 import com.mapgie.dash.ui.components.core.HeaderIconButton
@@ -97,6 +98,7 @@ import kotlinx.coroutines.launch
 fun TaskListScreen(
     pendingAddIntent: AddMenuOption? = null,
     onPendingAddIntentConsumed: () -> Unit = {},
+    onOpenReminderSettings: () -> Unit = {},
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -341,6 +343,14 @@ fun TaskListScreen(
                         }
                     }
                 } else {
+                    // The same permission nudge as Memos and Chores: a task's reminder
+                    // rings through the same alarm path, so it needs the same grants.
+                    if (!uiState.zenMode) {
+                        ReminderPermissionNudge(
+                            onOpenReminderSettings = onOpenReminderSettings,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                        )
+                    }
                     // The sort pill, right-aligned. No status chips: done tasks live in
                     // the collapsible Done section below the list.
                     if (!uiState.zenMode) {
