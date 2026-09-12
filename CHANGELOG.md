@@ -31,6 +31,23 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.42.0] - 2026-09-12
+
+### Added
+- The Chores list now shows the same permission banner as Memos when an alarm-style reminder needs a system grant it does not have.
+- When full-screen alarms are the only missing grant, the banner opens that system toggle directly, one tap.
+- Private chores and tasks: give an item the Private category and it is kept on this phone only, never sent to the shared household list. Private is always in the category picker with a padlock, wears the padlock icon by default, groups under a padlocked PRIVATE heading, and shows a small padlock on its card in a flat list.
+- Changing an item's category into or out of Private moves it between this phone and the shared list; both edit sheets say so before you save.
+- Help explains that Private items stay on this phone and never sync.
+
+### Changed
+- The permission banner stays quiet on an empty list unless you have reminders set or it is your first run, so it does not nag.
+- Private is a reserved category: Settings > Categories can style and reorder it but not rename or delete it, and no other category can take its name.
+
+### Fixed
+- Opening or editing a task now colours the sheet's icon chip, due badge and category chip by the Settings > Colours axes, matching the task card and the chore sheets.
+
+---
 ## [0.41.0] - 2026-09-12
 
 ### Added
