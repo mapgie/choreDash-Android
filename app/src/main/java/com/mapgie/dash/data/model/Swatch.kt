@@ -12,9 +12,9 @@ data class SwatchTones(
 )
 
 /**
- * The seven-colour palette the user picks from in Settings › Colours (severity
- * tints) and Settings › Categories (a category's own colour). Plain Kotlin so
- * the persisted name, the settings screens and the unit tests all share it.
+ * The palette the user picks from in Settings › Colours (severity tints) and
+ * Settings › Categories (a category's own colour). Plain Kotlin so the
+ * persisted name, the settings screens and the unit tests all share it.
  *
  * Each swatch carries a hand-tuned set of tones per brightness, matching the
  * Cozy Cream / Zen Dark handoff. The dark text tones are the design's; the
@@ -60,6 +60,26 @@ enum class Swatch(
         "Peach",
         light = SwatchTones(spineArgb = 0xFFE0B28DL, textArgb = 0xFF8A562AL, tintArgb = 0xFFF6E8DCL),
         dark = SwatchTones(spineArgb = 0xFFE0B28DL, textArgb = 0xFFE0B28DL, tintArgb = 0xFF4A3A2EL),
+    ),
+    TEAL(
+        "Teal",
+        light = SwatchTones(spineArgb = 0xFF4F9D97L, textArgb = 0xFF2E6B66L, tintArgb = 0xFFDCEBE9L),
+        dark = SwatchTones(spineArgb = 0xFF6FB3ACL, textArgb = 0xFF8FCFC8L, tintArgb = 0xFF2B3D3AL),
+    ),
+    CORAL(
+        "Coral",
+        light = SwatchTones(spineArgb = 0xFFDD7F63L, textArgb = 0xFF9E4830L, tintArgb = 0xFFF7E4DCL),
+        dark = SwatchTones(spineArgb = 0xFFE39178L, textArgb = 0xFFEAA791L, tintArgb = 0xFF48332BL),
+    ),
+    SLATE(
+        "Slate",
+        light = SwatchTones(spineArgb = 0xFF7B8794L, textArgb = 0xFF4C5762L, tintArgb = 0xFFE4E7EAL),
+        dark = SwatchTones(spineArgb = 0xFF9AA6B2L, textArgb = 0xFFB4BEC8L, tintArgb = 0xFF373C42L),
+    ),
+    CLAY(
+        "Clay",
+        light = SwatchTones(spineArgb = 0xFFB56A4EL, textArgb = 0xFF9A4F34L, tintArgb = 0xFFF1E1D8L),
+        dark = SwatchTones(spineArgb = 0xFFC98363L, textArgb = 0xFFDCA184L, tintArgb = 0xFF433026L),
     );
 
     fun tones(dark: Boolean): SwatchTones = if (dark) this.dark else light
@@ -68,7 +88,7 @@ enum class Swatch(
         /** The six swatches offered for severity colours (Settings › Colours). */
         val severityPalette: List<Swatch> = listOf(ROSE, GOLD, AMBER, SAGE, BLUE, LAVENDER)
 
-        /** All seven swatches, offered for category colours (Settings › Categories). */
+        /** Every swatch, offered for category and memo colours (Settings › Categories). */
         val categoryPalette: List<Swatch> = entries.toList()
 
         fun fromName(name: String?): Swatch? = name?.let { n -> entries.firstOrNull { it.name == n } }
