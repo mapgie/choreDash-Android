@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.CategoryCatalog
+import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.SortOrder
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.SwipePair
 import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.TaskDraft
@@ -19,6 +21,8 @@ import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskSortKey
 import com.mapgie.dash.data.model.TaskUpdate
 import com.mapgie.dash.data.model.TaskUrgency
+import com.mapgie.dash.data.model.ReminderDto
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.model.reminderInstant
@@ -48,6 +52,16 @@ import javax.inject.Inject
 /** Label shown on a group header for tasks with no category. */
 const val OTHER_CATEGORY_LABEL = "Other"
 
+/**
+ * A just-deleted task held for the length of an Undo snackbar: enough to
+ * re-create it and the reminders that were attached to it.
+ */
+data class RecentTaskDelete(
+    val task: TaskDto,
+    val reminders: List<ReminderDto>,
+    val wasPinned: Boolean,
+)
+
 data class TaskUiState(
     val loading: Boolean = true,
     val error: String? = null,
@@ -62,10 +76,33 @@ data class TaskUiState(
     val zenMode: Boolean = false,
     val zenSortAscending: Boolean = true,
     val catalog: CategoryCatalog = CategoryCatalog(),
+    val colourAxes: ChoreColourAxes = ChoreColourAxes(),
+    /** Every reminder (memo) linked to a task, so a task can carry more than one. */
+    val reminders: List<ReminderDto> = emptyList(),
+    /** A task just deleted by swipe, awaiting its Undo snackbar. */
+    val recentDelete: RecentTaskDelete? = null,
     val pinChooser: PinChooserState? = null,
     /** Settings › Swipe actions for task cards. */
     val swipe: SwipePair = SwipeSubject.TASKS.default,
 ) {
+    /**
+     * How many live reminders a task carries: its linked memos that are neither
+     * archived nor already done. A task can own several, so the card shows a
+     * count, and adding one never moves the task out of the Tasks list.
+     */
+    fun activeReminderCountFor(taskId: String): Int =
+        reminders.count { it.taskId == taskId && it.archivedAt == null && !it.isDone }
+    /**
+     * The swatch the task card's spine and due badge wear, or null to follow the
+     * urgency tone. Mirrors the Chores card so both lists obey Settings › Colours'
+     * "spine + badge" axis instead of each doing its own thing.
+     */
+    fun spineSwatchFor(task: TaskDto): Swatch? =
+        colourAxes.spineSwatch(catalog.effectiveSwatch(task.category))
+
+    /** The swatch the task's round icon chip wears, or null to follow the urgency tone. */
+    fun iconSwatchFor(task: TaskDto): Swatch? =
+        colourAxes.iconSwatch(catalog.effectiveSwatch(task.category))
     val displayed: List<TaskDto>
         get() {
             // Archived tasks never show; open and done tasks are split into the
@@ -198,6 +235,7 @@ class TaskListViewModel @Inject constructor(
                         hideThresholdDays = s.taskHideThresholdDays,
                         zenMode = s.taskZenMode,
                         sort = s.taskSort,
+                        colourAxes = s.colourAxes,
                         swipe = s.swipeActions.tasks,
                     )
                 }
@@ -212,6 +250,11 @@ class TaskListViewModel @Inject constructor(
             pinnedItemStore.pinnedItem.collect { pinned ->
                 val pinnedTaskId = pinned?.takeIf { it.type == PinnedItemType.TASK }?.id
                 _uiState.update { it.copy(pinnedTaskId = pinnedTaskId) }
+            }
+        }
+        viewModelScope.launch {
+            reminderRepository.remindersFlow.collect { all ->
+                _uiState.update { state -> state.copy(reminders = all.filter { it.taskId != null }) }
             }
         }
         load()
@@ -283,17 +326,21 @@ class TaskListViewModel @Inject constructor(
     fun updateTask(id: String, update: TaskUpdate) {
         viewModelScope.launch {
             runCatching {
+                val old = _uiState.value.tasks.find { it.id == id }
+                val oldReminderAt = old?.reminderAt
                 // Cancel old-style task alarm (backward compat for reminders created before this change)
-                _uiState.value.tasks.find { it.id == id }?.let { old ->
-                    if (old.reminderAt != null) alarmScheduler.cancelTask(id)
+                if (oldReminderAt != null) alarmScheduler.cancelTask(id)
+                // Reconcile only the memo that mirrors this task's own reminder_at (it
+                // carries the exact same fire time); leave every other reminder the user
+                // attached to the task in place, so editing a task never wipes them.
+                if (oldReminderAt != null) {
+                    reminderRepository.loadReminders()
+                        .filter { it.taskId == id && it.archivedAt == null && it.remindAt == oldReminderAt }
+                        .forEach { reminder ->
+                            alarmScheduler.cancelReminder(reminder.id)
+                            reminderRepository.deleteReminder(reminder.id)
+                        }
                 }
-                // Cancel and delete any existing ReminderDto linked to this task
-                reminderRepository.loadReminders()
-                    .filter { it.taskId == id && it.archivedAt == null }
-                    .forEach { reminder ->
-                        alarmScheduler.cancelReminder(reminder.id)
-                        reminderRepository.deleteReminder(reminder.id)
-                    }
                 val task = taskRepository.updateTask(id, update)
                 if (task.reminderAt != null) {
                     task.reminderInstant()?.let { at ->
@@ -319,6 +366,20 @@ class TaskListViewModel @Inject constructor(
                 reminder.remindAtInstant()?.let { at ->
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at, insert.taskId)
                 }
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Removes one reminder from a task (from the overview's reminders list). */
+    fun deleteTaskReminder(reminderId: String) {
+        viewModelScope.launch {
+            runCatching {
+                alarmScheduler.cancelReminder(reminderId)
+                reminderRepository.deleteReminder(reminderId)
+                WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
@@ -432,6 +493,90 @@ class TaskListViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Swipe-to-delete: removes the task and its reminders, but keeps a snapshot so
+     * the Undo snackbar can restore both. The delete itself is a real delete; Undo
+     * re-creates the task (a fresh id) with its due, notes and reminders intact.
+     */
+    fun deleteTaskWithUndo(task: TaskDto) {
+        viewModelScope.launch {
+            runCatching {
+                val linked = reminderRepository.loadReminders().filter { it.taskId == task.id }
+                val wasPinned = _uiState.value.pinnedTaskId == task.id
+                alarmScheduler.cancelTask(task.id)
+                linked.forEach { reminder ->
+                    alarmScheduler.cancelReminder(reminder.id)
+                    reminderRepository.deleteReminder(reminder.id)
+                }
+                taskRepository.deleteTask(task.id)
+                if (wasPinned) pinnedItemStore.setPinned(null)
+                _uiState.update { it.copy(recentDelete = RecentTaskDelete(task, linked, wasPinned)) }
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Restores a task removed by [deleteTaskWithUndo], with its reminders. */
+    fun undoDelete(recent: RecentTaskDelete) {
+        viewModelScope.launch {
+            runCatching {
+                val t = recent.task
+                val restored = taskRepository.addTask(
+                    TaskInsert(
+                        title = t.title,
+                        notes = t.notes,
+                        category = t.category,
+                        owner = t.owner,
+                        priority = t.priority,
+                        dueDate = t.dueDate,
+                        duePeriod = t.duePeriod,
+                        reminderAt = t.reminderAt,
+                    )
+                )
+                // addTask re-creates and schedules the reminder_at mirror memo, so skip it
+                // here; re-create every other reminder that was attached to the task.
+                recent.reminders
+                    .filterNot { it.remindAt == t.reminderAt }
+                    .forEach { r ->
+                        val re = reminderRepository.addReminder(
+                            ReminderInsert(
+                                subject = r.subject,
+                                remindAt = r.remindAt,
+                                taskId = restored.id,
+                                repeatDays = r.repeatDays,
+                                sound = r.sound,
+                                colour = r.colour,
+                                icon = r.icon,
+                            )
+                        )
+                        if (r.archivedAt == null && !r.reminded && r.completedAt == null) {
+                            re.remindAtInstant()?.let { at ->
+                                if (at.isAfter(Instant.now())) {
+                                    alarmScheduler.scheduleReminder(re.id, re.subject, at, restored.id)
+                                }
+                            }
+                        }
+                    }
+                t.completedAt?.let { done ->
+                    runCatching { Instant.parse(done) }.getOrNull()?.let { taskRepository.markDone(restored.id, it) }
+                }
+                if (recent.wasPinned) {
+                    pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.TASK, restored.id))
+                }
+                _uiState.update { it.copy(recentDelete = null) }
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    fun clearRecentDelete() = _uiState.update { it.copy(recentDelete = null) }
 
     /** Sort pill choice; applied immediately and persisted. */
     fun setSort(order: SortOrder<TaskSortKey>) {

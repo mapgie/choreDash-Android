@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.ReminderInsert
+import com.mapgie.dash.data.model.isDone
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.SwipeAction
 import com.mapgie.dash.data.model.SwipeDirection
 import com.mapgie.dash.data.model.SwipePair
@@ -155,7 +157,7 @@ fun TaskListScreen(
                     if (result == SnackbarResult.ActionPerformed) viewModel.archiveTask(task.id, false)
                 }
             }
-            SwipeAction.DELETE -> viewModel.deleteTask(task.id)
+            SwipeAction.DELETE -> viewModel.deleteTaskWithUndo(task)
             SwipeAction.SNOOZE, SwipeAction.NONE -> Unit
         }
     }
@@ -177,6 +179,19 @@ fun TaskListScreen(
             snackbarHost.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    // Undo snackbar for a swipe-deleted task.
+    LaunchedEffect(uiState.recentDelete) {
+        val recent = uiState.recentDelete ?: return@LaunchedEffect
+        snackbarHost.currentSnackbarData?.dismiss()
+        val result = snackbarHost.showSnackbar(
+            message = "“${recent.task.title}” deleted",
+            actionLabel = "Undo",
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete(recent)
+        else viewModel.clearRecentDelete()
     }
 
     LaunchedEffect(pendingAddIntent) {
@@ -310,12 +325,11 @@ fun TaskListScreen(
                             SwipeToCompleteCard(
                                 task = task,
                                 icon = iconFor(task),
+                                spineSwatch = uiState.spineSwatchFor(task),
+                                iconSwatch = uiState.iconSwatchFor(task),
+                                reminderCount = uiState.activeReminderCountFor(task.id),
                                 onTap = { overviewTask = it; showOverviewSheet = true },
                                 onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                onToggleDone = {
-                                    if (task.completedAt != null) viewModel.markUndone(task.id)
-                                    else completeTaskWithUndo(task)
-                                },
                                 swipe = uiState.swipe,
                                 onSwipe = { swipeTask(it, task) },
                                 isPinned = task.id == uiState.pinnedTaskId,
@@ -383,9 +397,11 @@ fun TaskListScreen(
                                         SwipeToCompleteCard(
                                             task = task,
                                             icon = iconFor(task),
+                                            spineSwatch = uiState.spineSwatchFor(task),
+                                            iconSwatch = uiState.iconSwatchFor(task),
+                                            reminderCount = uiState.activeReminderCountFor(task.id),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                            onToggleDone = { completeTaskWithUndo(task) },
                                             swipe = uiState.swipe,
                                             onSwipe = { swipeTask(it, task) },
                                             showCategory = false,
@@ -420,9 +436,11 @@ fun TaskListScreen(
                                     SwipeToCompleteCard(
                                         task = task,
                                         icon = iconFor(task),
+                                        spineSwatch = uiState.spineSwatchFor(task),
+                                        iconSwatch = uiState.iconSwatchFor(task),
+                                        reminderCount = uiState.activeReminderCountFor(task.id),
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                        onToggleDone = { completeTaskWithUndo(task) },
                                         swipe = uiState.swipe,
                                         onSwipe = { swipeTask(it, task) },
                                         showCategory = !uiState.groupByCategory,
@@ -458,9 +476,11 @@ fun TaskListScreen(
                                         SwipeToCompleteCard(
                                             task = task,
                                             icon = iconFor(task),
+                                            spineSwatch = uiState.spineSwatchFor(task),
+                                            iconSwatch = uiState.iconSwatchFor(task),
+                                            reminderCount = uiState.activeReminderCountFor(task.id),
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
-                                            onToggleDone = { viewModel.markUndone(task.id) },
                                             swipe = uiState.swipe,
                                             onSwipe = { swipeTask(it, task) },
                                             showCategory = !uiState.groupByCategory,
@@ -497,7 +517,7 @@ fun TaskListScreen(
             categories = uiState.categories,
             onSave = { insert -> viewModel.addTask(insert) },
             onUpdate = { update -> editingTaskId?.let { viewModel.updateTask(it, update) } },
-            onDelete = { editingTaskId?.let { viewModel.deleteTask(it) } },
+            onDelete = { editingTask?.let { viewModel.deleteTaskWithUndo(it) } },
             onDismiss = { showTaskSheet = false; editingTaskId = null },
             draft = remember(draftKey) { viewModel.taskDrafts.get(draftKey) },
             onDraftChange = { viewModel.taskDrafts.put(draftKey, it) },
@@ -512,6 +532,10 @@ fun TaskListScreen(
             icon = iconFor(task),
             isPinned = task.id == uiState.pinnedTaskId,
             sheetState = overviewSheetState,
+            reminders = uiState.reminders
+                .filter { it.taskId == task.id && it.archivedAt == null && !it.isDone }
+                .sortedBy { it.remindAt },
+            onDeleteReminder = { viewModel.deleteTaskReminder(it.id) },
             onMarkDone = { t, at ->
                 viewModel.markDone(t.id, at)
                 showOverviewSheet = false
@@ -561,6 +585,7 @@ fun TaskListScreen(
             onDismiss = { viewModel.dismissPinChooser() }
         )
     }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -570,12 +595,14 @@ private fun SwipeToCompleteCard(
     icon: ImageVector,
     onTap: (TaskDto) -> Unit,
     onLongPress: (TaskDto) -> Unit,
-    onToggleDone: () -> Unit,
     swipe: SwipePair,
     onSwipe: (SwipeAction) -> Unit,
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
+    spineSwatch: Swatch? = null,
+    iconSwatch: Swatch? = null,
+    reminderCount: Int = 0,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
@@ -619,11 +646,13 @@ private fun SwipeToCompleteCard(
     ) {
         TaskCard(
             task = task,
-            onToggleDone = onToggleDone,
             icon = icon,
             showCategory = showCategory,
             showOwner = showOwner,
             zenMode = zenMode,
+            spineSwatch = spineSwatch,
+            iconSwatch = iconSwatch,
+            reminderCount = reminderCount,
             isPinned = isPinned,
             highlightQuery = highlightQuery,
             modifier = Modifier
@@ -639,7 +668,7 @@ private fun SwipeToCompleteCard(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete task?") },
-            text = { Text("“${task.title}” will be permanently removed.") },
+            text = { Text("“${task.title}” and its reminders will be removed. You can undo straight after.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false

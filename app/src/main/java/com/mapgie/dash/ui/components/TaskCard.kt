@@ -18,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,12 +25,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
 import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
 import com.mapgie.dash.data.model.priorityEnum
 import com.mapgie.dash.data.model.urgency
-import com.mapgie.dash.ui.components.core.DoneToggleChip
+import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.MetaLabel
 import com.mapgie.dash.ui.components.core.OwnerAvatar
@@ -45,32 +45,40 @@ import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.mutedCardContainer
+import com.mapgie.dash.ui.theme.spineColor
 import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
-import java.time.Instant
+import com.mapgie.dash.ui.theme.tintColor
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 /**
- * The revised (turn 5a) list card for a task: urgency spine, a circular
- * done-toggle chip carrying the category's Lucide [icon] on the urgency tint,
- * title with an uppercase "CATEGORY · HIGH" caption beneath, and a single
- * right-hand row of owner avatar then due badge.
+ * The revised (turn 5a) list card for a task: urgency spine, a circular icon
+ * chip carrying the category's Lucide [icon] (a check once done) on the urgency
+ * tint, title with an uppercase "CATEGORY · HIGH" caption beneath, and a single
+ * right-hand row of owner avatar then due badge. Tapping the card opens the task;
+ * completion is a swipe-right or the overview's Mark done, so a tap never
+ * silently ticks the task off.
  *
- * The spine colour means urgency (the app-wide bar meaning, see `StatusTone.kt`);
- * priority is carried by the caption text, never by colour alone.
+ * Colour follows Settings › Colours' two axes, exactly as the Chores card does:
+ * the spine and due badge take [spineSwatch] (the category colour, badge text
+ * neutral) or, when it is null, the urgency status tone; the round icon chip does
+ * the same with [iconSwatch]. Priority is always carried by the caption text, and
+ * the badge words restate the state, so colour is never the only signal.
  */
 @Composable
 fun TaskCard(
     task: TaskDto,
-    onToggleDone: () -> Unit,
     icon: ImageVector,
     modifier: Modifier = Modifier,
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
+    spineSwatch: Swatch? = null,
+    iconSwatch: Swatch? = null,
+    reminderCount: Int = 0,
     isPinned: Boolean = false,
     highlightQuery: String? = null
 ) {
@@ -78,15 +86,21 @@ fun TaskCard(
     val accents = LocalTypeAccents.current
     val tone = task.statusTone()
     val dark = isDarkScheme()
-    val barColor = if (zenMode) Color.Transparent else tone.barColor()
+    val barColor = when {
+        zenMode -> Color.Transparent
+        spineSwatch != null -> spineSwatch.spineColor()
+        else -> tone.barColor()
+    }
 
     val chipContainer = when {
         zenMode -> Color.Transparent
         isDone -> MaterialTheme.colorScheme.surfaceContainerHigh
+        iconSwatch != null -> iconSwatch.tintColor()
         else -> tone.badgeContainerColor() ?: accents.taskContainer
     }
     val chipContent = when {
         zenMode || isDone -> MaterialTheme.colorScheme.onSurfaceVariant
+        iconSwatch != null -> iconSwatch.textColor()
         tone == StatusTone.NEUTRAL || tone == StatusTone.NONE -> accents.onTaskContainer
         else -> tone.textColor()
     }
@@ -126,10 +140,8 @@ fun TaskCard(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DoneToggleChip(
-                    isDone = isDone,
-                    onToggle = onToggleDone,
-                    icon = icon,
+                CardIconChip(
+                    icon = if (isDone) LucideIcons.Check else icon,
                     containerColor = chipContainer,
                     contentColor = chipContent,
                 )
@@ -161,20 +173,20 @@ fun TaskCard(
                                 modifier = Modifier.size(14.dp)
                             )
                         }
-                        if (task.reminderAt != null && task.reminded != true && !isDone) {
-                            val reminderInstant = remember(task.reminderAt) {
-                                runCatching { Instant.parse(task.reminderAt) }.getOrNull()
-                            }
-                            val isReminderPast = reminderInstant != null && reminderInstant.isBefore(Instant.now())
+                        if (reminderCount > 0 && !isDone) {
                             Icon(
                                 imageVector = LucideIcons.Bell,
-                                contentDescription = if (isReminderPast) "Reminder passed" else "Reminder set",
-                                tint = if (isReminderPast)
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else
-                                    MaterialTheme.colorScheme.primary,
+                                contentDescription = if (reminderCount == 1) "1 reminder" else "$reminderCount reminders",
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
+                            if (reminderCount > 1) {
+                                Text(
+                                    text = reminderCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                     if (zenMode) {
@@ -199,7 +211,7 @@ fun TaskCard(
                     task.owner?.takeIf { showOwner && it.isNotBlank() }?.let { owner ->
                         OwnerAvatar(handle = owner)
                     }
-                    if (!zenMode && !isDone) DueBadge(task = task)
+                    if (!zenMode && !isDone) DueBadge(task = task, spineSwatch = spineSwatch)
                 }
             }
         }
@@ -211,28 +223,36 @@ fun TaskCard(
  * anything further out, matching the handoff's right-hand cluster.
  */
 @Composable
-private fun DueBadge(task: TaskDto) {
+private fun DueBadge(task: TaskDto, spineSwatch: Swatch? = null) {
     val today = LocalDate.now(ZoneId.systemDefault())
     val date = task.dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    // When the spine follows the category colour, the badge follows it too (they
+    // are one axis); the badge text drops to neutral so the words still lead.
+    val containerOverride = spineSwatch?.tintColor()
+    val textOverride = if (spineSwatch != null) MaterialTheme.colorScheme.onSurfaceVariant else null
     // "Eventually" carries no urgency but is still worth showing, so it never reads
     // as a task with no due at all.
     if (task.dueDate == null && task.duePeriod == "eventually") {
-        StatusBadge(text = "eventually", tone = StatusTone.NEUTRAL)
+        StatusBadge(text = "eventually", tone = StatusTone.NEUTRAL, containerOverride = containerOverride, textOverride = textOverride)
         return
     }
     when (task.urgency()) {
         TaskUrgency.OVERDUE -> {
             val late = date?.let { ChronoUnit.DAYS.between(it, today) } ?: 1L
-            StatusBadge(text = "${late}d late", tone = StatusTone.CRITICAL)
+            StatusBadge(text = "${late}d late", tone = StatusTone.CRITICAL, containerOverride = containerOverride, textOverride = textOverride)
         }
-        TaskUrgency.TODAY -> StatusBadge(text = "today", tone = StatusTone.ATTENTION)
+        TaskUrgency.TODAY -> StatusBadge(text = "today", tone = StatusTone.ATTENTION, containerOverride = containerOverride, textOverride = textOverride)
         TaskUrgency.THIS_WEEK -> StatusBadge(
             text = date?.format(DateTimeFormatter.ofPattern("EEE")) ?: "this week",
             tone = StatusTone.NEUTRAL,
+            containerOverride = containerOverride,
+            textOverride = textOverride,
         )
         TaskUrgency.LATER -> StatusBadge(
             text = date?.format(DateTimeFormatter.ofPattern("d MMM")) ?: "this month",
             tone = StatusTone.NEUTRAL,
+            containerOverride = containerOverride,
+            textOverride = textOverride,
         )
         TaskUrgency.NONE -> Unit
     }

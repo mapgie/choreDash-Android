@@ -383,6 +383,117 @@ object LucideIcons {
         )
     }
 
+    val PawPrint: ImageVector by lazy {
+        lucide(
+            "PawPrint",
+            listOf(
+                circle(11f, 4f, 2f),
+                circle(18f, 8f, 2f),
+                circle(20f, 16f, 2f),
+                "M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z",
+            ),
+        )
+    }
+
+    val Baby: ImageVector by lazy {
+        lucide(
+            "Baby",
+            listOf(
+                "M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5",
+                "M15 12h.2",
+                "M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1",
+                "M9 12h.2",
+            ),
+        )
+    }
+
+    val Dumbbell: ImageVector by lazy {
+        lucide(
+            "Dumbbell",
+            listOf(
+                "M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z",
+                "m2.5 21.5 1.4-1.4",
+                "m20.1 3.9 1.4-1.4",
+                "M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z",
+                "m9.6 14.4 4.8-4.8",
+            ),
+        )
+    }
+
+    val ShoppingCart: ImageVector by lazy {
+        lucide(
+            "ShoppingCart",
+            listOf(
+                "m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18",
+                "M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25",
+                circle(18f, 20f, 2f),
+                circle(8f, 20f, 2f),
+            ),
+        )
+    }
+
+    val Wrench: ImageVector by lazy {
+        lucide(
+            "Wrench",
+            listOf(
+                "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z",
+            ),
+        )
+    }
+
+    val BookOpen: ImageVector by lazy {
+        lucide(
+            "BookOpen",
+            listOf(
+                "M12 5v16",
+                "M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z",
+            ),
+        )
+    }
+
+    val Gift: ImageVector by lazy {
+        lucide(
+            "Gift",
+            listOf(
+                "M12 7v14",
+                "M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8",
+                "M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5",
+                rect(3f, 7f, 18f, 4f, 1f),
+            ),
+        )
+    }
+
+    val Briefcase: ImageVector by lazy {
+        lucide(
+            "Briefcase",
+            listOf(
+                "M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16",
+                rect(2f, 6f, 20f, 14f, 2f),
+            ),
+        )
+    }
+
+    val Wallet: ImageVector by lazy {
+        lucide(
+            "Wallet",
+            listOf(
+                "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1",
+                "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4",
+            ),
+        )
+    }
+
+    val GraduationCap: ImageVector by lazy {
+        lucide(
+            "GraduationCap",
+            listOf(
+                "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z",
+                "M22 10v6",
+                "M6 12.5V16a6 3 0 0 0 12 0v-3.5",
+            ),
+        )
+    }
+
     /** Resolves the drawable for a persisted [CategoryIcon]. */
     fun forCategory(icon: CategoryIcon): ImageVector = when (icon) {
         CategoryIcon.DROPLET -> Droplet
@@ -402,6 +513,16 @@ object LucideIcons {
         CategoryIcon.BRUSH -> Brush
         CategoryIcon.LEAF -> Leaf
         CategoryIcon.LAMP -> Lamp
+        CategoryIcon.PAW_PRINT -> PawPrint
+        CategoryIcon.BABY -> Baby
+        CategoryIcon.DUMBBELL -> Dumbbell
+        CategoryIcon.SHOPPING_CART -> ShoppingCart
+        CategoryIcon.WRENCH -> Wrench
+        CategoryIcon.BOOK_OPEN -> BookOpen
+        CategoryIcon.GIFT -> Gift
+        CategoryIcon.BRIEFCASE -> Briefcase
+        CategoryIcon.WALLET -> Wallet
+        CategoryIcon.GRADUATION_CAP -> GraduationCap
         CategoryIcon.CIRCLE_ALERT -> CircleAlert
     }
 }

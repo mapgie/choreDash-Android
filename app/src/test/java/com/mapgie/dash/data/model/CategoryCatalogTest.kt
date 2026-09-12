@@ -28,6 +28,17 @@ class CategoryCatalogTest {
     }
 
     @Test
+    fun `the added keyword defaults cover pets, fitness, money and school`() {
+        val catalog = CategoryCatalog()
+        assertEquals(CategoryIcon.PAW_PRINT, catalog.iconFor("Pets"))
+        assertEquals(CategoryIcon.DUMBBELL, catalog.iconFor("Gym"))
+        assertEquals(CategoryIcon.SHOPPING_CART, catalog.iconFor("Groceries"))
+        assertEquals(CategoryIcon.WALLET, catalog.iconFor("Money"))
+        assertEquals(CategoryIcon.GRADUATION_CAP, catalog.iconFor("School run"))
+        assertEquals(CategoryIcon.GIFT, catalog.iconFor("Birthday presents"))
+    }
+
+    @Test
     fun `general is always listed last and cannot be added or reordered`() {
         val catalog = CategoryCatalog().added("General").added("Car").withOrder(listOf("General", "Car", "Plants"))
         assertEquals(listOf("Car", "Plants"), catalog.order)
