@@ -103,8 +103,6 @@ enum class SettingsSubScreen {
     NONE, CONNECTION, APPEARANCE, COLOURS, CATEGORIES, DISPLAY, QUICK_ADD, SWIPE, REMINDERS, WIDGET, TAGS, ABOUT, HELP
 }
 
-private const val CHANGELOG_URL = "https://github.com/mapgie/choreDash-Android/blob/main/CHANGELOG.md"
-
 /** Content inset for every settings page (18dp per the 3a/4a mock-ups). */
 private val PageInset = 18.dp
 
@@ -201,6 +199,7 @@ fun SettingsScreen(
         SettingsSubScreen.ABOUT -> AboutSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
             onNavigateToLicenses = onNavigateToLicenses,
+            onOpenHelp = { subScreen = SettingsSubScreen.HELP },
         )
         SettingsSubScreen.HELP -> HelpSubScreen(
             onBack = { subScreen = SettingsSubScreen.NONE },
@@ -1198,8 +1197,8 @@ private fun WidgetSubScreen(
 private fun AboutSubScreen(
     onBack: () -> Unit,
     onNavigateToLicenses: () -> Unit,
+    onOpenHelp: () -> Unit,
 ) {
-    val context = LocalContext.current
     var showChangelog by remember { mutableStateOf(false) }
 
     SettingsSubScreenScaffold(title = "About", onBack = onBack) { innerPadding ->
@@ -1265,20 +1264,12 @@ private fun AboutSubScreen(
     }
 
     if (showChangelog) {
-        val entries = remember {
-            runCatching {
-                val text = context.assets.open("CHANGELOG.md").use { input ->
-                    BufferedReader(InputStreamReader(input)).readText()
-                }
-                parseChangelog(text)
-            }.getOrDefault(emptyList())
-        }
-        ChangelogDialog(
-            entries = entries,
+        WhatsNewDialog(
             onDismiss = { showChangelog = false },
-            onViewFullChangelog = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CHANGELOG_URL)))
-            }
+            onOpenHelp = {
+                showChangelog = false
+                onOpenHelp()
+            },
         )
     }
 }

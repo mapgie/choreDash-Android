@@ -34,6 +34,7 @@ import com.mapgie.dash.ui.components.AddMenuButton
 import com.mapgie.dash.ui.components.SpeedDialOverlay
 import com.mapgie.dash.ui.components.TagAlarmConflictDialog
 import com.mapgie.dash.ui.components.WelcomeSheet
+import com.mapgie.dash.ui.screens.settings.WhatsNewDialog
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.screens.chores.ChoreListScreen
 import com.mapgie.dash.ui.screens.licenses.LicensesScreen
@@ -123,6 +124,7 @@ fun DashNavGraph(
     var pendingSettingsSubScreen by remember { mutableStateOf<SettingsSubScreen?>(null) }
 
     val navUiState by navViewModel.uiState.collectAsStateWithLifecycle()
+    val showWhatsNew by navViewModel.showWhatsNew.collectAsStateWithLifecycle()
     // The Memos/Reminders slot is always present, so the five-slot bar never
     // reshapes under the thumb (handoff: fixed Tasks · Chores · + · Memos · Settings).
     val navItems = allNavItems
@@ -336,6 +338,17 @@ fun DashNavGraph(
                 WelcomeSheet(
                     reminderLabel = navUiState.reminderLabel.displayName,
                     onDismiss = { navViewModel.markWelcomeSeen() },
+                )
+            } else if (showWhatsNew) {
+                // After an in-place update: the changelog for the new version,
+                // with a way through to the how-to-use pages.
+                WhatsNewDialog(
+                    onDismiss = { navViewModel.dismissWhatsNew() },
+                    onOpenHelp = {
+                        navViewModel.dismissWhatsNew()
+                        pendingSettingsSubScreen = SettingsSubScreen.HELP
+                        navigateTo(Screen.Settings.route)
+                    },
                 )
             }
 
