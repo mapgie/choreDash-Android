@@ -1,6 +1,7 @@
 package com.mapgie.dash.notification
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -90,5 +91,39 @@ class ReminderPermissionsTest {
     fun `an unknown stored mode is treated as a plain notification`() {
         assertTrue(all.copy(fullScreen = false).missingFor("LOUD").isEmpty())
         assertEquals(listOf(ReminderPermission.NOTIFICATIONS), all.copy(notifications = false).missingFor(""))
+    }
+
+    @Test
+    fun `no nudge for an empty list that is past first run`() {
+        val grants = all.copy(notifications = false, fullScreen = false)
+        assertNull(grants.nudgeFor(DeliveryMode.ALARM, "memos", hasReminders = false, firstRun = false))
+    }
+
+    @Test
+    fun `first run nudges even with no reminders yet`() {
+        val grants = all.copy(notifications = false)
+        val nudge = grants.nudgeFor(DeliveryMode.NOTIFICATION, "memos", hasReminders = false, firstRun = true)
+        assertEquals("Notifications are off, so memos cannot alert you. Tap to allow.", nudge?.text)
+        assertFalse(nudge!!.fullScreenOnly)
+    }
+
+    @Test
+    fun `full-screen only gap nudges with the direct-toggle flag set`() {
+        val grants = all.copy(fullScreen = false)
+        val nudge = grants.nudgeFor(DeliveryMode.ALARM, "memos", hasReminders = true, firstRun = false)
+        assertEquals("Full-screen alarms are off, so memos may ring silently. Tap to allow.", nudge?.text)
+        assertTrue(nudge!!.fullScreenOnly)
+    }
+
+    @Test
+    fun `full-screen plus another gap does not set the direct-toggle flag`() {
+        val grants = all.copy(notifications = false, fullScreen = false)
+        val nudge = grants.nudgeFor(DeliveryMode.ALARM, "memos", hasReminders = true, firstRun = false)
+        assertFalse(nudge!!.fullScreenOnly)
+    }
+
+    @Test
+    fun `nothing missing means no nudge even with reminders`() {
+        assertNull(all.nudgeFor(DeliveryMode.ALARM, "memos", hasReminders = true, firstRun = true))
     }
 }
