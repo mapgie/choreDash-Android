@@ -88,14 +88,55 @@ list screens.
 - Choose test timestamps mid-window (36h, 180h, 300h) so now-relative arithmetic cannot flip
   a bucket during the run.
 
+## Where to start (a map for a fresh session)
+
+The repo has ~145 Kotlin files. Most tasks touch one seam. Find it here before
+reading code.
+
+| To change... | Start at | Then |
+|---|---|---|
+| What a list shows (filter, sort, sections, hiding) | `ui/screens/<tab>/*ListViewModel.kt`, the `*UiState` class at the top | Its test in `app/src/test/.../ui/screens/<tab>/` |
+| A card's look | `ui/components/<Thing>Card.kt`; badges/chips in `ui/components/core/` | Tones in `ui/theme/StatusTone.kt` |
+| An edit sheet | `ui/components/Edit<Thing>Sheet.kt` / `AddReminderSheet.kt`; shared rows in `ui/components/sheet/SheetParts.kt` | Drafts in `data/model/SheetDraft.kt` |
+| When a memo or tag-alarm rings, arms, advances | `data/model/Reminder.kt` (memo lifecycle) and `data/model/TagAlarm.kt` (tag-alarm rules); `ReminderSchedule.kt` for the words | `ReminderModelTest`, `TagAlarmModelTest`, `ReminderScheduleTest` |
+| Arming / turning off a tag-alarm from anywhere | `tagalarm/TagAlarmService.kt` (the only entry point) | Callers: `MainActivity`, `RemindersListViewModel`, `ReminderViewViewModel` |
+| What happens on an NFC tap | `MainActivity.handleNfcIntent` → `routeScannedTag` (tag-alarm first, then chore paths) | `nfc/NfcHandler.kt` for reading, writing, erasing |
+| Scheduling, ringing, boot, snooze | `alarm/AlarmScheduler.kt` (`syncReminder` after every mutation), `AlarmReceiver`, `AlarmActionReceiver`, `BootWorker`, `AlarmActivity` + `AlarmRinger` | `notification/NotificationHelper.kt` for channels and the full-screen intent |
+| A Settings page | `ui/screens/settings/SettingsScreen.kt` (the `SettingsSubScreen` enum and dispatch) + one `<Name>SubScreen.kt`; controls in `CozyControls.kt` | Its own `<Name>ViewModel.kt` if it has state worth testing (`TagsViewModel` is the pattern) |
+| Supabase reads/writes | `data/repository/ChoreRepository.kt`, `TaskRepository.kt` | `supabase/schema.sql` for tables, RLS, grants |
+| Widgets | `widget/` (Glance); destinations in `WidgetNav.kt` | `WidgetUpdater.updateAll` after data changes |
+| Theme, palettes, contrast | `ui/theme/Theme.kt`, `Color.kt`, `DashTokens.kt`, `Contrast.kt` | |
+
+Facts that save a detour:
+
+- A **chore is a row in the `tags` table**; its `tagId` is the primary key and the
+  NFC id. Chore ids and tag-alarm tag ids share one id space; a tag has one job.
+- **Memos are on-device** (`ReminderRepository`, DataStore). They never reach
+  Supabase. So are settings, category styles, snoozes and the sticker record.
+- **State that crosses tabs lives on `MainActivity`** as `mutableStateOf` and is
+  handed through `DashNavGraph` as parameters plus "consumed" callbacks: pending
+  NFC tag, NFC write request, NFC capture, notification deep link, tag-alarm
+  conflict. Follow that pattern rather than a new bus.
+- **Every alarm mutation ends with `alarmScheduler.syncReminder(record)`.** It
+  cancels and re-arms from the record, so the receiver, boot and snooze paths
+  need no per-feature alarm code (LESSONS #57).
+- **Pure state, tested.** List logic lives in `*UiState` data classes and
+  `data/model`, never in composables. Tests are named for behaviours.
+- **Errors shown to users go through `userFacingMessage()`** (`data/supabase/`),
+  which keeps the reason and drops the request dump.
+- **No build here.** The web/remote container has no Android SDK; CI is the check.
+  `python3 a11y_check.py` and `python3 check_changelog_fragment.py` do run.
+- `LESSONS.md` is long: `grep -n "^## [0-9]" LESSONS.md` lists the headings;
+  read only the ones your task touches.
+
 ## Architecture Notes
 
 - **UI layer:** Jetpack Compose + Material 3, MVVM with ViewModels; navigation via Compose Navigation (single Activity, `DashNavGraph.kt`)
 - **DI:** Hilt (`di/AppModule.kt`, `di/SupabaseModule.kt`)
 - **Data layer:** `ChoreRepository` and `TaskRepository` read/write a shared Supabase project (Postgrest) for `chores`, `chore_logs`, `todos`, `owners` — no local database for chore/task data. `SettingsRepository` (DataStore) persists Supabase credentials and user preferences locally. A small Room database (`data/database/AppDatabase.kt`, `dash.db`) stores saved custom colour themes only — schema changes need an explicit migration, never `fallbackToDestructiveMigration`.
 - **Theme:** Five built-in Material 3 palettes (Cream default, implementing the "Cozy Cream" design system; Mist, Sage, Coral, Teal in `ui/theme/Color.kt`) plus a custom theme with per-role colour pickers and background overrides; light/dark/system brightness and a WCAG high-contrast toggle (`DashTheme` in `ui/theme/Theme.kt`). Headers use Lora (serif), body/UI text uses Nunito (`ui/theme/Type.kt`); shared shape/spacing tokens live in `ui/theme/Shape.kt` and `ui/theme/Dimens.kt`, and the fixed status tones (rose/amber/sage) in `ui/theme/Color.kt` + `ui/theme/StatusTone.kt`.
-- **Background work:** WorkManager (`BootWorker`, `DailyStaleChoreWorker`) + AlarmManager (`AlarmScheduler`, `AlarmReceiver`) for task reminders, scheduled via Hilt-injected workers.
-- **NFC:** `MainActivity` handles NFC foreground dispatch; `NfcHandler` extracts tag IDs to match against chores.
+- **Background work:** WorkManager (`BootWorker`, `DailyStaleChoreWorker`) + AlarmManager (`AlarmScheduler`, `AlarmReceiver`, `AlarmActivity` for the full-screen ring) for task reminders and memos, scheduled via Hilt-injected workers. A tag-alarm's morning (first ring plus follow-ups) advances through the memo's `remindAt` under one alarm identity.
+- **NFC:** `MainActivity` handles NFC foreground dispatch and routes a scanned id: a tag-alarm's tag arms it (`TagAlarmService`), anything else goes to the chore paths. `NfcHandler` reads ids (text record, `chordash://tag?tag=` or `chordash://memo?memo=` URI, hardware UID), writes them, and erases stickers. Settings › NFC tags (`TagsSubScreen`) is the maintenance page.
 - **Permissions:** `NFC`, `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `INTERNET` (required for Supabase), `ACCESS_NOTIFICATION_POLICY` (lets the app appear in Settings > Do Not Disturb access and lets reminder alarms bypass Do Not Disturb). Do not add new permissions without discussion, and document the reason for each one in the manifest.
 
 ## Key Rules
