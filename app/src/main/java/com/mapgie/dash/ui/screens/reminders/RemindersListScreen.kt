@@ -29,7 +29,6 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -40,16 +39,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.NEW_DRAFT_KEY
 import com.mapgie.dash.data.model.ReminderAppearance
@@ -62,7 +57,6 @@ import com.mapgie.dash.data.model.SwipePair
 import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.isTagAlarm
-import com.mapgie.dash.permission.PermissionHelper
 import com.mapgie.dash.ui.components.AddReminderSheet
 import com.mapgie.dash.ui.components.ReminderCard
 import com.mapgie.dash.ui.components.TagAlarmConflictDialog
@@ -71,13 +65,13 @@ import com.mapgie.dash.nfc.NfcWriteResult
 import com.mapgie.dash.ui.components.core.HeaderIconButton
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.PageHeader
-import com.mapgie.dash.ui.components.core.PermissionBanner
 import com.mapgie.dash.ui.components.core.SearchRow
 import com.mapgie.dash.ui.components.core.SectionLabel
 import com.mapgie.dash.ui.components.core.SortControls
 import com.mapgie.dash.ui.components.core.SortSheet
 import com.mapgie.dash.ui.components.core.SwipeActionBackground
 import com.mapgie.dash.ui.components.core.toSwipeDirection
+import com.mapgie.dash.ui.components.ReminderPermissionNudge
 import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -94,10 +88,11 @@ import kotlinx.coroutines.launch
  * The owner ("mine / all") header action the design shows is not built: memos
  * carry no owner, so there is nothing to filter by.
  *
- * Above the filter row, a permission banner appears whenever a system grant the
- * chosen notification style depends on is missing (full-screen alarms for the
- * Alarm style, say), since a memo that fires silently is worse than none.
- * Tapping it opens Settings › Reminders & alerts via [onOpenReminderSettings].
+ * Above the filter row sits the shared [ReminderPermissionNudge]: a banner shown
+ * whenever a system grant the chosen notification style depends on is missing
+ * (full-screen alarms for the Alarm style, say), since a memo that fires silently
+ * is worse than none. The full-screen case taps straight to that system toggle;
+ * anything else opens Settings › Reminders & alerts via [onOpenReminderSettings].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,19 +115,6 @@ fun RemindersListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
-    // The system grants reminders depend on, re-read on every resume so a change
-    // made in system settings shows the moment the user comes back.
-    val context = LocalContext.current
-    var grants by remember { mutableStateOf(PermissionHelper.reminderGrants(context)) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) grants = PermissionHelper.reminderGrants(context)
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     // Swipe-to-done leaves a brief Undo, so a stray swipe is one tap to reverse.
     // On a tag-alarm the swipe turns it off, and Undo arms it again.
@@ -288,13 +270,10 @@ fun RemindersListScreen(
                 return@Scaffold
             }
 
-            grants.warningFor(uiState.deliveryMode, plural)?.let { warning ->
-                PermissionBanner(
-                    text = warning,
-                    onClick = onOpenReminderSettings,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
-                )
-            }
+            ReminderPermissionNudge(
+                onOpenReminderSettings = onOpenReminderSettings,
+                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+            )
 
             // Filter chips, then the sort pill pinned to the right.
             Row(

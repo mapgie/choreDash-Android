@@ -89,6 +89,7 @@ import com.mapgie.dash.ui.theme.Dimens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.LocalDashTokens
+import com.mapgie.dash.ui.components.ReminderPermissionNudge
 import com.mapgie.dash.ui.components.ZenRow
 import com.mapgie.dash.ui.components.ZenScopeToggle
 import com.mapgie.dash.data.model.OwnerFilter
@@ -113,6 +114,7 @@ fun ChoreListScreen(
     onNfcWriteResultConsumed: () -> Unit,
     pendingAddIntent: AddMenuOption? = null,
     onPendingAddIntentConsumed: () -> Unit = {},
+    onOpenReminderSettings: () -> Unit = {},
     viewModel: ChoreListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -401,6 +403,12 @@ fun ChoreListScreen(
                         }
                     }
                 } else {
+                    if (!uiState.zenMode) {
+                        ReminderPermissionNudge(
+                            onOpenReminderSettings = onOpenReminderSettings,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                        )
+                    }
                     // Filter chips, then the sort pill pinned to the right.
                     if (!uiState.zenMode) {
                         Row(

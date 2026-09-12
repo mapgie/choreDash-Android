@@ -76,4 +76,31 @@ data class ReminderPermissionGrants(
             else -> "${missing.size} permissions are off, so $plural may not ring. Tap to review."
         }
     }
+
+    /**
+     * The permission nudge a list screen shows, or null. Stays quiet for a user
+     * who has no reminders yet unless this is first run, so an established empty
+     * list is never nagged. [hasReminders] is whether any reminder exists;
+     * [firstRun] whether the first-run welcome has yet to be dismissed. The text
+     * is [warningFor]; [ReminderNudge.fullScreenOnly] lets the banner jump
+     * straight to the full-screen system toggle when that is the only gap.
+     */
+    fun nudgeFor(
+        deliveryMode: String,
+        plural: String,
+        hasReminders: Boolean,
+        firstRun: Boolean,
+    ): ReminderNudge? {
+        if (!hasReminders && !firstRun) return null
+        val text = warningFor(deliveryMode, plural) ?: return null
+        val fullScreenOnly = missingFor(deliveryMode) == listOf(ReminderPermission.FULL_SCREEN)
+        return ReminderNudge(text = text, fullScreenOnly = fullScreenOnly)
+    }
 }
+
+/**
+ * What a list-screen permission banner should say and where its tap should go.
+ * [fullScreenOnly] means the sole missing grant is the full-screen one, so the
+ * tap can open that system toggle directly instead of the settings page.
+ */
+data class ReminderNudge(val text: String, val fullScreenOnly: Boolean)
