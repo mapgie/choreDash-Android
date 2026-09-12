@@ -50,6 +50,16 @@ import javax.inject.Inject
 /** Label shown on a group header for tasks with no category. */
 const val OTHER_CATEGORY_LABEL = "Other"
 
+/**
+ * A just-deleted task held for the length of an Undo snackbar: enough to
+ * re-create it and the reminders that were attached to it.
+ */
+data class RecentTaskDelete(
+    val task: TaskDto,
+    val reminders: List<ReminderDto>,
+    val wasPinned: Boolean,
+)
+
 data class TaskUiState(
     val loading: Boolean = true,
     val error: String? = null,
@@ -67,6 +77,8 @@ data class TaskUiState(
     val colourAxes: ChoreColourAxes = ChoreColourAxes(),
     /** Every reminder (memo) linked to a task, so a task can carry more than one. */
     val reminders: List<ReminderDto> = emptyList(),
+    /** A task just deleted by swipe, awaiting its Undo snackbar. */
+    val recentDelete: RecentTaskDelete? = null,
     val pinChooser: PinChooserState? = null,
 ) {
     /**
@@ -444,6 +456,90 @@ class TaskListViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Swipe-to-delete: removes the task and its reminders, but keeps a snapshot so
+     * the Undo snackbar can restore both. The delete itself is a real delete; Undo
+     * re-creates the task (a fresh id) with its due, notes and reminders intact.
+     */
+    fun deleteTaskWithUndo(task: TaskDto) {
+        viewModelScope.launch {
+            runCatching {
+                val linked = reminderRepository.loadReminders().filter { it.taskId == task.id }
+                val wasPinned = _uiState.value.pinnedTaskId == task.id
+                alarmScheduler.cancelTask(task.id)
+                linked.forEach { reminder ->
+                    alarmScheduler.cancelReminder(reminder.id)
+                    reminderRepository.deleteReminder(reminder.id)
+                }
+                taskRepository.deleteTask(task.id)
+                if (wasPinned) pinnedItemStore.setPinned(null)
+                _uiState.update { it.copy(recentDelete = RecentTaskDelete(task, linked, wasPinned)) }
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /** Restores a task removed by [deleteTaskWithUndo], with its reminders. */
+    fun undoDelete(recent: RecentTaskDelete) {
+        viewModelScope.launch {
+            runCatching {
+                val t = recent.task
+                val restored = taskRepository.addTask(
+                    TaskInsert(
+                        title = t.title,
+                        notes = t.notes,
+                        category = t.category,
+                        owner = t.owner,
+                        priority = t.priority,
+                        dueDate = t.dueDate,
+                        duePeriod = t.duePeriod,
+                        reminderAt = t.reminderAt,
+                    )
+                )
+                // addTask re-creates and schedules the reminder_at mirror memo, so skip it
+                // here; re-create every other reminder that was attached to the task.
+                recent.reminders
+                    .filterNot { it.remindAt == t.reminderAt }
+                    .forEach { r ->
+                        val re = reminderRepository.addReminder(
+                            ReminderInsert(
+                                subject = r.subject,
+                                remindAt = r.remindAt,
+                                taskId = restored.id,
+                                repeatDays = r.repeatDays,
+                                sound = r.sound,
+                                colour = r.colour,
+                                icon = r.icon,
+                            )
+                        )
+                        if (r.archivedAt == null && !r.reminded && r.completedAt == null) {
+                            re.remindAtInstant()?.let { at ->
+                                if (at.isAfter(Instant.now())) {
+                                    alarmScheduler.scheduleReminder(re.id, re.subject, at, restored.id)
+                                }
+                            }
+                        }
+                    }
+                t.completedAt?.let { done ->
+                    runCatching { Instant.parse(done) }.getOrNull()?.let { taskRepository.markDone(restored.id, it) }
+                }
+                if (recent.wasPinned) {
+                    pinnedItemStore.togglePinned(PinnedWidgetItem(PinnedItemType.TASK, restored.id))
+                }
+                _uiState.update { it.copy(recentDelete = null) }
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    fun clearRecentDelete() = _uiState.update { it.copy(recentDelete = null) }
 
     /** Sort pill choice; applied immediately and persisted. */
     fun setSort(order: SortOrder<TaskSortKey>) {

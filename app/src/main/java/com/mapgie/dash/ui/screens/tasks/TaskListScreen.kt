@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,6 +105,7 @@ fun TaskListScreen(
     val collapsedCategories = remember { mutableStateListOf<String>() }
     var showSortSheet by remember { mutableStateOf(false) }
     var reminderTargetTask by remember { mutableStateOf<TaskDto?>(null) }
+    var pendingDeleteTask by remember { mutableStateOf<TaskDto?>(null) }
 
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -150,6 +152,19 @@ fun TaskListScreen(
             snackbarHost.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    // Undo snackbar for a swipe-deleted task.
+    LaunchedEffect(uiState.recentDelete) {
+        val recent = uiState.recentDelete ?: return@LaunchedEffect
+        snackbarHost.currentSnackbarData?.dismiss()
+        val result = snackbarHost.showSnackbar(
+            message = "“${recent.task.title}” deleted",
+            actionLabel = "Undo",
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete(recent)
+        else viewModel.clearRecentDelete()
     }
 
     LaunchedEffect(pendingAddIntent) {
@@ -292,6 +307,7 @@ fun TaskListScreen(
                                     if (task.completedAt != null) viewModel.markUndone(task.id)
                                     else completeTaskWithUndo(task)
                                 },
+                                onSwipeDelete = { pendingDeleteTask = it },
                                 isPinned = task.id == uiState.pinnedTaskId,
                                 highlightQuery = query
                             )
@@ -363,6 +379,7 @@ fun TaskListScreen(
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { completeTaskWithUndo(task) },
+                                            onSwipeDelete = { pendingDeleteTask = it },
                                             showCategory = false,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode,
@@ -401,6 +418,7 @@ fun TaskListScreen(
                                         onTap = { overviewTask = it; showOverviewSheet = true },
                                         onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                         onToggleDone = { completeTaskWithUndo(task) },
+                                        onSwipeDelete = { pendingDeleteTask = it },
                                         showCategory = !uiState.groupByCategory,
                                         showOwner = uiState.ownerFilter.showsOwner,
                                         zenMode = uiState.zenMode,
@@ -440,6 +458,7 @@ fun TaskListScreen(
                                             onTap = { overviewTask = it; showOverviewSheet = true },
                                             onLongPress = { editingTaskId = it.id; showTaskSheet = true },
                                             onToggleDone = { viewModel.markUndone(task.id) },
+                                            onSwipeDelete = { pendingDeleteTask = it },
                                             showCategory = !uiState.groupByCategory,
                                             showOwner = uiState.ownerFilter.showsOwner,
                                             zenMode = uiState.zenMode
@@ -542,6 +561,23 @@ fun TaskListScreen(
             onDismiss = { viewModel.dismissPinChooser() }
         )
     }
+
+    pendingDeleteTask?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteTask = null },
+            title = { Text("Delete “${target.title}”?") },
+            text = { Text("This removes the task and its reminders. You can undo straight after.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDeleteTask = null
+                    viewModel.deleteTaskWithUndo(target)
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteTask = null }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -552,6 +588,7 @@ private fun SwipeToCompleteCard(
     onTap: (TaskDto) -> Unit,
     onLongPress: (TaskDto) -> Unit,
     onToggleDone: () -> Unit,
+    onSwipeDelete: (TaskDto) -> Unit = {},
     showCategory: Boolean = true,
     showOwner: Boolean = true,
     zenMode: Boolean = false,
@@ -564,23 +601,27 @@ private fun SwipeToCompleteCard(
     val isDone = task.completedAt != null
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onToggleDone()
+            when (value) {
+                // Swipe right marks done; swipe left asks to delete (a dialog confirms,
+                // then an Undo snackbar covers a slip). Neither actually dismisses the row.
+                SwipeToDismissBoxValue.StartToEnd -> onToggleDone()
+                SwipeToDismissBoxValue.EndToStart -> onSwipeDelete(task)
+                SwipeToDismissBoxValue.Settled -> Unit
             }
             false // never actually dismiss the item
         },
-        // Require a deliberate swipe most of the way across the card before a
-        // completion registers, so a stray horizontal drag while scrolling the
-        // list doesn't silently tick a task off.
+        // Require a deliberate swipe most of the way across the card before either
+        // action registers, so a stray horizontal drag while scrolling the list
+        // doesn't silently tick a task off or start a delete.
         positionalThreshold = { it * 0.6f }
     )
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = false,
+        enableDismissFromEndToStart = true,
         backgroundContent = {
-            if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
-                Box(
+            when (dismissState.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = Dimens.cardInset)
@@ -597,6 +638,24 @@ private fun SwipeToCompleteCard(
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
+                SwipeToDismissBoxValue.EndToStart -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = Dimens.cardInset)
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Text(
+                        "Delete",
+                        modifier = Modifier.padding(end = 24.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+                SwipeToDismissBoxValue.Settled -> Unit
             }
         }
     ) {
