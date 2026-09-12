@@ -1,0 +1,6 @@
+{
+  "bump": "patch",
+  "changed": [
+    "Help now explains that chores and tasks sync across your household while memos stay private on your phone."
+  ]
+}
