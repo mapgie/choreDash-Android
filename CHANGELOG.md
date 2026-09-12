@@ -31,6 +31,16 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.39.0] - 2026-09-12
+
+### Added
+- Settings > NFC tags can erase a sticker: tap Erase, hold the tag, and it is wiped and ready to be written for something else. The chore or tag-alarm it pointed at is untouched.
+- Settings > NFC tags can show only the chores that are on a sticker, or only those without one. A chore counts as on a sticker once this phone has written its id to a tag or read it off one; stickers made elsewhere count after a single tap.
+
+### Fixed
+- Renaming a tag-alarm's tag no longer leaves its sticker answering to the old name: Save goes straight on to writing the sticker, and the rename dialog says so up front.
+
+---
 ## [0.38.0] - 2026-09-11
 
 ### Added
