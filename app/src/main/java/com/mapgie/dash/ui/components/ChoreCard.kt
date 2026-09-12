@@ -77,6 +77,8 @@ fun ChoreCard(
     highlightQuery: String? = null,
     snoozedUntil: Instant? = null,
     isPinned: Boolean = false,
+    /** Live reminders on this chore; a bell (with the count past one) sits by the title. */
+    reminderCount: Int = 0,
     inset: Dp = Dimens.cardInset,
 ) {
     val tone = chore.statusTone()
@@ -158,6 +160,21 @@ fun ChoreCard(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
+                        }
+                        if (reminderCount > 0) {
+                            Icon(
+                                imageVector = LucideIcons.Bell,
+                                contentDescription = if (reminderCount == 1) "1 reminder" else "$reminderCount reminders",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            if (reminderCount > 1) {
+                                Text(
+                                    text = reminderCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                     if (zenMode) {

@@ -19,6 +19,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -46,8 +47,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.Swatch
+import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.sheet.DoneWhen
 import com.mapgie.dash.ui.components.sheet.DoneWhenControl
@@ -96,6 +100,9 @@ fun ChoreOverviewSheet(
     isPinned: Boolean,
     scanHistory: List<ScanDto>,
     sheetState: SheetState,
+    /** The chore's live reminders, soonest first; each row has a Remove control. */
+    reminders: List<ReminderDto> = emptyList(),
+    onDeleteReminder: (ReminderDto) -> Unit = {},
     onConfirmLog: (Chore, Instant?) -> Unit,
     onRemoveLastLog: (Chore) -> Unit,
     onLoadAllHistory: (Chore) -> Unit,
@@ -262,6 +269,43 @@ fun ChoreOverviewSheet(
                     ),
                 ),
             )
+
+            if (reminders.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (reminders.size == 1) "1 reminder" else "${reminders.size} reminders",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                        color = tokens.inkFaint,
+                    )
+                    reminders.forEach { reminder ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = LucideIcons.Bell,
+                                contentDescription = null,
+                                tint = chipContent,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = reminderRowText(reminder),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { onDeleteReminder(reminder) }) {
+                                Icon(
+                                    imageVector = LucideIcons.X,
+                                    contentDescription = "Remove reminder",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SheetSectionLabel(
@@ -465,4 +509,13 @@ private fun relativeDays(instant: Instant?): String {
         days == 1L -> "yesterday"
         else -> "${days}d ago"
     }
+}
+
+private val REMINDER_ROW_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM 'at' HH:mm")
+
+/** "Thu 4 Sep at 10:15", with " · repeats" for a weekday memo. */
+private fun reminderRowText(reminder: ReminderDto): String {
+    val at = reminder.remindAtInstant()?.atZone(ZoneId.systemDefault())?.format(REMINDER_ROW_FORMATTER)
+        ?: return "reminder"
+    return if (reminder.repeats) "$at · repeats" else at
 }

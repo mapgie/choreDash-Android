@@ -1,0 +1,7 @@
+{
+  "bump": "minor",
+  "added": [
+    "Chores can carry reminders like tasks: a Remind row in the chore sheet, a bell with the live count on the card, and each reminder listed in the chore overview with a Remove control.",
+    "Archiving a chore silences its reminders; unarchiving re-arms the ones still ahead."
+  ]
+}

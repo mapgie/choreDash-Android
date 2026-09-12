@@ -25,24 +25,27 @@ data class ChoreDraft(
     val owner: String = "",
     val intervalDays: Int? = null,
     val tagId: String = "",
+    /**
+     * The Remind row: the chore's mirrored once-only reminder (see
+     * `mirroredChoreReminder`), as epoch millis at whole-minute precision, null
+     * whenever the row is off.
+     */
+    val reminderEnabled: Boolean = false,
+    val reminderAtEpochMillis: Long? = null,
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
-    fun differsFrom(opened: ChoreDraft): Boolean =
-        label != opened.label ||
-            category != opened.category ||
-            owner != opened.owner ||
-            intervalDays != opened.intervalDays ||
-            tagId != opened.tagId
+    fun differsFrom(opened: ChoreDraft): Boolean = this != opened
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
 
     companion object {
         /**
-         * The values the sheet opens with: [chore]'s own fields, or the New chore
-         * defaults (General, [initialTagId] from an NFC scan) when [chore] is null.
+         * The values the sheet opens with: [chore]'s own fields plus its mirrored
+         * [reminder], or the New chore defaults (General, [initialTagId] from an NFC
+         * scan, no reminder) when [chore] is null.
          */
-        fun of(chore: Chore?, initialTagId: String = ""): ChoreDraft =
+        fun of(chore: Chore?, initialTagId: String = "", reminder: ReminderDto? = null): ChoreDraft =
             if (chore == null) {
                 ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId)
             } else {
@@ -52,6 +55,10 @@ data class ChoreDraft(
                     owner = chore.owner ?: "",
                     intervalDays = chore.intervalDays?.toInt(),
                     tagId = chore.tagId,
+                    reminderEnabled = reminder != null,
+                    // Whole minutes, matching what the sheet resolves on save, so a stored
+                    // time with seconds does not look changed the moment the sheet opens.
+                    reminderAtEpochMillis = reminder?.remindAtInstant()?.truncatedTo(ChronoUnit.MINUTES)?.toEpochMilli(),
                 )
             }
     }

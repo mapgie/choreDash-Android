@@ -395,6 +395,7 @@ fun ChoreListScreen(
                                 swipe = uiState.swipe,
                                 onSwipe = { action, c -> swipeChore(action, c) },
                                 snoozedUntil = uiState.snoozedUntil(chore),
+                                reminderCount = uiState.activeReminderCountFor(chore.id),
                                 isPinned = chore.id == uiState.pinnedChoreId,
                                 highlightQuery = query
                             )
@@ -508,6 +509,7 @@ fun ChoreListScreen(
                                                 swipe = uiState.swipe,
                                                 onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
+                                                reminderCount = uiState.activeReminderCountFor(chore.id),
                                                 isPinned = chore.id == uiState.pinnedChoreId
                                             )
                                         }
@@ -545,6 +547,7 @@ fun ChoreListScreen(
                                             swipe = uiState.swipe,
                                             onSwipe = { action, c -> swipeChore(action, c) },
                                             snoozedUntil = uiState.snoozedUntil(chore),
+                                            reminderCount = uiState.activeReminderCountFor(chore.id),
                                             isPinned = chore.id == uiState.pinnedChoreId
                                         )
                                     }
@@ -583,6 +586,7 @@ fun ChoreListScreen(
                                                 swipe = uiState.swipe,
                                                 onSwipe = { action, c -> swipeChore(action, c) },
                                                 snoozedUntil = uiState.snoozedUntil(chore),
+                                                reminderCount = uiState.activeReminderCountFor(chore.id),
                                                 isPinned = chore.id == uiState.pinnedChoreId
                                             )
                                         }
@@ -664,6 +668,8 @@ fun ChoreListScreen(
             isPinned = chore.id == uiState.pinnedChoreId,
             scanHistory = uiState.scanHistory,
             sheetState = logSheetState,
+            reminders = uiState.liveRemindersFor(chore.id),
+            onDeleteReminder = { viewModel.deleteChoreReminder(it.id) },
             onConfirmLog = { c, at ->
                 viewModel.logChore(c.tagId, at)
                 showLogSheet = false
@@ -708,11 +714,12 @@ fun ChoreListScreen(
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = editSheetState,
+            reminder = uiState.mirroredReminderFor(chore.id),
             draft = remember(chore.id) { viewModel.choreDrafts.get(chore.id) },
             onDraftChange = { viewModel.choreDrafts.put(chore.id, it) },
             onDraftClear = { viewModel.choreDrafts.clear(chore.id) },
-            onSave = { tagId, label, category, owner, intervalDays ->
-                viewModel.updateChore(tagId, label, category, owner, intervalDays)
+            onSave = { tagId, label, category, owner, intervalDays, reminderAt ->
+                viewModel.updateChore(tagId, label, category, owner, intervalDays, choreId = chore.id, reminderAt = reminderAt)
                 showEditSheet = false
             },
             onArchiveToggle = { c, archive ->
@@ -769,8 +776,8 @@ fun ChoreListScreen(
             draft = remember { viewModel.choreDrafts.get(NEW_DRAFT_KEY) },
             onDraftChange = { viewModel.choreDrafts.put(NEW_DRAFT_KEY, it) },
             onDraftClear = { viewModel.choreDrafts.clear(NEW_DRAFT_KEY) },
-            onSave = { tagId, label, category, owner, intervalDays ->
-                viewModel.addChore(tagId, label, category, owner, intervalDays)
+            onSave = { tagId, label, category, owner, intervalDays, reminderAt ->
+                viewModel.addChore(tagId, label, category, owner, intervalDays, reminderAt)
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()
@@ -817,6 +824,7 @@ private fun SwipeToLogCard(
     onSwipe: (SwipeAction, Chore) -> Unit,
     snoozedUntil: Instant? = null,
     isPinned: Boolean = false,
+    reminderCount: Int = 0,
     highlightQuery: String? = null
 ) {
     // Each direction does what Settings › Swipe actions says (out of the box:
@@ -859,6 +867,7 @@ private fun SwipeToLogCard(
             highlightQuery = highlightQuery,
             snoozedUntil = snoozedUntil,
             isPinned = isPinned,
+            reminderCount = reminderCount,
             modifier = Modifier
                 .semantics { role = Role.Button }
                 .combinedClickable(

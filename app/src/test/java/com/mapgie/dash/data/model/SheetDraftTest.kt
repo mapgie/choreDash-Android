@@ -48,6 +48,18 @@ class SheetDraftTest {
     }
 
     @Test
+    fun `a chore draft reads the Remind row from the mirrored reminder, to the minute`() {
+        val reminder = ReminderDto(id = "r1", subject = "Meds", remindAt = "2026-09-20T09:30:45Z", choreId = "chore-1")
+        val opened = ChoreDraft.of(meds, reminder = reminder)
+        assertTrue(opened.reminderEnabled)
+        assertEquals(Instant.parse("2026-09-20T09:30:00Z").toEpochMilli(), opened.reminderAtEpochMillis)
+        assertFalse(ChoreDraft.of(meds, reminder = reminder).differsFrom(opened))
+        assertTrue(opened.copy(reminderEnabled = false, reminderAtEpochMillis = null).differsFrom(opened))
+        assertFalse(ChoreDraft.of(meds).reminderEnabled)
+        assertNull(ChoreDraft.of(meds).reminderAtEpochMillis)
+    }
+
+    @Test
     fun `a draft with a different title is offered`() {
         val opened = ChoreDraft.of(meds)
         assertTrue(opened.copy(label = "Meds (evening)").differsFrom(opened))

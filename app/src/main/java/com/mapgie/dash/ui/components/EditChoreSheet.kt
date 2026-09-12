@@ -12,6 +12,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,9 +24,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.sheet.DraftResumeRow
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
@@ -54,11 +59,13 @@ import com.mapgie.dash.ui.components.sheet.SheetHeader
 import com.mapgie.dash.ui.components.sheet.SheetPadding
 import com.mapgie.dash.ui.components.sheet.SheetPrimaryRow
 import com.mapgie.dash.ui.components.sheet.SheetRowDivider
+import com.mapgie.dash.ui.components.sheet.SheetTimePickerDialog
 import com.mapgie.dash.ui.components.sheet.StepperPill
 import com.mapgie.dash.ui.components.sheet.TertiaryLink
 import com.mapgie.dash.ui.components.sheet.TertiaryLinkRow
 import com.mapgie.dash.ui.components.sheet.TitleField
 import com.mapgie.dash.ui.components.sheet.ValueChip
+import com.mapgie.dash.ui.components.sheet.ZonedDateTimeStateSaver
 import com.mapgie.dash.ui.components.sheet.jsonStateSaver
 import com.mapgie.dash.ui.theme.LocalDashTokens
 import com.mapgie.dash.ui.theme.LocalTypeAccents
@@ -68,8 +75,13 @@ import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.CalendarShareUtils
+import com.mapgie.dash.util.calendarEventForInstant
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * The Edit sheet for chores (handoff 7a), one grammar with the task sheet: the
@@ -96,11 +108,14 @@ fun EditChoreSheet(
     owners: List<String>,
     categories: List<String>,
     sheetState: SheetState,
-    onSave: (tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) -> Unit,
+    /** [reminderAt] is the Remind row as an ISO instant, or null when it is Off. */
+    onSave: (tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?, reminderAt: String?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
     onWriteTag: (tagId: String) -> Unit,
     onDismiss: () -> Unit,
     initialTagId: String = "",
+    /** The chore's mirrored once-only reminder, which the Remind row edits; null when it has none. */
+    reminder: ReminderDto? = null,
     draft: ChoreDraft? = null,
     onDraftChange: (ChoreDraft) -> Unit = {},
     onDraftClear: () -> Unit = {},
@@ -115,12 +130,30 @@ fun EditChoreSheet(
     // The values the sheet opened with, snapshotted once so the dirty check
     // compares against what the fields actually started as (LESSONS.md #27).
     // Every field is rememberSaveable so rotation and process death keep edits.
-    val opened = remember { ChoreDraft.of(chore, initialTagId) }
+    val opened = remember { ChoreDraft.of(chore, initialTagId, reminder) }
     var label by rememberSaveable { mutableStateOf(opened.label) }
     var category by rememberSaveable { mutableStateOf(opened.category) }
     var owner by rememberSaveable { mutableStateOf(opened.owner) }
     var interval by rememberSaveable { mutableStateOf(opened.intervalDays) }
     var tagId by rememberSaveable { mutableStateOf(opened.tagId) }
+
+    var reminderEnabled by rememberSaveable { mutableStateOf(opened.reminderEnabled) }
+    // The opened reminder is already whole minutes (ChoreDraft.of), matching what
+    // resolvedReminder() produces, so a stored time with seconds is not "changed".
+    var reminderBase by rememberSaveable(stateSaver = ZonedDateTimeStateSaver) {
+        mutableStateOf(
+            opened.reminderAtEpochMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
+                ?: ZonedDateTime.now().plusDays(1).withSecond(0).withNano(0)
+        )
+    }
+    var reminderHour by rememberSaveable { mutableIntStateOf(reminderBase.hour) }
+    var reminderMinute by rememberSaveable { mutableIntStateOf(reminderBase.minute) }
+    var showReminderDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showReminderTimePicker by rememberSaveable { mutableStateOf(false) }
+    val reminderPickerState = rememberDatePickerState(
+        initialSelectedDateMillis = reminderBase.toInstant().toEpochMilli()
+    )
+    var remindMenuOpen by rememberSaveable { mutableStateOf(false) }
 
     var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
     var showNewCategory by rememberSaveable { mutableStateOf(false) }
@@ -136,7 +169,23 @@ fun EditChoreSheet(
         mutableStateOf(draft?.takeIf { it.differsFrom(opened) })
     }
 
-    val currentDraft = ChoreDraft(label = label, category = category, owner = owner, intervalDays = interval, tagId = tagId)
+    fun resolvedReminder(): ZonedDateTime =
+        reminderBase.withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0)
+
+    fun resolvedReminderInstant(): String? {
+        if (!reminderEnabled) return null
+        return resolvedReminder().toInstant().toString()
+    }
+
+    val currentDraft = ChoreDraft(
+        label = label,
+        category = category,
+        owner = owner,
+        intervalDays = interval,
+        tagId = tagId,
+        reminderEnabled = reminderEnabled,
+        reminderAtEpochMillis = if (reminderEnabled) resolvedReminder().toInstant().toEpochMilli() else null,
+    )
     val isDirty = currentDraft.differsFrom(opened)
 
     // Mirror every change into the draft store while the sheet is dirty.
@@ -151,6 +200,14 @@ fun EditChoreSheet(
         interval = restored.intervalDays
         // A tag ID that arrived with an NFC scan wins over a draft that has none.
         tagId = restored.tagId.ifBlank { tagId }
+        reminderEnabled = restored.reminderEnabled
+        restored.reminderAtEpochMillis?.let { millis ->
+            val at = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
+            reminderBase = at
+            reminderHour = at.hour
+            reminderMinute = at.minute
+            reminderPickerState.selectedDateMillis = millis
+        }
         offeredDraft = null
     }
 
@@ -185,10 +242,23 @@ fun EditChoreSheet(
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
 
-    fun calendarInfo() = calendarEventWithoutTime(
-        title = label.trim().ifBlank { chore?.label ?: "" },
-        description = category.trim().ifBlank { null }?.let { "Category: $it" }
-    )
+    // With a reminder set the calendar event lands on that time; otherwise it is all-day.
+    fun calendarInfo() = if (reminderEnabled) {
+        calendarEventForInstant(
+            title = label.trim().ifBlank { chore?.label ?: "" },
+            description = category.trim().ifBlank { null }?.let { "Category: $it" },
+            instant = resolvedReminder().toInstant(),
+        )
+    } else {
+        calendarEventWithoutTime(
+            title = label.trim().ifBlank { chore?.label ?: "" },
+            description = category.trim().ifBlank { null }?.let { "Category: $it" }
+        )
+    }
+
+    val remindChipText = if (reminderEnabled) {
+        resolvedReminder().format(DateTimeFormatter.ofPattern("d MMM HH:mm"))
+    } else "Off"
 
     val tone = chore?.statusTone()
     val chipContainer = iconSwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
@@ -278,6 +348,28 @@ fun EditChoreSheet(
                     )
                 }
                 SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Bell, label = "Remind") {
+                    Box {
+                        ValueChip(
+                            text = remindChipText,
+                            onClick = { remindMenuOpen = true },
+                            contentDescription = "Reminder: $remindChipText. Change reminder",
+                            content = if (reminderEnabled) MaterialTheme.colorScheme.onSurface
+                                      else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        DropdownMenu(expanded = remindMenuOpen, onDismissRequest = { remindMenuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Off") },
+                                onClick = { reminderEnabled = false; remindMenuOpen = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pick date and time…") },
+                                onClick = { remindMenuOpen = false; showReminderDatePicker = true },
+                            )
+                        }
+                    }
+                }
+                SheetRowDivider()
                 SettingsRow(icon = LucideIcons.NfcScan, label = "NFC tag") {
                     if (isNew) {
                         TagIdField(value = tagId, onValueChange = { tagId = it })
@@ -310,7 +402,7 @@ fun EditChoreSheet(
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
                     onDraftClear()
-                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, intervalDays) }
+                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, intervalDays, resolvedReminderInstant()) }
                 },
             )
 
@@ -363,6 +455,40 @@ fun EditChoreSheet(
             dismissButton = {
                 TextButton(onClick = { showIntervalEntry = false }) { Text("Cancel") }
             }
+        )
+    }
+
+    if (showReminderDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showReminderDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    reminderPickerState.selectedDateMillis?.let { millis ->
+                        reminderBase = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .withHour(reminderHour).withMinute(reminderMinute).withSecond(0).withNano(0)
+                    }
+                    showReminderDatePicker = false
+                    showReminderTimePicker = true
+                }) { Text("Next") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReminderDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = reminderPickerState) }
+    }
+
+    if (showReminderTimePicker) {
+        SheetTimePickerDialog(
+            initialHour = reminderHour,
+            initialMinute = reminderMinute,
+            onConfirm = { h, m ->
+                reminderHour = h
+                reminderMinute = m
+                reminderEnabled = true
+                showReminderTimePicker = false
+            },
+            onDismiss = { showReminderTimePicker = false }
         )
     }
 

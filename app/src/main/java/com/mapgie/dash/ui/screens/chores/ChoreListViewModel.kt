@@ -14,13 +14,16 @@ import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ChoreColourAxes
 import com.mapgie.dash.data.model.DraftStore
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.ReminderInsert
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.SwipePair
 import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.defaultSnoozeDuration
+import com.mapgie.dash.data.model.isDone
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.repeats
 import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.ChoreSnoozeStore
 import com.mapgie.dash.data.preferences.SettingsRepository
@@ -97,7 +100,21 @@ data class ChoreUiState(
     val pinChooser: PinChooserState? = null,
     /** Settings › Swipe actions for chore cards. */
     val swipe: SwipePair = SwipeSubject.CHORES.default,
+    /** Every reminder (memo) linked to a chore, so a chore can carry more than one. */
+    val reminders: List<ReminderDto> = emptyList(),
 ) {
+    /**
+     * How many live reminders a chore carries: its linked memos that are neither
+     * archived nor already done. The card shows a bell with this count.
+     */
+    fun activeReminderCountFor(choreId: String): Int = liveRemindersFor(choreId).size
+
+    /** The chore's live reminders, soonest first, for the overview's list. */
+    fun liveRemindersFor(choreId: String): List<ReminderDto> = reminders.liveChoreReminders(choreId)
+
+    /** The reminder the Edit sheet's Remind row edits, or null when the chore has none. */
+    fun mirroredReminderFor(choreId: String): ReminderDto? = reminders.mirroredChoreReminder(choreId)
+
     private val ownerFiltered: List<Chore>
         get() = active.filter { ownerFilter.matches(it.owner, ownerHandle) }
 
@@ -209,6 +226,19 @@ data class ChoreUiState(
  * the reversed branch is written out rather than calling `reversed()` on a
  * nulls-aware comparator (LESSONS.md #35).
  */
+/** The live memos linked to [choreId]: neither archived nor already done, soonest first. */
+fun List<ReminderDto>.liveChoreReminders(choreId: String): List<ReminderDto> =
+    filter { it.choreId == choreId && it.archivedAt == null && !it.isDone }.sortedBy { it.remindAt }
+
+/**
+ * The memo the Edit chore sheet's Remind row stands for: the chore's soonest
+ * live once-only reminder. A chore has no reminder column of its own (unlike a
+ * task's reminder_at), so the row edits this memo; repeating memos stay on the
+ * Memos tab, and any other reminders on the chore are never touched by the row.
+ */
+fun List<ReminderDto>.mirroredChoreReminder(choreId: String): ReminderDto? =
+    liveChoreReminders(choreId).firstOrNull { !it.repeats }
+
 fun List<Chore>.sortedForPill(order: SortOrder<ChoreSortKey>): List<Chore> = when (order.key) {
     ChoreSortKey.PRESSURE ->
         if (!order.reversed) {
@@ -312,6 +342,11 @@ class ChoreListViewModel @Inject constructor(
             pinnedItemStore.pinnedItem.collect { pinned ->
                 val pinnedChoreId = pinned?.takeIf { it.type == PinnedItemType.CHORE }?.id
                 _uiState.update { it.copy(pinnedChoreId = pinnedChoreId) }
+            }
+        }
+        viewModelScope.launch {
+            reminderRepository.remindersFlow.collect { all ->
+                _uiState.update { state -> state.copy(reminders = all.filter { it.choreId != null }) }
             }
         }
         load()
@@ -430,10 +465,24 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
-    fun updateChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
+    /**
+     * Saves the Edit sheet. [reminderAt] is the Remind row (an ISO instant, or
+     * null for Off) and is reconciled against the chore's mirrored reminder;
+     * [choreId] is the `tags` row id the memo links to.
+     */
+    fun updateChore(
+        tagId: String,
+        label: String,
+        category: String?,
+        owner: String?,
+        intervalDays: Double?,
+        choreId: String,
+        reminderAt: String?,
+    ) {
         viewModelScope.launch {
             runCatching {
                 choreRepository.updateTag(tagId, label, category, owner, intervalDays)
+                reconcileMirroredReminder(choreId, label, reminderAt)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
@@ -441,14 +490,22 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
+    fun addChore(
+        tagId: String,
+        label: String,
+        category: String?,
+        owner: String?,
+        intervalDays: Double?,
+        reminderAt: String? = null,
+    ) {
         viewModelScope.launch {
             runCatching {
                 requireTagFree(tagId)
                 // A chore isn't required to have a physical NFC tag; generate a unique
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
-                choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
+                val created = choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
+                if (reminderAt != null) reconcileMirroredReminder(created.id, label, reminderAt)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
@@ -478,15 +535,65 @@ class ChoreListViewModel @Inject constructor(
         throw IllegalArgumentException("That tag already belongs to the tag-alarm \"${owner.subject}\". A tag has one job.")
     }
 
+    /**
+     * Archives or restores a chore. Its reminders go with it: archiving silences
+     * every memo linked to the chore, unarchiving brings them back and re-arms
+     * whatever still has a ring ahead of it, so an archived chore never rings.
+     */
     fun archiveChore(tagId: String, archived: Boolean) {
         viewModelScope.launch {
             runCatching {
                 choreRepository.archiveTag(tagId, archived)
+                (_uiState.value.active + _uiState.value.archived).find { it.tagId == tagId }?.let { chore ->
+                    setLinkedRemindersArchived(chore.id, archived)
+                }
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
             }
         }
+    }
+
+    /** Removes one reminder from a chore (from the overview's reminders list). */
+    fun deleteChoreReminder(reminderId: String) {
+        viewModelScope.launch {
+            runCatching {
+                alarmScheduler.cancelReminder(reminderId)
+                reminderRepository.deleteReminder(reminderId)
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /**
+     * Makes the chore's mirrored reminder match the Edit sheet's Remind row:
+     * the same time (to the minute) leaves it alone, Off deletes it, a new time
+     * replaces it. Other reminders on the chore are never touched.
+     */
+    private suspend fun reconcileMirroredReminder(choreId: String, subject: String, reminderAt: String?) {
+        val current = reminderRepository.loadReminders().mirroredChoreReminder(choreId)
+        val wanted = reminderAt?.let { runCatching { Instant.parse(it) }.getOrNull() }?.truncatedTo(ChronoUnit.MINUTES)
+        val have = current?.remindAtInstant()?.truncatedTo(ChronoUnit.MINUTES)
+        if (wanted == have) return
+        current?.let {
+            alarmScheduler.cancelReminder(it.id)
+            reminderRepository.deleteReminder(it.id)
+        }
+        if (wanted == null || reminderAt == null) return
+        val created = reminderRepository.addReminder(
+            ReminderInsert(subject = subject, remindAt = reminderAt, choreId = choreId)
+        )
+        alarmScheduler.syncReminder(created)
+    }
+
+    /** Archives (silencing) or unarchives (re-arming) every memo linked to the chore. */
+    private suspend fun setLinkedRemindersArchived(choreId: String, archived: Boolean) {
+        reminderRepository.loadReminders()
+            .filter { it.choreId == choreId && (it.archivedAt == null) == archived }
+            .forEach { reminder ->
+                reminderRepository.archiveReminder(reminder.id, archived)?.let(alarmScheduler::syncReminder)
+            }
     }
 
     fun setPendingNfcTag(tagId: String) {

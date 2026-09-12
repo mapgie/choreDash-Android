@@ -6,11 +6,13 @@ import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.OwnerFilter
+import com.mapgie.dash.data.model.ReminderDto
 import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TagDto
 import java.time.Duration
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -296,5 +298,69 @@ class ChoreUiStateTest {
         val daily = chore("daily", intervalDays = 1.0)
         val state = ChoreUiState(smartVisibility = true, choreLeadDays = mapOf(CadenceBucket.DAILY to 0))
         assertEquals(Duration.ofDays(1), state.snoozeDurationFor(daily))
+    }
+
+    // ── Reminders a chore owns ────────────────────────────────────────────────
+    // A chore can carry several reminders (memos linked by chore_id); the card
+    // counts the live ones and the Edit sheet's Remind row mirrors one of them.
+
+    private fun memo(
+        id: String,
+        choreId: String?,
+        remindAt: String = "2026-09-20T09:00:00Z",
+        archivedAt: String? = null,
+        completedAt: String? = null,
+        repeatDays: List<String> = emptyList(),
+    ) = ReminderDto(
+        id = id, subject = "s", remindAt = remindAt, choreId = choreId,
+        archivedAt = archivedAt, completedAt = completedAt, repeatDays = repeatDays,
+    )
+
+    @Test
+    fun `a chore counts its live reminders and ignores archived, done and other chores'`() {
+        val reminders = listOf(
+            memo("a", choreId = "c1"),
+            memo("b", choreId = "c1"),
+            memo("c", choreId = "c1", archivedAt = "2026-09-01T00:00:00Z"),
+            memo("d", choreId = "c1", completedAt = "2026-09-01T00:00:00Z"),
+            memo("e", choreId = "other"),
+        )
+        val state = ChoreUiState(reminders = reminders)
+        assertEquals(2, state.activeReminderCountFor("c1"))
+        assertEquals(1, state.activeReminderCountFor("other"))
+        assertEquals(0, state.activeReminderCountFor("none"))
+    }
+
+    @Test
+    fun `the overview lists a chore's live reminders soonest first`() {
+        val reminders = listOf(
+            memo("late", choreId = "c1", remindAt = "2026-09-25T09:00:00Z"),
+            memo("soon", choreId = "c1", remindAt = "2026-09-18T09:00:00Z"),
+            memo("gone", choreId = "c1", remindAt = "2026-09-17T09:00:00Z", archivedAt = "2026-09-01T00:00:00Z"),
+        )
+        val state = ChoreUiState(reminders = reminders)
+        assertEquals(listOf("soon", "late"), state.liveRemindersFor("c1").map { it.id })
+    }
+
+    @Test
+    fun `the Remind row mirrors the soonest live once-only reminder and skips repeating ones`() {
+        val reminders = listOf(
+            memo("weekly", choreId = "c1", remindAt = "2026-09-15T09:00:00Z", repeatDays = listOf("MONDAY")),
+            memo("later", choreId = "c1", remindAt = "2026-09-25T09:00:00Z"),
+            memo("next", choreId = "c1", remindAt = "2026-09-18T09:00:00Z"),
+            memo("done", choreId = "c1", remindAt = "2026-09-16T09:00:00Z", completedAt = "2026-09-16T09:00:00Z"),
+        )
+        val state = ChoreUiState(reminders = reminders)
+        assertEquals("next", state.mirroredReminderFor("c1")?.id)
+    }
+
+    @Test
+    fun `a chore with only repeating or no reminders has nothing for the Remind row`() {
+        val state = ChoreUiState(
+            reminders = listOf(memo("weekly", choreId = "c1", repeatDays = listOf("MONDAY", "FRIDAY"))),
+        )
+        assertNull(state.mirroredReminderFor("c1"))
+        assertNull(state.mirroredReminderFor("c2"))
+        assertEquals(1, state.activeReminderCountFor("c1"))
     }
 }
