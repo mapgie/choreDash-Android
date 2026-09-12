@@ -82,7 +82,7 @@ fun NfcScanDialog(onDismiss: () -> Unit) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Hold your phone to a chore's NFC sticker. A tag the app doesn't know yet opens a new chore.",
+                    "Hold your phone to a chore's NFC tag. A tag the app doesn't know yet opens a new chore.",
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }

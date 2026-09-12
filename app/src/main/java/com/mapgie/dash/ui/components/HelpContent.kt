@@ -51,7 +51,7 @@ fun HelpContent(
             title = "Chores repeat",
             body = "A chore comes round again on its own cadence: every 3 days, every " +
                 "month. Log it with a tap, a swipe, or by holding the phone to its NFC " +
-                "sticker. The colour spine and badge show how overdue it is. Chores sync " +
+                "tag. The colour spine and badge show how overdue it is. Chores sync " +
                 "across your household, so everyone sees the same list.",
         )
         SheetRowDivider()
@@ -72,7 +72,9 @@ fun HelpContent(
             title = "$reminderLabel nudge you",
             body = "A $one is a nudge at a set time, on its own or linked to a chore or " +
                 "task. Snooze it or mark it done from the alert. It stays on this phone, " +
-                "private to you, and never syncs.",
+                "private to you, and never syncs. Give one an NFC tag to make it a " +
+                "tag-alarm: it stays off until you tap the tag, which sets it for the next " +
+                "time its ring comes round.",
         )
     }
 }
@@ -131,7 +133,9 @@ fun HelpGettingAround(
             HelpRow(
                 icon = LucideIcons.NfcScan, container = container, content = content,
                 title = "Tag",
-                body = "Chores only: link an NFC sticker, then a tap of the phone logs the chore.",
+                body = "Links a chore to an NFC tag, so a tap of the phone logs it. A memo " +
+                    "links its tag from its own edit sheet instead, where a tap sets the " +
+                    "alarm.",
             )
             SheetRowDivider()
             HelpRow(

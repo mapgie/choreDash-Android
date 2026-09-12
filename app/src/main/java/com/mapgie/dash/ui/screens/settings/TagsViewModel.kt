@@ -43,8 +43,8 @@ data class TagEntry(
 /** The chip row over the Chores list: every chore, only those on a sticker, or only those without. */
 enum class ChoreTagFilter(val label: String) {
     ALL("All"),
-    ON_STICKER("On a sticker"),
-    NO_STICKER("No sticker"),
+    ON_STICKER("On a tag"),
+    NO_STICKER("No tag"),
 }
 
 /**

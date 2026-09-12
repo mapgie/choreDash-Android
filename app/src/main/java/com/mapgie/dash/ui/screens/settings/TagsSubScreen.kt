@@ -168,7 +168,7 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Erase wipes whatever a sticker carries so it can be written for something else. The chore or tag-alarm it belonged to is untouched.")
+            SettingsCaption("Erase wipes whatever a tag carries so it can be written for something else. The chore or tag-alarm it belonged to is untouched.")
 
             SettingsSectionLabel("Chores")
             Row(
@@ -207,9 +207,9 @@ internal fun TagsSubScreen(
                     SettingsCardRow(title = "No chores", subtitle = if (uiState.error != null) "They couldn't be loaded." else "Add one from the Chores tab.")
                 } else if (shown.isEmpty()) {
                     SettingsCardRow(
-                        title = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER) "No chores on a sticker yet" else "Every chore is on a sticker",
+                        title = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER) "No chores on a tag yet" else "Every chore is on a tag",
                         subtitle = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER)
-                            "A chore counts once this phone writes its id to a sticker or reads it off one." else null,
+                            "A chore counts once this phone writes its id to a tag or reads it off one." else null,
                     )
                 } else {
                     shown.forEachIndexed { index, entry ->
@@ -217,7 +217,7 @@ internal fun TagsSubScreen(
                         SettingsCardRow(
                             title = entry.name,
                             subtitle = entry.tagId +
-                                (if (entry.onSticker) " · on a sticker" else "") +
+                                (if (entry.onSticker) " · on a tag" else "") +
                                 (if (entry.archived) " · archived" else ""),
                         ) {
                             ValueChip(
@@ -240,7 +240,7 @@ internal fun TagsSubScreen(
                         if (index > 0) SettingsHairline()
                         SettingsCardRow(
                             title = entry.name,
-                            subtitle = entry.tagId?.let { it + if (entry.onSticker) " · on a sticker" else "" } ?: "No tag yet",
+                            subtitle = entry.tagId?.let { it + if (entry.onSticker) " · on a tag" else "" } ?: "No tag yet",
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 ValueChip(
@@ -271,7 +271,7 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Write stamps the id on a blank sticker. A card that can't be written (an office pass) is linked by scanning it from the tag-alarm's own sheet instead. \"On a sticker\" is what this phone has written or read; a sticker made elsewhere counts once you tap it.")
+            SettingsCaption("Write stamps the id on a blank tag. A card that can't be written (an office pass) is linked by scanning it from the tag-alarm's own sheet instead. \"On a tag\" is what this phone has written or read; a tag made elsewhere counts once you tap it.")
             Spacer(Modifier.height(8.dp))
         }
     }

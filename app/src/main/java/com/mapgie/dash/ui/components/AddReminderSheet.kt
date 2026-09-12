@@ -742,7 +742,7 @@ fun AddReminderSheet(
                     }
                     if (!scanning && tagIdValue.isBlank() && tagError == null) {
                         Text(
-                            text = "Name the tag, then write it to a blank sticker. Or scan a card that already carries an id.",
+                            text = "Name the tag, then write it to a blank one. Or scan a card that already carries an id.",
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                             color = tokens.inkFaint,
                             modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
@@ -828,7 +828,7 @@ fun AddReminderSheet(
                     val oldId = opened.tagId
                     sheetScope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (renamedTag && onWriteTag != null) {
-                            onWriteTag(newId, "The sticker still says \"$oldId\". Hold it to the phone to change it to \"$newId\".")
+                            onWriteTag(newId, "The tag still says \"$oldId\". Hold it to the phone to change it to \"$newId\".")
                         }
                         onDismiss()
                     }
@@ -1034,7 +1034,7 @@ private fun TagNameDialog(
                         owner != null -> "\"$folded\" already belongs to $owner."
                         typed.isBlank() -> "Something short: where you are heading, or the alarm's name."
                         current.isNotBlank() && folded != current ->
-                            "Written to the tag as \"$folded\". A sticker already written keeps the old name until you write it again; Save will ask you to."
+                            "Written to the tag as \"$folded\". A tag already written keeps the old name until you write it again; Save will ask you to."
                         else -> "Written to the tag as \"$folded\"."
                     },
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
