@@ -314,7 +314,7 @@ private fun SettingsMainList(
                     )
                     SettingsHairline()
                     SettingsNavRow(
-                        title = "About choreDash",
+                        title = "About Urgh",
                         subtitle = "Version, what's new, and licenses",
                         onClick = { onNavigate(SettingsSubScreen.ABOUT) }
                     )
@@ -1228,12 +1228,12 @@ private fun AboutSubScreen(
                 }
             }
             Text(
-                "choreDash",
+                "Urgh",
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(top = 16.dp),
             )
             Text(
-                "choreDash helps your household share chores and tasks, synced through " +
+                "Urgh helps your household share chores and tasks, synced through " +
                     "your own Supabase project.",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontSize = 15.sp,
