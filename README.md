@@ -1,4 +1,4 @@
-# choreDash + taskDash — Android
+# Urgh + taskDash — Android
 
 A native Android app for a household: three tools in one, sharing one Supabase
 project with the taskDash web app.
