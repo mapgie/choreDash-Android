@@ -13,7 +13,9 @@ import com.mapgie.dash.data.model.ReminderStatus
 import com.mapgie.dash.data.model.Severity
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.data.model.TaskDto
+import com.mapgie.dash.data.model.TaskPriority
 import com.mapgie.dash.data.model.TaskUrgency
+import com.mapgie.dash.data.model.priorityEnum
 import java.time.Instant
 import com.mapgie.dash.data.model.urgency
 
@@ -23,9 +25,12 @@ import com.mapgie.dash.data.model.urgency
  * domain's own state into this common scale; the shared card shell then reads only
  * [StatusTone], never the domain enum.
  *
- * The scale is deliberately about **urgency** (how soon must this happen), the only
- * axis all three domains share. Chores and memos have no priority, so priority can
- * never be an app-wide bar colour and is carried by a non-colour marker instead.
+ * The scale is about **urgency** (how soon must this happen), the axis all three
+ * domains share. On Tasks, priority folds into the same ladder rather than adding
+ * a second one: a high priority raises a task that is not yet pressing to
+ * [ATTENTION], a low priority with nothing pressing wears [LOW]. Chores and memos
+ * have no priority and never produce [LOW]. Every tone is restated in words on
+ * the card, so colour is never the only signal.
  */
 enum class StatusTone {
     /** Overdue / action required. */
@@ -37,6 +42,9 @@ enum class StatusTone {
     /** Healthy / on track. */
     OK,
 
+    /** Can wait: a low-priority task with no pressing due date. Tasks only. */
+    LOW,
+
     /** Backgrounded: done, distant, or otherwise not signalling. */
     NEUTRAL,
 
@@ -44,29 +52,33 @@ enum class StatusTone {
     NONE,
 }
 
-/**
- * Which palette [Swatch] each signalling tone wears. The user picks these in
- * Settings › Colours; the defaults are the design's rose / amber / sage.
- */
-data class SeverityColors(
-    val critical: Swatch = Swatch.ROSE,
-    val attention: Swatch = Swatch.AMBER,
-    val ok: Swatch = Swatch.SAGE,
-) {
-    fun swatchFor(tone: StatusTone): Swatch? = when (tone) {
-        StatusTone.CRITICAL -> critical
-        StatusTone.ATTENTION -> attention
-        StatusTone.OK -> ok
+/** The Settings › Colours row a signalling tone is coloured by; null for the quiet tones. */
+val StatusTone.severity: Severity?
+    get() = when (this) {
+        StatusTone.CRITICAL -> Severity.OVERDUE
+        StatusTone.ATTENTION -> Severity.DUE_SOON
+        StatusTone.OK -> Severity.FRESH
+        StatusTone.LOW -> Severity.LOW
         StatusTone.NEUTRAL, StatusTone.NONE -> null
     }
 
-    companion object {
-        fun from(map: Map<Severity, Swatch>) = SeverityColors(
-            critical = map[Severity.OVERDUE] ?: Severity.OVERDUE.defaultSwatch,
-            attention = map[Severity.DUE_SOON] ?: Severity.DUE_SOON.defaultSwatch,
-            ok = map[Severity.FRESH] ?: Severity.FRESH.defaultSwatch,
-        )
-    }
+/** The tone a Settings › Colours row previews. */
+fun Severity.tone(): StatusTone = StatusTone.entries.first { it.severity == this }
+
+/**
+ * Which palette [Swatch] each signalling tone wears, or null where the user chose
+ * "None" for that severity. Picked in Settings › Colours; the defaults are the
+ * design's rose / amber / sage, plus blue for the low-priority tone.
+ */
+data class SeverityColors(
+    val swatches: Map<Severity, Swatch?> = Severity.defaults,
+) {
+    /**
+     * The swatch [tone] wears, or null when it has none: a quiet tone, or a
+     * severity the user set to "None". Callers fall back to the neutral treatment
+     * (outline spine, plain badge text, the type accent chip), never crash.
+     */
+    fun swatchFor(tone: StatusTone): Swatch? = tone.severity?.let { swatches[it] }
 }
 
 /** Provided by [DashTheme] from settings; defaults to the design's tones. */
@@ -107,12 +119,16 @@ fun wcagSwatchText(text: Color, tint: Color, ground: Color, dark: Boolean): Colo
 @Composable
 fun Swatch.tintColor(): Color = Color(tones(isDarkScheme()).tintArgb)
 
-/** Accent-bar colour for a tone, from the user's severity swatches. */
+/**
+ * Accent-bar colour for a tone, from the user's severity swatches. A signalling
+ * tone whose severity is set to "None" draws the same quiet outline as neutral,
+ * so the card keeps its spine; only a done item's bar is transparent.
+ */
 @Composable
 fun StatusTone.barColor(): Color = when (this) {
-    StatusTone.NEUTRAL -> MaterialTheme.colorScheme.outline
     StatusTone.NONE -> Color.Transparent
-    else -> LocalSeverityColors.current.swatchFor(this)!!.spineColor()
+    else -> LocalSeverityColors.current.swatchFor(this)?.spineColor()
+        ?: MaterialTheme.colorScheme.outline
 }
 
 /** Text colour for a status-coloured label (e.g. a due badge) matching the tone. */
@@ -137,24 +153,32 @@ fun Chore.statusTone(): StatusTone = when (status) {
 }
 
 /**
- * Task tone from [urgency], not priority. The bar therefore means the same thing
- * as on Chores and Memos; priority is carried separately by a non-colour marker.
+ * Task tone: the due date when it is close, priority otherwise. An open task
+ * always wears a colour, fresh by default, so no card sits on a grey bar.
  *
- * A completed task signals no urgency: it is done, so its spine and badge go quiet
+ * - Overdue is critical and due today is attention, whatever the priority.
+ * - Due this week is fresh; a high priority lifts it to attention.
+ * - Later or undated follows priority: high is attention, normal is fresh, low
+ *   is [StatusTone.LOW], the fourth severity colour (blue by default).
+ *
+ * A completed task signals nothing: its spine and badge go quiet
  * ([StatusTone.NONE], a transparent bar), the same muted treatment a done memo gets.
  * Without this a task finished while overdue kept its rose spine in the Done list.
+ * The caption still says "high" or "low" and the badge still names the date, so
+ * the colour is never the only signal.
  */
 fun TaskDto.statusTone(): StatusTone {
     if (completedAt != null) return StatusTone.NONE
+    val priority = priorityEnum()
     return when (urgency()) {
         TaskUrgency.OVERDUE -> StatusTone.CRITICAL
         TaskUrgency.TODAY -> StatusTone.ATTENTION
-        TaskUrgency.THIS_WEEK -> StatusTone.OK
-        TaskUrgency.LATER -> StatusTone.NEUTRAL
-        // No due date is "not pressing", the same as later: the card keeps its
-        // spine (every chore card has one) rather than going bare. Only a done
-        // task has no tone at all.
-        TaskUrgency.NONE -> StatusTone.NEUTRAL
+        TaskUrgency.THIS_WEEK -> if (priority == TaskPriority.HIGHER) StatusTone.ATTENTION else StatusTone.OK
+        TaskUrgency.LATER, TaskUrgency.NONE -> when (priority) {
+            TaskPriority.HIGHER -> StatusTone.ATTENTION
+            TaskPriority.NORMAL -> StatusTone.OK
+            TaskPriority.LOWER -> StatusTone.LOW
+        }
     }
 }
 

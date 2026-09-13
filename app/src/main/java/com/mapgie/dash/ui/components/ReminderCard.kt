@@ -34,10 +34,10 @@ import com.mapgie.dash.ui.components.core.MetaCaption
 import com.mapgie.dash.ui.components.core.StatusBadge
 import com.mapgie.dash.ui.components.core.highlightedText
 import com.mapgie.dash.ui.theme.Dimens
+import com.mapgie.dash.ui.theme.LocalSeverityColors
 import com.mapgie.dash.ui.theme.LocalTypeAccents
 import com.mapgie.dash.ui.theme.LucideIcons
 import com.mapgie.dash.ui.theme.StatusTone
-import com.mapgie.dash.ui.theme.badgeContainerColor
 import com.mapgie.dash.ui.theme.barColor
 import com.mapgie.dash.ui.theme.isDarkScheme
 import com.mapgie.dash.ui.theme.mutedCardContainer
@@ -127,20 +127,21 @@ fun ReminderCard(
             ) {
                 // A fixed swatch (the memo's own pick, or its linked category colour) wins;
                 // otherwise the chip keeps the memo accent while quiet and a signalling ring
-                // tone takes over as it comes due.
-                val signalling = tone == StatusTone.CRITICAL || tone == StatusTone.ATTENTION || tone == StatusTone.OK
+                // tone takes over as it comes due. A severity set to "None" has no swatch,
+                // so the chip stays on the accent like a quiet memo.
+                val toneSwatch = LocalSeverityColors.current.swatchFor(tone)
                 CardIconChip(
                     icon = icon,
                     containerColor = when {
                         muted -> MaterialTheme.colorScheme.surfaceContainerHigh
                         iconSwatch != null -> iconSwatch.tintColor()
-                        signalling -> tone.badgeContainerColor() ?: accents.reminderContainer
+                        toneSwatch != null -> toneSwatch.tintColor()
                         else -> accents.reminderContainer
                     },
                     contentColor = when {
                         muted -> MaterialTheme.colorScheme.onSurfaceVariant
                         iconSwatch != null -> iconSwatch.textColor()
-                        signalling -> tone.textColor()
+                        toneSwatch != null -> toneSwatch.textColor()
                         else -> accents.onReminderContainer
                     },
                 )

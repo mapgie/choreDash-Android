@@ -1416,3 +1416,31 @@ When adding any "keep this on the device" flavour of a synced thing, grep for th
 repository's callers first; if there are more than the list screen, the seam is
 the repository.
 
+
+## 62. A chip's count is derived from the list the chip shows, never from a wider pool
+
+The Overdue chip read "Overdue · 6" while tapping it listed four cards. Archived
+chores were already split off at load, so the two extras were snoozed overdue
+chores: `overdueCount` counted from the owner-scoped pool, while `displayed`
+went on to drop snoozed and auto-hidden chores. Two paths that agree today drift
+apart the moment one gains a filter.
+
+Fix: give the `UiState` one private "what the list can show" set (`inList`) and
+one predicate (`isOverdue`), and derive both `displayed` and `overdueCount` from
+them. The guard test asserts `overdueCount == displayed.size` under the Overdue
+chip rather than a literal, so any future filter has to keep the two in step.
+
+## 63. A tone lookup that can return null must fall back at every seam, never `!!`
+
+Settings › Colours gained a "None" choice per severity, so `SeverityColors.swatchFor`
+now returns null for a signalling tone as well as for the quiet ones. Two places
+had encoded "signalling implies a swatch": `StatusTone.barColor()` used `!!`, and
+`TaskOverviewSheet` tested `tone != NEUTRAL && tone != NONE` and then `!!`-ed the
+container. Both would have crashed the first time a user picked None.
+
+The safe shape is to resolve the swatch once (`val toneSwatch = LocalSeverityColors
+.current.swatchFor(tone)`) and branch on `toneSwatch != null`, falling back to the
+same quiet treatment the neutral tone gets (outline spine, plain badge text, the
+type accent chip). Every card and sheet now does this, so "None" is just another
+null on a path that already had one. When a lookup gains a null case, grep for
+every `!!` and every hand-rolled "is this tone signalling" test on its result.

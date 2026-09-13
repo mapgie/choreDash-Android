@@ -151,14 +151,19 @@ data class ChoreUiState(
     val hiddenChores: List<Chore>
         get() = awake.filter(::autoHidden) + snoozed
 
+    /** The chores the main list can show: in owner scope, not snoozed, not auto-hidden. */
+    private val inList: List<Chore>
+        get() = awake.filterNot(::autoHidden)
+
+    private fun isOverdue(chore: Chore): Boolean =
+        chore.status == ChoreStatus.STALE || chore.status == ChoreStatus.NEVER
+
     val displayed: List<Chore>
         get() {
-            var result = awake.filterNot(::autoHidden)
+            var result = inList
             result = when (filter) {
                 ChoreFilter.ALL -> result
-                ChoreFilter.OVERDUE -> result.filter {
-                    it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER
-                }
+                ChoreFilter.OVERDUE -> result.filter(::isOverdue)
                 ChoreFilter.SOON -> result.filter { it.status == ChoreStatus.AGING }
             }
             return if (zenMode) {
@@ -195,9 +200,13 @@ data class ChoreUiState(
                 .map { (category, chores) -> (category ?: UNCATEGORISED_LABEL) to chores }
         }
 
-    /** Overdue chores in scope, shown on the Overdue chip ("Overdue · 5"). */
+    /**
+     * The number on the Overdue chip ("Overdue · 5"): exactly the cards the chip
+     * lists when tapped. Archived chores never reach [active], and a snoozed or
+     * auto-hidden chore sits in the collapsed section, so none of them count.
+     */
     val overdueCount: Int
-        get() = ownerFiltered.count { it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER }
+        get() = inList.count(::isOverdue)
 
     val categories: List<String>
         get() = catalog.sorted(

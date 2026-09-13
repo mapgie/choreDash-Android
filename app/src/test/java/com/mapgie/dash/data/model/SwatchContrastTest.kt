@@ -45,10 +45,11 @@ class SwatchContrastTest {
     }
 
     @Test
-    fun `severity defaults are the design's rose, amber and sage`() {
+    fun `severity defaults are the design's rose, amber and sage, with blue for low priority`() {
         assertTrue(Severity.OVERDUE.defaultSwatch == Swatch.ROSE)
         assertTrue(Severity.DUE_SOON.defaultSwatch == Swatch.AMBER)
         assertTrue(Severity.FRESH.defaultSwatch == Swatch.SAGE)
+        assertTrue(Severity.LOW.defaultSwatch == Swatch.BLUE)
     }
 
     @Test
