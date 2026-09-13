@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Urgh + taskDash</string>
+    <string name="app_name">Urgh</string>
     <string name="channel_task_reminders_alarm_name">Task reminders (Alarm)</string>
     <string name="channel_task_reminders_alarm_desc">Plays alarm sound and bypasses Do Not Disturb</string>
     <string name="channel_task_reminders_notif_name">Task reminders (Notification)</string>
