@@ -21,7 +21,7 @@ jobs:
     name: Apply schema
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Apply schema.sql to the database
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
