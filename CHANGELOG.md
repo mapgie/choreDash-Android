@@ -31,6 +31,19 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.43.0] - 2026-09-13
+
+### Added
+- A fourth severity colour, Low priority (blue by default), worn by low-priority tasks with nothing pressing.
+- Settings > Colours can set any severity colour to None, leaving that element plain.
+
+### Changed
+- Tasks always carry a colour: fresh unless the due date is close, and priority joins in. High priority counts as due soon, low priority wears the fourth colour.
+
+### Fixed
+- The Overdue chip on Chores now counts only the chores it lists: archived and snoozed chores no longer inflate the tally.
+
+---
 ## [0.42.1] - 2026-09-12
 
 ### Fixed
