@@ -36,7 +36,6 @@ class ChorePayloadTest {
     fun `clearing a chore's date sends explicit nulls`() {
         val payload = chorePatch("House insurance", null, null, ChoreSchedule(), includeSchedule = true)
         assertEquals(JsonNull, payload["due_date"])
-        assertEquals(JsonNull, payload["lead_days"])
         assertEquals(JsonNull, payload["repeat_unit"])
         assertEquals(JsonNull, payload["interval_days"])
     }
@@ -48,8 +47,9 @@ class ChorePayloadTest {
     }
 
     @Test
-    fun `a show-from override on its own writes lead days`() {
-        val payload = chorePatch("Vacuum", null, null, ChoreSchedule(leadDays = 14), includeSchedule = false)
-        assertEquals(JsonPrimitive(14), payload["lead_days"])
+    fun `a chore's show-from never reaches the database`() {
+        // It is a per-phone setting (ChoreLeadStore), so no edit names lead_days.
+        val payload = chorePatch("Vacuum", null, null, ChoreSchedule(dueDate = LocalDate.of(2026, 10, 1)), includeSchedule = true)
+        assertFalse(payload.containsKey("lead_days"))
     }
 }

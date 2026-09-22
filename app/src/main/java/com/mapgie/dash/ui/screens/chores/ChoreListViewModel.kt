@@ -23,6 +23,7 @@ import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.defaultSnoozeDuration
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.CategoryStyleStore
+import com.mapgie.dash.data.preferences.ChoreLeadStore
 import com.mapgie.dash.data.preferences.ChoreSnoozeStore
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ChoreRepository
@@ -93,6 +94,8 @@ data class ChoreUiState(
     val recentScan: RecentScan? = null,
     /** Tag id to wake time for chores snoozed on this device. */
     val snoozes: Map<String, Instant> = emptyMap(),
+    /** Tag id to this phone's own "show from" (days before due) for that chore. */
+    val leadOverrides: Map<String, Int> = emptyMap(),
     val recentSnooze: RecentSnooze? = null,
     val pinnedChoreId: String? = null,
     val scanHistory: List<ScanDto> = emptyList(),
@@ -141,8 +144,8 @@ data class ChoreUiState(
 
     /**
      * True if this chore is kept out of the main list by the automatic
-     * "hidden until closer to due" rule: the chore's own lead days when it has
-     * them, else beyond its cadence lead time when smart visibility is on,
+     * "hidden until closer to due" rule: this phone's own lead days for the chore
+     * when set, else beyond its cadence lead time when smart visibility is on,
      * otherwise the legacy distant (due 60+ days out) test.
      *
      * A pinned chore is exempt so its card, and the pin marker on it, are always
@@ -150,8 +153,8 @@ data class ChoreUiState(
      */
     private fun autoHidden(chore: Chore): Boolean {
         if (chore.id == pinnedChoreId) return false
-        // The chore's own "hide until N days before due" wins over both rules.
-        chore.leadDays?.let { return !chore.isDueWithin(it) }
+        // The chore's own "hide until N days before due" on this phone wins over both rules.
+        leadOverrides[chore.tagId]?.let { return !chore.isDueWithin(it) }
         return if (smartVisibility) !withinLeadTime(chore) else chore.isDistant()
     }
 
@@ -287,6 +290,7 @@ class ChoreListViewModel @Inject constructor(
     private val alarmScheduler: AlarmScheduler,
     private val pinnedItemStore: PinnedItemStore,
     private val choreSnoozeStore: ChoreSnoozeStore,
+    private val choreLeadStore: ChoreLeadStore,
     private val categoryStyleStore: CategoryStyleStore,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val appContext: Context
@@ -328,6 +332,11 @@ class ChoreListViewModel @Inject constructor(
         viewModelScope.launch {
             choreSnoozeStore.snoozes.collect { snoozes ->
                 _uiState.update { it.copy(snoozes = snoozes) }
+            }
+        }
+        viewModelScope.launch {
+            choreLeadStore.leadDays.collect { leads ->
+                _uiState.update { it.copy(leadOverrides = leads) }
             }
         }
         viewModelScope.launch {
@@ -452,9 +461,11 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
-    fun updateChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule) {
+    fun updateChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
         viewModelScope.launch {
             runCatching {
+                // On-device and written first, so it sticks even if the Supabase edit fails.
+                choreLeadStore.set(tagId, leadDays)
                 choreRepository.updateTag(tagId, label, category, owner, schedule)
                 load()
             }.onFailure { e ->
@@ -463,7 +474,7 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun addChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule) {
+    fun addChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
         viewModelScope.launch {
             runCatching {
                 requireTagFree(tagId)
@@ -471,6 +482,7 @@ class ChoreListViewModel @Inject constructor(
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
                 choreRepository.createTag(resolvedTagId, label, category, owner, schedule)
+                if (leadDays != null) choreLeadStore.set(resolvedTagId, leadDays)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }

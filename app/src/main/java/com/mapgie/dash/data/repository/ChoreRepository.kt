@@ -148,22 +148,20 @@ class ChoreRepository @Inject constructor(
         val intervalDays = schedule.repeat?.intervalDays
         val repeatUnit = schedule.repeat?.unit?.wire
         val due = schedule.dueDate?.toString()
-        val leadDays = schedule.leadDays
         val stored = privateStore.current().chore(tagId)
         when (privateMove(stored != null, category)) {
             PrivateMove.STAY_SHARED -> {
                 // Send the schedule columns only when there is something to set or
                 // clear, so plain edits keep working on a database that has not had
-                // schema.sql's due_date / repeat_unit / lead_days columns applied yet.
-                val hadSchedule = findShared(tagId)
-                    ?.let { it.dueDate != null || it.repeatUnit != null || it.leadDays != null } ?: true
+                // schema.sql's due_date / repeat_unit columns applied yet.
+                val hadSchedule = findShared(tagId)?.let { it.dueDate != null || it.repeatUnit != null } ?: true
                 patchShared(tagId, chorePatch(label, category, owner, schedule, includeSchedule = hadSchedule))
             }
             PrivateMove.STAY_PRIVATE -> privateStore.update {
                 it.updateChore(tagId) { t ->
                     t.copy(
                         label = label, category = category, owner = owner,
-                        intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit, leadDays = leadDays,
+                        intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
                     )
                 }
             }
@@ -176,7 +174,7 @@ class ChoreRepository @Inject constructor(
                 val history = sharedScanHistory(tagId, limit = ALL_SCANS)
                 val row = shared.copy(
                     label = label, category = category, owner = owner,
-                    intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit, leadDays = leadDays,
+                    intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
                 )
                 privateStore.update { it.withChore(row).withScans(history) }
                 runCatching { deleteShared(tagId) }.onFailure { e ->
@@ -199,7 +197,6 @@ class ChoreRepository @Inject constructor(
                         intervalDays = intervalDays,
                         dueDate = due,
                         repeatUnit = repeatUnit,
-                        leadDays = leadDays,
                     )
                 )
                 val history = privateStore.current().scansFor(tagId)
@@ -254,7 +251,6 @@ class ChoreRepository @Inject constructor(
                 intervalDays = intervalDays,
                 dueDate = schedule.dueDate?.toString(),
                 repeatUnit = schedule.repeat?.unit?.wire,
-                leadDays = schedule.leadDays,
                 createdAt = Instant.now().toString(),
             )
             privateStore.update { it.withChore(row) }
@@ -271,7 +267,6 @@ class ChoreRepository @Inject constructor(
                     intervalDays = intervalDays,
                     dueDate = schedule.dueDate?.toString(),
                     repeatUnit = schedule.repeat?.unit?.wire,
-                    leadDays = schedule.leadDays,
                 )
             ) { select() }
             .decodeSingle<TagDto>()
@@ -309,9 +304,9 @@ class ChoreRepository @Inject constructor(
 /**
  * The PATCH body for a shared chore edit. An explicit JSON object so a null
  * clears the column instead of being dropped (LESSONS.md #33) while
- * interval_days stays numeric. `due_date`, `repeat_unit` and `lead_days` are
- * sent only when [includeSchedule] is set or there is a value to write: a
- * database without those columns rejects any body that names them.
+ * interval_days stays numeric. `due_date` and `repeat_unit` are sent only when
+ * [includeSchedule] is set or there is a value to write: a database without
+ * those columns rejects any body that names them.
  */
 internal fun chorePatch(
     label: String,
@@ -325,10 +320,9 @@ internal fun chorePatch(
     put("owner", owner)
     put("interval_days", schedule.repeat?.intervalDays)
     val repeatUnit = schedule.repeat?.unit?.wire
-    if (includeSchedule || schedule.dueDate != null || repeatUnit != null || schedule.leadDays != null) {
+    if (includeSchedule || schedule.dueDate != null || repeatUnit != null) {
         put("due_date", schedule.dueDate?.toString())
         put("repeat_unit", repeatUnit)
-        put("lead_days", schedule.leadDays)
     }
 }
 

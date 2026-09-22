@@ -30,7 +30,7 @@ data class ChoreDraft(
     val repeatUnit: String = RepeatUnit.DAY.name,
     /** The due date as an epoch day, or null for a chore timed from its last log. */
     val dueDateEpochDay: Long? = null,
-    /** Hide until this many days before due, or null for the automatic rule. */
+    /** This phone's "show from": hide until this many days before due, or null for automatic. */
     val leadDays: Int? = null,
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
@@ -50,8 +50,8 @@ data class ChoreDraft(
 
     fun dueDate(): LocalDate? = dueDateEpochDay?.let { LocalDate.ofEpochDay(it) }
 
-    /** Everything about when the chore comes round, as the sheet would save it. */
-    fun schedule(): ChoreSchedule = ChoreSchedule(repeat = repeat(), dueDate = dueDate(), leadDays = leadDays)
+    /** The repeat and due date the sheet would save to the chore. */
+    fun schedule(): ChoreSchedule = ChoreSchedule(repeat = repeat(), dueDate = dueDate())
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
@@ -60,10 +60,11 @@ data class ChoreDraft(
         /**
          * The values the sheet opens with: [chore]'s own fields, or the New chore
          * defaults (General, [initialTagId] from an NFC scan) when [chore] is null.
+         * [leadDays] is this phone's "show from" for the chore, kept outside it.
          */
-        fun of(chore: Chore?, initialTagId: String = ""): ChoreDraft =
+        fun of(chore: Chore?, initialTagId: String = "", leadDays: Int? = null): ChoreDraft =
             if (chore == null) {
-                ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId)
+                ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId, leadDays = leadDays)
             } else {
                 val repeat = chore.repeat
                 ChoreDraft(
@@ -74,7 +75,7 @@ data class ChoreDraft(
                     tagId = chore.tagId,
                     repeatUnit = (repeat?.unit ?: RepeatUnit.DAY).name,
                     dueDateEpochDay = chore.dueDate?.toEpochDay(),
-                    leadDays = chore.leadDays,
+                    leadDays = leadDays,
                 )
             }
     }

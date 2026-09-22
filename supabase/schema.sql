@@ -57,9 +57,6 @@ CREATE TABLE IF NOT EXISTS tags (
   -- What interval_days counts in: NULL means days. interval_days keeps the
   -- approximate length (a year is 365) so readers that ignore this column still work.
   repeat_unit   text CHECK (repeat_unit IN ('week', 'month', 'year')),
-  -- Per-chore override of the app's auto-hide: keep the chore out of the main
-  -- list until this many days before it is due. NULL leaves it to the app.
-  lead_days     integer CHECK (lead_days >= 0),
   archived_at   timestamptz,
   created_at    timestamptz DEFAULT now()
 );
@@ -69,7 +66,6 @@ CREATE TABLE IF NOT EXISTS tags (
 -- re-asserted in "Constraint sync" below.
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS due_date    date;
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS repeat_unit text;
-ALTER TABLE tags ADD COLUMN IF NOT EXISTS lead_days   integer;
 
 CREATE INDEX IF NOT EXISTS tags_owner_idx    ON tags(owner);
 CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);
@@ -183,6 +179,3 @@ ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
 ALTER TABLE tags DROP CONSTRAINT IF EXISTS tags_repeat_unit_check;
 ALTER TABLE tags ADD CONSTRAINT tags_repeat_unit_check
   CHECK (repeat_unit IN ('week', 'month', 'year'));
-
-ALTER TABLE tags DROP CONSTRAINT IF EXISTS tags_lead_days_check;
-ALTER TABLE tags ADD CONSTRAINT tags_lead_days_check CHECK (lead_days >= 0);

@@ -35,14 +35,13 @@ enum class RepeatUnit(val wire: String?, val days: Int, val singular: String, va
 }
 
 /**
- * The when-fields a chore edit saves together: how often it repeats, the due
- * date it is anchored to, and [leadDays], this chore's own "hide until this
- * many days before due" (null: the list's automatic rule decides).
+ * The when-fields a chore edit saves to the chore itself: how often it repeats
+ * and the due date it is anchored to. (Its "show from" is a per-phone setting,
+ * kept apart in ChoreLeadStore.)
  */
 data class ChoreSchedule(
     val repeat: ChoreRepeat? = null,
     val dueDate: LocalDate? = null,
-    val leadDays: Int? = null,
 )
 
 /** "Every [every] [unit]": how often a chore comes round. */

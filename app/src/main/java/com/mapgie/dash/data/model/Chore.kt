@@ -20,8 +20,6 @@ data class TagDto(
     @SerialName("due_date") val dueDate: String? = null,
     /** [RepeatUnit.wire]: what [intervalDays] counts in. Null means days. */
     @SerialName("repeat_unit") val repeatUnit: String? = null,
-    /** Hide until this many days before due; null leaves it to the automatic rule. */
-    @SerialName("lead_days") val leadDays: Int? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
     @SerialName("created_at") val createdAt: String = ""
 )
@@ -56,7 +54,6 @@ data class TagInsert(
     // saves even before schema.sql has added these columns.
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("repeat_unit") val repeatUnit: String? = null,
-    @SerialName("lead_days") val leadDays: Int? = null,
 )
 
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
@@ -78,8 +75,6 @@ data class Chore(
     /** The due date the user set; the chore then falls due on it and every [repeat] after. */
     val dueDate: LocalDate? = null,
     val repeatUnit: RepeatUnit = RepeatUnit.DAY,
-    /** This chore's own "hide until N days before due", or null for the automatic rule. */
-    val leadDays: Int? = null,
 ) {
     /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
     val isPrivate: Boolean get() = isPrivateCategory(category)
@@ -262,7 +257,6 @@ data class Chore(
                 status = status,
                 dueDate = dueDate,
                 repeatUnit = repeatUnit,
-                leadDays = tag.leadDays?.takeIf { it >= 0 },
             )
         }
 

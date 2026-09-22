@@ -115,11 +115,14 @@ fun EditChoreSheet(
     owners: List<String>,
     categories: List<String>,
     sheetState: SheetState,
-    onSave: (tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule) -> Unit,
+    /** [leadDays] is this phone's "show from" for the chore; null means automatic. */
+    onSave: (tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
     onWriteTag: (tagId: String) -> Unit,
     onDismiss: () -> Unit,
     initialTagId: String = "",
+    /** This phone's "show from" for [chore], or null when it follows the automatic rule. */
+    initialLeadDays: Int? = null,
     draft: ChoreDraft? = null,
     onDraftChange: (ChoreDraft) -> Unit = {},
     onDraftClear: () -> Unit = {},
@@ -134,7 +137,7 @@ fun EditChoreSheet(
     // The values the sheet opened with, snapshotted once so the dirty check
     // compares against what the fields actually started as (LESSONS.md #27).
     // Every field is rememberSaveable so rotation and process death keep edits.
-    val opened = remember { ChoreDraft.of(chore, initialTagId) }
+    val opened = remember { ChoreDraft.of(chore, initialTagId, initialLeadDays) }
     var label by rememberSaveable { mutableStateOf(opened.label) }
     var category by rememberSaveable { mutableStateOf(opened.category) }
     var owner by rememberSaveable { mutableStateOf(opened.owner) }
@@ -417,10 +420,11 @@ fun EditChoreSheet(
                 onCancel = { requestDismiss() },
                 onAction = {
                     val schedule = currentDraft.schedule()
+                    val lead = leadDays
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
                     onDraftClear()
-                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, schedule) }
+                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, schedule, lead) }
                 },
             )
 
@@ -484,8 +488,8 @@ fun EditChoreSheet(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Keep this chore in the hidden section until this many days before it is due. " +
-                            "0 shows it on the day. Blank goes back to Auto.",
+                        "On this phone, keep this chore in the hidden section until this many days " +
+                            "before it is due. 0 shows it on the day. Blank goes back to Auto.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     OutlinedTextField(

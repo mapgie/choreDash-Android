@@ -335,12 +335,11 @@ class ChoreUiStateTest {
     // ── Due dates ─────────────────────────────────────────────────────────────
 
     /** A yearly chore due [dueInDays] from today, never logged. */
-    private fun datedYearly(id: String, dueInDays: Long, leadDays: Int? = null): Chore = Chore.from(
+    private fun datedYearly(id: String, dueInDays: Long): Chore = Chore.from(
         tag = TagDto(
             id = id, tagId = "tag-$id", label = id,
             intervalDays = 365.0, repeatUnit = "year",
             dueDate = LocalDate.now().plusDays(dueInDays).toString(),
-            leadDays = leadDays,
         ),
         lastScanned = null,
         lastScanId = null,
@@ -382,53 +381,49 @@ class ChoreUiStateTest {
         assertEquals(listOf("stale", "soon", "later", "fresh"), ids(state.displayed))
     }
 
-    // ── Per-chore "show from" override ────────────────────────────────────────
+    // ── Per-chore "show from" override (this phone only) ─────────────────────
 
     /** On a 10d cadence, logged 36h ago: due in 8.5 days. */
-    private fun withLead(id: String, leadDays: Int?): Chore = Chore.from(
-        tag = TagDto(id = id, tagId = "tag-$id", label = id, intervalDays = 10.0, leadDays = leadDays),
-        lastScanned = Instant.now().minus(Duration.ofHours(36)),
-        lastScanId = null,
-    )
+    private val tenDay = chore("ten-day", lastScannedAgo = Duration.ofHours(36))
+
+    private fun leads(vararg entries: Pair<Chore, Int>): Map<String, Int> =
+        entries.associate { (chore, days) -> chore.tagId to days }
 
     @Test
     fun `a chore's own show-from shows it earlier than its cadence lead time`() {
-        // WEEKLY bucket would hide it until 3 days out; the chore asks for 14.
-        val early = withLead("early", leadDays = 14)
-        val auto = withLead("auto", leadDays = null)
-        val state = ChoreUiState(active = listOf(early, auto), smartVisibility = true)
-        assertEquals(listOf("early"), ids(state.displayed))
+        // WEEKLY bucket would hide it until 3 days out; this phone asks for 14.
+        val auto = chore("auto", lastScannedAgo = Duration.ofHours(36))
+        val state = ChoreUiState(active = listOf(tenDay, auto), smartVisibility = true, leadOverrides = leads(tenDay to 14))
+        assertEquals(listOf("ten-day"), ids(state.displayed))
         assertEquals(listOf("auto"), ids(state.hiddenChores))
     }
 
     @Test
     fun `a chore's own show-from hides it even with smart visibility off`() {
-        val late = withLead("late", leadDays = 3)
-        val state = ChoreUiState(active = listOf(late), smartVisibility = false)
+        val state = ChoreUiState(active = listOf(tenDay), smartVisibility = false, leadOverrides = leads(tenDay to 3))
         assertTrue(state.displayed.isEmpty())
-        assertEquals(listOf("late"), ids(state.hiddenChores))
+        assertEquals(listOf("ten-day"), ids(state.hiddenChores))
     }
 
     @Test
     fun `a dated chore with show-from zero appears on its due date`() {
-        val tomorrow = datedYearly("tomorrow", dueInDays = 1, leadDays = 0)
-        val today = datedYearly("today", dueInDays = 0, leadDays = 0)
-        val state = ChoreUiState(active = listOf(tomorrow, today))
+        val tomorrow = datedYearly("tomorrow", dueInDays = 1)
+        val today = datedYearly("today", dueInDays = 0)
+        val state = ChoreUiState(active = listOf(tomorrow, today), leadOverrides = leads(tomorrow to 0, today to 0))
         assertEquals(listOf("today"), ids(state.displayed))
         assertEquals(listOf("tomorrow"), ids(state.hiddenChores))
     }
 
     @Test
     fun `a dated chore with a longer show-from appears that many days ahead`() {
-        val insurance = datedYearly("insurance", dueInDays = 20, leadDays = 30)
-        val state = ChoreUiState(active = listOf(insurance), smartVisibility = true)
+        val insurance = datedYearly("insurance", dueInDays = 20)
+        val state = ChoreUiState(active = listOf(insurance), smartVisibility = true, leadOverrides = leads(insurance to 30))
         assertEquals(listOf("insurance"), ids(state.displayed))
     }
 
     @Test
     fun `a pinned chore shows whatever its own show-from says`() {
-        val pinned = withLead("pinned", leadDays = 1)
-        val state = ChoreUiState(active = listOf(pinned), pinnedChoreId = "pinned")
-        assertEquals(listOf("pinned"), ids(state.displayed))
+        val state = ChoreUiState(active = listOf(tenDay), pinnedChoreId = tenDay.id, leadOverrides = leads(tenDay to 1))
+        assertEquals(listOf("ten-day"), ids(state.displayed))
     }
 }

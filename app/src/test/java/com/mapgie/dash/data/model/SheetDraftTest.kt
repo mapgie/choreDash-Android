@@ -66,12 +66,11 @@ class SheetDraftTest {
     }
 
     @Test
-    fun `setting a chore's show-from is a change and is saved with the schedule`() {
-        val opened = ChoreDraft.of(meds)
-        val edited = opened.copy(leadDays = 14)
-        assertTrue(edited.differsFrom(opened))
-        assertEquals(14, edited.schedule().leadDays)
-        assertEquals(14, ChoreDraft.of(meds.copy(leadDays = 14)).leadDays)
+    fun `a chore's show-from opens from this phone's setting and editing it is a change`() {
+        val opened = ChoreDraft.of(meds, leadDays = 14)
+        assertEquals(14, opened.leadDays)
+        assertTrue(opened.copy(leadDays = null).differsFrom(opened))
+        assertFalse(ChoreDraft.of(meds, leadDays = 14).differsFrom(opened))
     }
 
     @Test
