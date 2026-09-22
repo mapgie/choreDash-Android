@@ -20,6 +20,8 @@ data class TagDto(
     @SerialName("due_date") val dueDate: String? = null,
     /** [RepeatUnit.wire]: what [intervalDays] counts in. Null means days. */
     @SerialName("repeat_unit") val repeatUnit: String? = null,
+    /** Hide until this many days before due; null leaves it to the automatic rule. */
+    @SerialName("lead_days") val leadDays: Int? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
     @SerialName("created_at") val createdAt: String = ""
 )
@@ -54,6 +56,7 @@ data class TagInsert(
     // saves even before schema.sql has added these columns.
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("repeat_unit") val repeatUnit: String? = null,
+    @SerialName("lead_days") val leadDays: Int? = null,
 )
 
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
@@ -75,6 +78,8 @@ data class Chore(
     /** The due date the user set; the chore then falls due on it and every [repeat] after. */
     val dueDate: LocalDate? = null,
     val repeatUnit: RepeatUnit = RepeatUnit.DAY,
+    /** This chore's own "hide until N days before due", or null for the automatic rule. */
+    val leadDays: Int? = null,
 ) {
     /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
     val isPrivate: Boolean get() = isPrivateCategory(category)
@@ -88,6 +93,17 @@ data class Chore(
      */
     val nextDueDate: LocalDate?
         get() = dueDate?.let { nextChoreDueDate(it, repeat, lastScanned?.localDate()) }
+
+    /**
+     * True when this chore falls due within [days] from now, or is already due.
+     * A dated chore counts calendar days; a chore with nothing to be due (never
+     * logged and undated, or a done one-off date) counts as within, so it shows.
+     */
+    fun isDueWithin(days: Int): Boolean {
+        if (dueDate != null) return (daysUntilDue() ?: return true) <= days
+        val due = dueInstant() ?: return true
+        return Duration.between(Instant.now(), due).toDays() <= days
+    }
 
     /** Whole days from today to [nextDueDate]; negative when overdue. */
     private fun daysUntilDue(): Long? =
@@ -246,6 +262,7 @@ data class Chore(
                 status = status,
                 dueDate = dueDate,
                 repeatUnit = repeatUnit,
+                leadDays = tag.leadDays?.takeIf { it >= 0 },
             )
         }
 

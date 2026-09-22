@@ -727,8 +727,8 @@ fun ChoreListScreen(
             draft = remember(chore.id) { viewModel.choreDrafts.get(chore.id) },
             onDraftChange = { viewModel.choreDrafts.put(chore.id, it) },
             onDraftClear = { viewModel.choreDrafts.clear(chore.id) },
-            onSave = { tagId, label, category, owner, repeat, dueDate ->
-                viewModel.updateChore(tagId, label, category, owner, repeat, dueDate)
+            onSave = { tagId, label, category, owner, schedule ->
+                viewModel.updateChore(tagId, label, category, owner, schedule)
                 showEditSheet = false
             },
             onArchiveToggle = { c, archive ->
@@ -785,8 +785,8 @@ fun ChoreListScreen(
             draft = remember { viewModel.choreDrafts.get(NEW_DRAFT_KEY) },
             onDraftChange = { viewModel.choreDrafts.put(NEW_DRAFT_KEY, it) },
             onDraftClear = { viewModel.choreDrafts.clear(NEW_DRAFT_KEY) },
-            onSave = { tagId, label, category, owner, repeat, dueDate ->
-                viewModel.addChore(tagId, label, category, owner, repeat, dueDate)
+            onSave = { tagId, label, category, owner, schedule ->
+                viewModel.addChore(tagId, label, category, owner, schedule)
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()

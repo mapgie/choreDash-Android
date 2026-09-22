@@ -57,7 +57,7 @@ class SchemaSyncTest {
     fun `the schema adds the due date columns to an existing tags table`() {
         // CREATE TABLE IF NOT EXISTS skips a live database, so without these the
         // app would send columns the shared project has never heard of.
-        for (column in listOf("due_date", "repeat_unit")) {
+        for (column in listOf("due_date", "repeat_unit", "lead_days")) {
             assertTrue(
                 "supabase/schema.sql never runs ALTER TABLE tags ADD COLUMN IF NOT EXISTS $column",
                 Regex("""ALTER TABLE tags ADD COLUMN IF NOT EXISTS\s+$column\b""", RegexOption.IGNORE_CASE)

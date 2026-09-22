@@ -1,7 +1,7 @@
 package com.mapgie.dash.data.repository
 
 import com.mapgie.dash.data.model.Chore
-import com.mapgie.dash.data.model.ChoreRepeat
+import com.mapgie.dash.data.model.ChoreSchedule
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.PrivateMove
 import com.mapgie.dash.data.model.ScanDto
@@ -18,7 +18,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -144,26 +143,27 @@ class ChoreRepository @Inject constructor(
         label: String,
         category: String?,
         owner: String?,
-        repeat: ChoreRepeat?,
-        dueDate: LocalDate?,
+        schedule: ChoreSchedule,
     ) {
-        val intervalDays = repeat?.intervalDays
-        val repeatUnit = repeat?.unit?.wire
-        val due = dueDate?.toString()
+        val intervalDays = schedule.repeat?.intervalDays
+        val repeatUnit = schedule.repeat?.unit?.wire
+        val due = schedule.dueDate?.toString()
+        val leadDays = schedule.leadDays
         val stored = privateStore.current().chore(tagId)
         when (privateMove(stored != null, category)) {
             PrivateMove.STAY_SHARED -> {
                 // Send the schedule columns only when there is something to set or
                 // clear, so plain edits keep working on a database that has not had
-                // schema.sql's due_date / repeat_unit columns applied yet.
-                val hadSchedule = findShared(tagId)?.let { it.dueDate != null || it.repeatUnit != null } ?: true
-                patchShared(tagId, chorePatch(label, category, owner, repeat, dueDate, includeSchedule = hadSchedule))
+                // schema.sql's due_date / repeat_unit / lead_days columns applied yet.
+                val hadSchedule = findShared(tagId)
+                    ?.let { it.dueDate != null || it.repeatUnit != null || it.leadDays != null } ?: true
+                patchShared(tagId, chorePatch(label, category, owner, schedule, includeSchedule = hadSchedule))
             }
             PrivateMove.STAY_PRIVATE -> privateStore.update {
                 it.updateChore(tagId) { t ->
                     t.copy(
                         label = label, category = category, owner = owner,
-                        intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
+                        intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit, leadDays = leadDays,
                     )
                 }
             }
@@ -176,7 +176,7 @@ class ChoreRepository @Inject constructor(
                 val history = sharedScanHistory(tagId, limit = ALL_SCANS)
                 val row = shared.copy(
                     label = label, category = category, owner = owner,
-                    intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
+                    intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit, leadDays = leadDays,
                 )
                 privateStore.update { it.withChore(row).withScans(history) }
                 runCatching { deleteShared(tagId) }.onFailure { e ->
@@ -199,6 +199,7 @@ class ChoreRepository @Inject constructor(
                         intervalDays = intervalDays,
                         dueDate = due,
                         repeatUnit = repeatUnit,
+                        leadDays = leadDays,
                     )
                 )
                 val history = privateStore.current().scansFor(tagId)
@@ -236,10 +237,9 @@ class ChoreRepository @Inject constructor(
         label: String,
         category: String?,
         owner: String?,
-        repeat: ChoreRepeat?,
-        dueDate: LocalDate?,
+        schedule: ChoreSchedule,
     ): TagDto {
-        val intervalDays = repeat?.intervalDays
+        val intervalDays = schedule.repeat?.intervalDays
         if (isPrivateCategory(category)) {
             // Tag ids are unique across both stores: a sticker has one job.
             if (findByTagId(tagId) != null) {
@@ -252,8 +252,9 @@ class ChoreRepository @Inject constructor(
                 category = category,
                 owner = owner,
                 intervalDays = intervalDays,
-                dueDate = dueDate?.toString(),
-                repeatUnit = repeat?.unit?.wire,
+                dueDate = schedule.dueDate?.toString(),
+                repeatUnit = schedule.repeat?.unit?.wire,
+                leadDays = schedule.leadDays,
                 createdAt = Instant.now().toString(),
             )
             privateStore.update { it.withChore(row) }
@@ -268,8 +269,9 @@ class ChoreRepository @Inject constructor(
                     category = category,
                     owner = owner,
                     intervalDays = intervalDays,
-                    dueDate = dueDate?.toString(),
-                    repeatUnit = repeat?.unit?.wire,
+                    dueDate = schedule.dueDate?.toString(),
+                    repeatUnit = schedule.repeat?.unit?.wire,
+                    leadDays = schedule.leadDays,
                 )
             ) { select() }
             .decodeSingle<TagDto>()
@@ -307,26 +309,26 @@ class ChoreRepository @Inject constructor(
 /**
  * The PATCH body for a shared chore edit. An explicit JSON object so a null
  * clears the column instead of being dropped (LESSONS.md #33) while
- * interval_days stays numeric. `due_date` and `repeat_unit` are sent only when
- * [includeSchedule] is set or there is a value to write: a database without
- * those columns rejects any body that names them.
+ * interval_days stays numeric. `due_date`, `repeat_unit` and `lead_days` are
+ * sent only when [includeSchedule] is set or there is a value to write: a
+ * database without those columns rejects any body that names them.
  */
 internal fun chorePatch(
     label: String,
     category: String?,
     owner: String?,
-    repeat: ChoreRepeat?,
-    dueDate: LocalDate?,
+    schedule: ChoreSchedule,
     includeSchedule: Boolean,
 ): JsonObject = buildJsonObject {
     put("label", label)
     put("category", category)
     put("owner", owner)
-    put("interval_days", repeat?.intervalDays)
-    val repeatUnit = repeat?.unit?.wire
-    if (includeSchedule || dueDate != null || repeatUnit != null) {
-        put("due_date", dueDate?.toString())
+    put("interval_days", schedule.repeat?.intervalDays)
+    val repeatUnit = schedule.repeat?.unit?.wire
+    if (includeSchedule || schedule.dueDate != null || repeatUnit != null || schedule.leadDays != null) {
+        put("due_date", schedule.dueDate?.toString())
         put("repeat_unit", repeatUnit)
+        put("lead_days", schedule.leadDays)
     }
 }
 

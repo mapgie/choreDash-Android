@@ -30,6 +30,8 @@ data class ChoreDraft(
     val repeatUnit: String = RepeatUnit.DAY.name,
     /** The due date as an epoch day, or null for a chore timed from its last log. */
     val dueDateEpochDay: Long? = null,
+    /** Hide until this many days before due, or null for the automatic rule. */
+    val leadDays: Int? = null,
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
     fun differsFrom(opened: ChoreDraft): Boolean =
@@ -38,7 +40,8 @@ data class ChoreDraft(
             owner != opened.owner ||
             repeat() != opened.repeat() ||
             tagId != opened.tagId ||
-            dueDateEpochDay != opened.dueDateEpochDay
+            dueDateEpochDay != opened.dueDateEpochDay ||
+            leadDays != opened.leadDays
 
     fun repeatUnitEnum(): RepeatUnit = RepeatUnit.entries.firstOrNull { it.name == repeatUnit } ?: RepeatUnit.DAY
 
@@ -46,6 +49,9 @@ data class ChoreDraft(
     fun repeat(): ChoreRepeat? = repeatEvery?.takeIf { it > 0 }?.let { ChoreRepeat(it, repeatUnitEnum()) }
 
     fun dueDate(): LocalDate? = dueDateEpochDay?.let { LocalDate.ofEpochDay(it) }
+
+    /** Everything about when the chore comes round, as the sheet would save it. */
+    fun schedule(): ChoreSchedule = ChoreSchedule(repeat = repeat(), dueDate = dueDate(), leadDays = leadDays)
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
@@ -68,6 +74,7 @@ data class ChoreDraft(
                     tagId = chore.tagId,
                     repeatUnit = (repeat?.unit ?: RepeatUnit.DAY).name,
                     dueDateEpochDay = chore.dueDate?.toEpochDay(),
+                    leadDays = chore.leadDays,
                 )
             }
     }

@@ -335,11 +335,12 @@ class ChoreUiStateTest {
     // ── Due dates ─────────────────────────────────────────────────────────────
 
     /** A yearly chore due [dueInDays] from today, never logged. */
-    private fun datedYearly(id: String, dueInDays: Long): Chore = Chore.from(
+    private fun datedYearly(id: String, dueInDays: Long, leadDays: Int? = null): Chore = Chore.from(
         tag = TagDto(
             id = id, tagId = "tag-$id", label = id,
             intervalDays = 365.0, repeatUnit = "year",
             dueDate = LocalDate.now().plusDays(dueInDays).toString(),
+            leadDays = leadDays,
         ),
         lastScanned = null,
         lastScanId = null,
@@ -379,5 +380,55 @@ class ChoreUiStateTest {
             sort = SortOrder(ChoreSortKey.DUE, reversed = false),
         )
         assertEquals(listOf("stale", "soon", "later", "fresh"), ids(state.displayed))
+    }
+
+    // ── Per-chore "show from" override ────────────────────────────────────────
+
+    /** On a 10d cadence, logged 36h ago: due in 8.5 days. */
+    private fun withLead(id: String, leadDays: Int?): Chore = Chore.from(
+        tag = TagDto(id = id, tagId = "tag-$id", label = id, intervalDays = 10.0, leadDays = leadDays),
+        lastScanned = Instant.now().minus(Duration.ofHours(36)),
+        lastScanId = null,
+    )
+
+    @Test
+    fun `a chore's own show-from shows it earlier than its cadence lead time`() {
+        // WEEKLY bucket would hide it until 3 days out; the chore asks for 14.
+        val early = withLead("early", leadDays = 14)
+        val auto = withLead("auto", leadDays = null)
+        val state = ChoreUiState(active = listOf(early, auto), smartVisibility = true)
+        assertEquals(listOf("early"), ids(state.displayed))
+        assertEquals(listOf("auto"), ids(state.hiddenChores))
+    }
+
+    @Test
+    fun `a chore's own show-from hides it even with smart visibility off`() {
+        val late = withLead("late", leadDays = 3)
+        val state = ChoreUiState(active = listOf(late), smartVisibility = false)
+        assertTrue(state.displayed.isEmpty())
+        assertEquals(listOf("late"), ids(state.hiddenChores))
+    }
+
+    @Test
+    fun `a dated chore with show-from zero appears on its due date`() {
+        val tomorrow = datedYearly("tomorrow", dueInDays = 1, leadDays = 0)
+        val today = datedYearly("today", dueInDays = 0, leadDays = 0)
+        val state = ChoreUiState(active = listOf(tomorrow, today))
+        assertEquals(listOf("today"), ids(state.displayed))
+        assertEquals(listOf("tomorrow"), ids(state.hiddenChores))
+    }
+
+    @Test
+    fun `a dated chore with a longer show-from appears that many days ahead`() {
+        val insurance = datedYearly("insurance", dueInDays = 20, leadDays = 30)
+        val state = ChoreUiState(active = listOf(insurance), smartVisibility = true)
+        assertEquals(listOf("insurance"), ids(state.displayed))
+    }
+
+    @Test
+    fun `a pinned chore shows whatever its own show-from says`() {
+        val pinned = withLead("pinned", leadDays = 1)
+        val state = ChoreUiState(active = listOf(pinned), pinnedChoreId = "pinned")
+        assertEquals(listOf("pinned"), ids(state.displayed))
     }
 }

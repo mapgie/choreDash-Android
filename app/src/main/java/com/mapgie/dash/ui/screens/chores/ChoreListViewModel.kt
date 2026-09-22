@@ -9,7 +9,7 @@ import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
-import com.mapgie.dash.data.model.ChoreRepeat
+import com.mapgie.dash.data.model.ChoreSchedule
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ChoreColourAxes
@@ -141,14 +141,17 @@ data class ChoreUiState(
 
     /**
      * True if this chore is kept out of the main list by the automatic
-     * "hidden until closer to due" rule: beyond its cadence lead time when smart
-     * visibility is on, otherwise the legacy distant (due 60+ days out) test.
+     * "hidden until closer to due" rule: the chore's own lead days when it has
+     * them, else beyond its cadence lead time when smart visibility is on,
+     * otherwise the legacy distant (due 60+ days out) test.
      *
      * A pinned chore is exempt so its card, and the pin marker on it, are always
      * reachable in the main list rather than buried in the collapsed section.
      */
     private fun autoHidden(chore: Chore): Boolean {
         if (chore.id == pinnedChoreId) return false
+        // The chore's own "hide until N days before due" wins over both rules.
+        chore.leadDays?.let { return !chore.isDueWithin(it) }
         return if (smartVisibility) !withinLeadTime(chore) else chore.isDistant()
     }
 
@@ -449,10 +452,10 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
-    fun updateChore(tagId: String, label: String, category: String?, owner: String?, repeat: ChoreRepeat?, dueDate: LocalDate?) {
+    fun updateChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule) {
         viewModelScope.launch {
             runCatching {
-                choreRepository.updateTag(tagId, label, category, owner, repeat, dueDate)
+                choreRepository.updateTag(tagId, label, category, owner, schedule)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
@@ -460,14 +463,14 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun addChore(tagId: String, label: String, category: String?, owner: String?, repeat: ChoreRepeat?, dueDate: LocalDate?) {
+    fun addChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule) {
         viewModelScope.launch {
             runCatching {
                 requireTagFree(tagId)
                 // A chore isn't required to have a physical NFC tag; generate a unique
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
-                choreRepository.createTag(resolvedTagId, label, category, owner, repeat, dueDate)
+                choreRepository.createTag(resolvedTagId, label, category, owner, schedule)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }

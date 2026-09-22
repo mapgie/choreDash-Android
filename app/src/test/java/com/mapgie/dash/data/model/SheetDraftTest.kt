@@ -66,6 +66,15 @@ class SheetDraftTest {
     }
 
     @Test
+    fun `setting a chore's show-from is a change and is saved with the schedule`() {
+        val opened = ChoreDraft.of(meds)
+        val edited = opened.copy(leadDays = 14)
+        assertTrue(edited.differsFrom(opened))
+        assertEquals(14, edited.schedule().leadDays)
+        assertEquals(14, ChoreDraft.of(meds.copy(leadDays = 14)).leadDays)
+    }
+
+    @Test
     fun `changing the unit of no repeat is not a change`() {
         val opened = ChoreDraft.of(meds).copy(repeatEvery = null)
         assertFalse(opened.copy(repeatUnit = RepeatUnit.YEAR.name).differsFrom(opened))
