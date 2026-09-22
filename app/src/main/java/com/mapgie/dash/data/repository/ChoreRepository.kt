@@ -153,7 +153,9 @@ class ChoreRepository @Inject constructor(
             PrivateMove.STAY_SHARED -> {
                 // Send the schedule columns only when there is something to set or
                 // clear, so plain edits keep working on a database that has not had
-                // schema.sql's due_date / repeat_unit columns applied yet.
+                // schema.sql's due_date / repeat_unit columns applied yet. The read
+                // costs one round trip per edit and exists only for that window: once
+                // every project has the columns, drop it and always send them.
                 val hadSchedule = findShared(tagId)?.let { it.dueDate != null || it.repeatUnit != null } ?: true
                 patchShared(tagId, chorePatch(label, category, owner, schedule, includeSchedule = hadSchedule))
             }
