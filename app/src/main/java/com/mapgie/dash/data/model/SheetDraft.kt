@@ -23,16 +23,29 @@ data class ChoreDraft(
     val label: String = "",
     val category: String = "",
     val owner: String = "",
-    val intervalDays: Int? = null,
+    /** How many [repeatUnit]s between turns, or null for no repeat. */
+    val repeatEvery: Int? = null,
     val tagId: String = "",
+    /** A [RepeatUnit] name. */
+    val repeatUnit: String = RepeatUnit.DAY.name,
+    /** The due date as an epoch day, or null for a chore timed from its last log. */
+    val dueDateEpochDay: Long? = null,
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
     fun differsFrom(opened: ChoreDraft): Boolean =
         label != opened.label ||
             category != opened.category ||
             owner != opened.owner ||
-            intervalDays != opened.intervalDays ||
-            tagId != opened.tagId
+            repeat() != opened.repeat() ||
+            tagId != opened.tagId ||
+            dueDateEpochDay != opened.dueDateEpochDay
+
+    fun repeatUnitEnum(): RepeatUnit = RepeatUnit.entries.firstOrNull { it.name == repeatUnit } ?: RepeatUnit.DAY
+
+    /** The repeat the sheet would save; the unit alone means nothing without a count. */
+    fun repeat(): ChoreRepeat? = repeatEvery?.takeIf { it > 0 }?.let { ChoreRepeat(it, repeatUnitEnum()) }
+
+    fun dueDate(): LocalDate? = dueDateEpochDay?.let { LocalDate.ofEpochDay(it) }
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
@@ -46,12 +59,15 @@ data class ChoreDraft(
             if (chore == null) {
                 ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId)
             } else {
+                val repeat = chore.repeat
                 ChoreDraft(
                     label = chore.label,
                     category = chore.category ?: "",
                     owner = chore.owner ?: "",
-                    intervalDays = chore.intervalDays?.toInt(),
+                    repeatEvery = repeat?.every,
                     tagId = chore.tagId,
+                    repeatUnit = (repeat?.unit ?: RepeatUnit.DAY).name,
+                    dueDateEpochDay = chore.dueDate?.toEpochDay(),
                 )
             }
     }

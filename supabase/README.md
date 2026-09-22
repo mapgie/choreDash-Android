@@ -47,7 +47,7 @@ table is reachable at all. Both are required.
 ## Keeping the app and the database in sync
 
 The app writes fixed sets of strings to constrained columns (`todos.due_period`,
-`todos.priority`). If the app learns a new value and the column's CHECK constraint
+`todos.priority`, `tags.repeat_unit`). If the app learns a new value and the column's CHECK constraint
 doesn't, Supabase rejects the insert at runtime, e.g.
 
 > new row for relation "todos" violates check constraint "todos_due_period_check"
@@ -55,8 +55,8 @@ doesn't, Supabase rejects the insert at runtime, e.g.
 Two CI guards catch that drift:
 
 1. **`SchemaSyncTest`** (a JVM unit test in the normal "Unit tests" job, no setup).
-   Asserts every value the app can write, drawn from the `DuePeriod` and
-   `TaskPriority` enums, appears in the matching CHECK in `schema.sql`. Adding an
+   Asserts every value the app can write, drawn from the `DuePeriod`,
+   `TaskPriority` and `RepeatUnit` enums, appears in the matching CHECK in `schema.sql`. Adding an
    enum value without widening the schema fails this test on the PR that adds it.
 
 2. **`schema-contract.yml`** (the `contract_check.py` script). Reads the allowed

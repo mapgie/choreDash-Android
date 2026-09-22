@@ -51,7 +51,24 @@ class SheetDraftTest {
     fun `a draft with a different title is offered`() {
         val opened = ChoreDraft.of(meds)
         assertTrue(opened.copy(label = "Meds (evening)").differsFrom(opened))
-        assertTrue(opened.copy(intervalDays = null).differsFrom(opened))
+        assertTrue(opened.copy(repeatEvery = null).differsFrom(opened))
+    }
+
+    @Test
+    fun `a chore draft carries its due date and repeat unit`() {
+        val insurance = meds.copy(label = "House insurance", intervalDays = 365.0, repeatUnit = RepeatUnit.YEAR, dueDate = LocalDate.of(2026, 10, 1))
+        val opened = ChoreDraft.of(insurance)
+        assertEquals(ChoreRepeat(1, RepeatUnit.YEAR), opened.repeat())
+        assertEquals(LocalDate.of(2026, 10, 1), opened.dueDate())
+        assertTrue(opened.copy(dueDateEpochDay = null).differsFrom(opened))
+        assertTrue(opened.copy(repeatUnit = RepeatUnit.MONTH.name).differsFrom(opened))
+        assertEquals(opened, Json.decodeFromString(ChoreDraft.serializer(), Json.encodeToString(ChoreDraft.serializer(), opened)))
+    }
+
+    @Test
+    fun `changing the unit of no repeat is not a change`() {
+        val opened = ChoreDraft.of(meds).copy(repeatEvery = null)
+        assertFalse(opened.copy(repeatUnit = RepeatUnit.YEAR.name).differsFrom(opened))
     }
 
     @Test
@@ -99,7 +116,7 @@ class SheetDraftTest {
 
     @Test
     fun `drafts round-trip through JSON`() {
-        val chore = ChoreDraft.of(meds).copy(label = "Meds (evening)", intervalDays = null)
+        val chore = ChoreDraft.of(meds).copy(label = "Meds (evening)", repeatEvery = null)
         assertEquals(chore, Json.decodeFromString(ChoreDraft.serializer(), Json.encodeToString(ChoreDraft.serializer(), chore)))
 
         val task = TaskDraft.of(taxes).copy(dueType = TaskDueType.PERIOD, duePeriod = "this_week", dueDateEpochDay = null)

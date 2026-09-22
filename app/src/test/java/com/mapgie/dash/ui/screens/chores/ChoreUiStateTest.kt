@@ -11,6 +11,7 @@ import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.TagDto
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -329,5 +330,54 @@ class ChoreUiStateTest {
         val daily = chore("daily", intervalDays = 1.0)
         val state = ChoreUiState(smartVisibility = true, choreLeadDays = mapOf(CadenceBucket.DAILY to 0))
         assertEquals(Duration.ofDays(1), state.snoozeDurationFor(daily))
+    }
+
+    // ── Due dates ─────────────────────────────────────────────────────────────
+
+    /** A yearly chore due [dueInDays] from today, never logged. */
+    private fun datedYearly(id: String, dueInDays: Long): Chore = Chore.from(
+        tag = TagDto(
+            id = id, tagId = "tag-$id", label = id,
+            intervalDays = 365.0, repeatUnit = "year",
+            dueDate = LocalDate.now().plusDays(dueInDays).toString(),
+        ),
+        lastScanned = null,
+        lastScanId = null,
+    )
+
+    @Test
+    fun `a dated chore stays in the hidden section until its lead time before the date`() {
+        // Yearly lands in the MONTHLY bucket, lead 7 days by default.
+        val farOff = datedYearly("insurance", dueInDays = 20)
+        val state = ChoreUiState(active = listOf(farOff), smartVisibility = true)
+        assertEquals(listOf("insurance"), ids(state.hiddenChores))
+        assertTrue(state.displayed.isEmpty())
+    }
+
+    @Test
+    fun `a dated chore shows once its date is within the lead time`() {
+        val close = datedYearly("insurance", dueInDays = 3)
+        val state = ChoreUiState(active = listOf(close), smartVisibility = true)
+        assertEquals(listOf("insurance"), ids(state.displayed))
+    }
+
+    @Test
+    fun `an overdue dated chore counts as overdue even though it was never logged`() {
+        val overdue = datedYearly("insurance", dueInDays = -2)
+        val state = ChoreUiState(active = listOf(overdue), filter = ChoreFilter.OVERDUE)
+        assertEquals(listOf("insurance"), ids(state.displayed))
+        assertEquals(1, state.overdueCount)
+    }
+
+    @Test
+    fun `due sort puts the nearest date first alongside interval chores`() {
+        val soon = datedYearly("soon", dueInDays = 2)
+        val later = datedYearly("later", dueInDays = 6)
+        // stale fell due 60h ago; fresh is due in 204h.
+        val state = ChoreUiState(
+            active = listOf(later, fresh, soon, stale),
+            sort = SortOrder(ChoreSortKey.DUE, reversed = false),
+        )
+        assertEquals(listOf("stale", "soon", "later", "fresh"), ids(state.displayed))
     }
 }

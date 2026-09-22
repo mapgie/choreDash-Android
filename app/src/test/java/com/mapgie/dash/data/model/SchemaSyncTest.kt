@@ -43,6 +43,30 @@ class SchemaSyncTest {
     }
 
     @Test
+    fun `every repeat unit the app can write is allowed by the schema`() {
+        val allowed = allowedValues("repeat_unit")
+        val emitted = RepeatUnit.storedValues.toSet()
+        assertTrue(
+            "supabase/schema.sql allows repeat_unit $allowed, but the app can write " +
+                "${emitted - allowed} (see RepeatUnit). Widen the CHECK in both places.",
+            allowed.containsAll(emitted),
+        )
+    }
+
+    @Test
+    fun `the schema adds the due date columns to an existing tags table`() {
+        // CREATE TABLE IF NOT EXISTS skips a live database, so without these the
+        // app would send columns the shared project has never heard of.
+        for (column in listOf("due_date", "repeat_unit")) {
+            assertTrue(
+                "supabase/schema.sql never runs ALTER TABLE tags ADD COLUMN IF NOT EXISTS $column",
+                Regex("""ALTER TABLE tags ADD COLUMN IF NOT EXISTS\s+$column\b""", RegexOption.IGNORE_CASE)
+                    .containsMatchIn(schema),
+            )
+        }
+    }
+
+    @Test
     fun `every table is granted to the anon role for the Data API`() {
         // From 2026 Supabase stops auto-exposing public tables to the Data API, so
         // a table the app reaches through the anon key must carry an explicit GRANT

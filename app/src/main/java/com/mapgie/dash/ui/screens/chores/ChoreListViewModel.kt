@@ -9,6 +9,7 @@ import com.mapgie.dash.data.model.CadenceBucket
 import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
+import com.mapgie.dash.data.model.ChoreRepeat
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
 import com.mapgie.dash.data.model.ChoreColourAxes
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
@@ -122,6 +124,13 @@ data class ChoreUiState(
 
     /** True if this chore belongs in the main list under its cadence bucket's lead time. */
     private fun withinLeadTime(chore: Chore): Boolean {
+        // A dated chore shows from its bucket's lead time before the date; a
+        // date with no repeat uses the longest bucket's.
+        chore.nextDueDate?.let { due ->
+            val bucket = chore.intervalDays?.let(CadenceBucket::forInterval) ?: CadenceBucket.MONTHLY
+            val leadDays = choreLeadDays[bucket] ?: bucket.defaultLeadDays
+            return ChronoUnit.DAYS.between(LocalDate.now(), due) <= leadDays
+        }
         val last = chore.lastScanned ?: return true
         val intervalDays = chore.intervalDays ?: return true
         val bucket = CadenceBucket.forInterval(intervalDays)
@@ -440,10 +449,10 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
-    fun updateChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
+    fun updateChore(tagId: String, label: String, category: String?, owner: String?, repeat: ChoreRepeat?, dueDate: LocalDate?) {
         viewModelScope.launch {
             runCatching {
-                choreRepository.updateTag(tagId, label, category, owner, intervalDays)
+                choreRepository.updateTag(tagId, label, category, owner, repeat, dueDate)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }
@@ -451,14 +460,14 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun addChore(tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) {
+    fun addChore(tagId: String, label: String, category: String?, owner: String?, repeat: ChoreRepeat?, dueDate: LocalDate?) {
         viewModelScope.launch {
             runCatching {
                 requireTagFree(tagId)
                 // A chore isn't required to have a physical NFC tag; generate a unique
                 // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
                 val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
-                choreRepository.createTag(resolvedTagId, label, category, owner, intervalDays)
+                choreRepository.createTag(resolvedTagId, label, category, owner, repeat, dueDate)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.userFacingMessage()) }

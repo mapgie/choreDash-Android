@@ -51,9 +51,21 @@ CREATE TABLE IF NOT EXISTS tags (
   category      text,
   owner         text REFERENCES owners(handle),
   interval_days double precision,
+  -- Optional fixed due date. The chore falls due on it and every repeat after;
+  -- the app works out the next one from the latest scan, so a scan never edits it.
+  due_date      date,
+  -- What interval_days counts in: NULL means days. interval_days keeps the
+  -- approximate length (a year is 365) so readers that ignore this column still work.
+  repeat_unit   text CHECK (repeat_unit IN ('week', 'month', 'year')),
   archived_at   timestamptz,
   created_at    timestamptz DEFAULT now()
 );
+
+-- CREATE TABLE IF NOT EXISTS never alters an existing table, so add the
+-- due-date columns to a database created before they existed. The CHECK is
+-- re-asserted in "Constraint sync" below.
+ALTER TABLE tags ADD COLUMN IF NOT EXISTS due_date    date;
+ALTER TABLE tags ADD COLUMN IF NOT EXISTS repeat_unit text;
 
 CREATE INDEX IF NOT EXISTS tags_owner_idx    ON tags(owner);
 CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);
@@ -156,10 +168,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_r
 -- Constraint sync
 --
 -- CREATE TABLE IF NOT EXISTS never alters a table that already exists, so the
--- inline due_period CHECK above only lands on a brand-new database. Re-assert it
--- here so an older database (created before 'eventually' was allowed) is widened
--- to match; a no-op once it already allows all four values.
+-- inline CHECKs above only land on a brand-new database. Re-assert them here so
+-- an older database (created before 'eventually' was allowed, or before
+-- repeat_unit existed) is brought in line; a no-op once it already matches.
 -- ─────────────────────────────────────────────────────────────────────────
 ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
 ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
   CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
+
+ALTER TABLE tags DROP CONSTRAINT IF EXISTS tags_repeat_unit_check;
+ALTER TABLE tags ADD CONSTRAINT tags_repeat_unit_check
+  CHECK (repeat_unit IN ('week', 'month', 'year'));

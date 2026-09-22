@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.formatDueDate
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.core.StatusBadge
@@ -161,7 +162,8 @@ fun ChoreOverviewSheet(
                 chipContent = chipContent,
                 eyebrow = listOfNotNull(
                     chore.category?.takeIf { it.isNotBlank() } ?: "chore",
-                    chore.intervalDays?.let { "every ${it.toInt()}d" },
+                    chore.repeat?.shortLabel(),
+                    chore.nextDueDate?.let { "due ${formatDueDate(it)}" },
                 ).joinToString(" · "),
                 ownerHandle = chore.owner,
             ) {
