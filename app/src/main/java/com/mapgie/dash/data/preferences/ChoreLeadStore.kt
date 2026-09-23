@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
@@ -45,6 +46,23 @@ class ChoreLeadStore @Inject constructor(
             prefs[Keys.LEAD_DAYS] = ChoreLeadCodec.encode(updated)
         }
     }
+
+    /**
+     * Drops every entry whose tag id is not in [knownTagIds], so a chore that no
+     * longer exists can't leave its "show from" behind to reattach to a future
+     * chore that reuses the tag id (an NFC id is reused across the id space).
+     * Call it only with the complete chore set, after a successful load; a write
+     * happens only when there is actually something to prune.
+     */
+    suspend fun retainOnly(knownTagIds: Set<String>) {
+        val current = leadDays.first()
+        val pruned = ChoreLeadCodec.retainOnly(current, knownTagIds)
+        if (pruned != current) {
+            context.choreLeadDataStore.edit { prefs ->
+                prefs[Keys.LEAD_DAYS] = ChoreLeadCodec.encode(pruned)
+            }
+        }
+    }
 }
 
 /**
@@ -66,4 +84,8 @@ internal object ChoreLeadCodec {
     /** [current] with [tagId] set to [days], or removed (back to automatic) when [days] is null or negative. */
     fun withLead(current: Map<String, Int>, tagId: String, days: Int?): Map<String, Int> =
         if (days == null || days < 0) current - tagId else current + (tagId to days)
+
+    /** [current] without any entry whose tag id is not in [knownTagIds]. */
+    fun retainOnly(current: Map<String, Int>, knownTagIds: Set<String>): Map<String, Int> =
+        current.filterKeys { it in knownTagIds }
 }

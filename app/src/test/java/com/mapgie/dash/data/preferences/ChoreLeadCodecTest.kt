@@ -36,4 +36,19 @@ class ChoreLeadCodecTest {
     fun `setting a chore's show-from replaces its old value`() {
         assertEquals(mapOf("washer" to 14), ChoreLeadCodec.withLead(mapOf("washer" to 3), "washer", 14))
     }
+
+    @Test
+    fun `retainOnly drops entries for chores that no longer exist`() {
+        val current = mapOf("washer" to 3, "insurance" to 30, "gone" to 7)
+        assertEquals(
+            mapOf("washer" to 3, "insurance" to 30),
+            ChoreLeadCodec.retainOnly(current, setOf("washer", "insurance")),
+        )
+    }
+
+    @Test
+    fun `retainOnly keeps everything when every chore is still known`() {
+        val current = mapOf("washer" to 3, "insurance" to 30)
+        assertEquals(current, ChoreLeadCodec.retainOnly(current, setOf("washer", "insurance", "bins")))
+    }
 }

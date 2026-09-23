@@ -391,6 +391,12 @@ class ChoreListViewModel @Inject constructor(
                             owners = result.owners
                         )
                     }
+                    // Drop on-device "Show from" for chores that no longer exist, so a
+                    // gone chore can't reattach its setting to a future chore reusing its
+                    // tag id. active + archived is the complete set (shared and private).
+                    choreLeadStore.retainOnly(
+                        (result.active + result.archived).mapTo(mutableSetOf()) { it.tagId }
+                    )
                 }
                 .onFailure { e ->
                     _uiState.update {
