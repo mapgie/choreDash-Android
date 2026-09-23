@@ -50,8 +50,14 @@ data class ChoreDraft(
 
     fun dueDate(): LocalDate? = dueDateEpochDay?.let { LocalDate.ofEpochDay(it) }
 
-    /** The repeat and due date the sheet would save to the chore. */
-    fun schedule(): ChoreSchedule = ChoreSchedule(repeat = repeat(), dueDate = dueDate())
+    /**
+     * The repeat and due date the sheet would save to the chore. Every chore
+     * repeats, so a due date left behind after the repeat was cleared is dropped.
+     */
+    fun schedule(): ChoreSchedule {
+        val repeat = repeat()
+        return ChoreSchedule(repeat = repeat, dueDate = if (repeat != null) dueDate() else null)
+    }
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }

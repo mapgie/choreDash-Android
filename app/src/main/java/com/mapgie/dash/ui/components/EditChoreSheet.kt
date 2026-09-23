@@ -232,7 +232,7 @@ fun EditChoreSheet(
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
 
-    fun calendarInfo() = dueDate.let { date ->
+    fun calendarInfo() = currentDraft.schedule().dueDate.let { date ->
         val title = label.trim().ifBlank { chore?.label ?: "" }
         val description = category.trim().ifBlank { null }?.let { "Category: $it" }
         if (date != null) calendarEventForDate(title = title, description = description, date = date)
@@ -346,21 +346,24 @@ fun EditChoreSheet(
                         }
                     }
                 }
-                SheetRowDivider()
-                SettingsRow(icon = LucideIcons.Calendar, label = "Due date") {
-                    val dueText = dueDate?.let { formatDueDate(it) } ?: "None"
-                    Box {
-                        ValueChip(
-                            text = dueText,
-                            onClick = { dueMenuOpen = true },
-                            contentDescription = "Due date: ${dueText.lowercase()}. Change due date",
-                        )
-                        DropdownMenu(expanded = dueMenuOpen, onDismissRequest = { dueMenuOpen = false }) {
-                            DropdownMenuItem(text = { Text("None") }, onClick = { dueDate = null; dueMenuOpen = false })
-                            DropdownMenuItem(
-                                text = { Text("Pick a date…") },
-                                onClick = { dueMenuOpen = false; showDueDatePicker = true },
+                // Every chore repeats, so a due date is only offered alongside a repeat.
+                if (interval != null) {
+                    SheetRowDivider()
+                    SettingsRow(icon = LucideIcons.Calendar, label = "Due date") {
+                        val dueText = dueDate?.let { formatDueDate(it) } ?: "None"
+                        Box {
+                            ValueChip(
+                                text = dueText,
+                                onClick = { dueMenuOpen = true },
+                                contentDescription = "Due date: ${dueText.lowercase()}. Change due date",
                             )
+                            DropdownMenu(expanded = dueMenuOpen, onDismissRequest = { dueMenuOpen = false }) {
+                                DropdownMenuItem(text = { Text("None") }, onClick = { dueDate = null; dueMenuOpen = false })
+                                DropdownMenuItem(
+                                    text = { Text("Pick a date…") },
+                                    onClick = { dueMenuOpen = false; showDueDatePicker = true },
+                                )
+                            }
                         }
                     }
                 }

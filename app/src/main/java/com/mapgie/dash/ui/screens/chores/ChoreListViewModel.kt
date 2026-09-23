@@ -127,8 +127,8 @@ data class ChoreUiState(
 
     /** True if this chore belongs in the main list under its cadence bucket's lead time. */
     private fun withinLeadTime(chore: Chore): Boolean {
-        // A dated chore shows from its bucket's lead time before the date; a
-        // date with no repeat uses the longest bucket's.
+        // A dated chore (always one with a repeat) shows from its bucket's lead
+        // time before the date.
         chore.nextDueDate?.let { due ->
             val bucket = chore.intervalDays?.let(CadenceBucket::forInterval) ?: CadenceBucket.MONTHLY
             val leadDays = choreLeadDays[bucket] ?: bucket.defaultLeadDays

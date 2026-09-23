@@ -74,6 +74,13 @@ class SheetDraftTest {
     }
 
     @Test
+    fun `a due date is only saved with a repeat`() {
+        val dated = ChoreDraft.of(meds).copy(dueDateEpochDay = LocalDate.of(2026, 10, 1).toEpochDay())
+        assertEquals(LocalDate.of(2026, 10, 1), dated.schedule().dueDate)
+        assertNull(dated.copy(repeatEvery = null).schedule().dueDate)
+    }
+
+    @Test
     fun `changing the unit of no repeat is not a change`() {
         val opened = ChoreDraft.of(meds).copy(repeatEvery = null)
         assertFalse(opened.copy(repeatUnit = RepeatUnit.YEAR.name).differsFrom(opened))

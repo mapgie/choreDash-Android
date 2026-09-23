@@ -63,13 +63,6 @@ class ChoreScheduleTest {
         assertEquals(LocalDate.of(2026, 3, 31), nextChoreDueDate(rent, monthly, lastLog = LocalDate.of(2026, 2, 28)))
     }
 
-    @Test
-    fun `a date with no repeat is done by a log near it and stays due otherwise`() {
-        assertNull(nextChoreDueDate(insuranceDue, repeat = null, lastLog = LocalDate.of(2026, 9, 20)))
-        assertNull(nextChoreDueDate(insuranceDue, repeat = null, lastLog = LocalDate.of(2026, 10, 9)))
-        assertEquals(insuranceDue, nextChoreDueDate(insuranceDue, repeat = null, lastLog = LocalDate.of(2026, 6, 1)))
-    }
-
     // ── Reading the repeat back ──────────────────────────────────────────────
 
     @Test
@@ -140,11 +133,17 @@ class ChoreScheduleTest {
     }
 
     @Test
-    fun `a done one-off date reads done`() {
-        val chore = dated(dueInDays = 2, repeat = null, lastLoggedAgo = Duration.ofHours(1))
+    fun `there are no one-off chores, so a due date without a repeat is ignored`() {
+        // Timed from its last log like any other chore: a category chore logged 36h ago.
+        val chore = dated(dueInDays = -4, repeat = null, lastLoggedAgo = Duration.ofHours(36))
         assertNull(chore.nextDueDate)
         assertEquals(ChoreStatus.FRESH, chore.status)
-        assertEquals("done", chore.dueBadgeText())
+        assertEquals(dated(dueInDays = 400, repeat = null, lastLoggedAgo = Duration.ofHours(36)).dueBadgeText(), chore.dueBadgeText())
+    }
+
+    @Test
+    fun `a due date without a repeat and no log reads never done`() {
+        assertEquals(ChoreStatus.NEVER, dated(dueInDays = 3, repeat = null).status)
     }
 
     @Test

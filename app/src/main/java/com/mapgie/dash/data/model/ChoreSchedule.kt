@@ -82,13 +82,7 @@ data class ChoreRepeat(val every: Int, val unit: RepeatUnit) {
 }
 
 /**
- * How early a log can come and still tick off a due date that does not repeat.
- * Logs older than this belong to the chore's history before the date was set.
- */
-const val ONE_OFF_EARLY_DAYS = 30L
-
-/**
- * The date a dated chore is next due, or null once a one-off date has been done.
+ * The date a dated chore is next due.
  *
  * [anchor] is the due date the user set; the chore then falls due on the
  * anchor and every [repeat] after it. The latest log ticks off the occurrence
@@ -96,15 +90,9 @@ const val ONE_OFF_EARLY_DAYS = 30L
  * few days after both move it on to next year's 1 Oct. Nothing is written when a
  * chore is logged: undoing the log undoes the advance for free. Occurrences
  * before the anchor never come due, so a log from before the date was set cannot
- * skip it.
- *
- * With no [repeat] the date is done by any log from [ONE_OFF_EARLY_DAYS] before it on.
+ * skip it. There are no one-off chores: a date always comes with a repeat.
  */
-fun nextChoreDueDate(anchor: LocalDate, repeat: ChoreRepeat?, lastLog: LocalDate?): LocalDate? {
-    if (repeat == null) {
-        val done = lastLog != null && !lastLog.isBefore(anchor.minusDays(ONE_OFF_EARLY_DAYS))
-        return if (done) null else anchor
-    }
+fun nextChoreDueDate(anchor: LocalDate, repeat: ChoreRepeat, lastLog: LocalDate?): LocalDate {
     if (lastLog == null) return anchor
 
     // Bracket the log between two occurrences: occurrence(k) <= lastLog < occurrence(k + 1).
@@ -121,8 +109,8 @@ fun nextChoreDueDate(anchor: LocalDate, repeat: ChoreRepeat?, lastLog: LocalDate
 }
 
 /** How many days ahead a dated chore turns amber: half its repeat, between 1 and 7 days. */
-fun dueSoonDays(repeat: ChoreRepeat?): Long =
-    repeat?.let { (it.every.toLong() * it.unit.days / 2).coerceIn(1, 7) } ?: 7
+fun dueSoonDays(repeat: ChoreRepeat): Long =
+    (repeat.every.toLong() * repeat.unit.days / 2).coerceIn(1, 7)
 
 /** "1 Oct" this year, "1 Oct 2027" any other year. */
 fun formatDueDate(date: LocalDate, today: LocalDate = LocalDate.now()): String =
