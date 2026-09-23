@@ -5,7 +5,9 @@ project with the taskDash web app.
 
 - **Chores**: recurring jobs tracked by NFC stickers. Tap the tag on the washing
   machine and the chore is logged; the list shows what is overdue, due soon, or
-  fresh, with owners, categories, snoozes and smart visibility.
+  fresh, with owners, categories, snoozes and smart visibility. A chore repeats
+  in days, weeks, months or years, and can be pinned to a calendar date ("house
+  insurance, due 1 Oct, every year").
 - **Tasks**: a shared to-do list with categories, priority, due dates or periods,
   and per-task reminders.
 - **Memos**: on-device reminders in three shapes. A once-only memo rings once. A
@@ -67,9 +69,11 @@ app/src/main/java/com/mapgie/dash/
   permission/                 # Settings deep links for exact alarms, notifications, full-screen, DND
   data/
     model/                    # Chore, Task, Owner, Reminder (memo) + the pure rules:
-                              #   TagAlarm.kt, ReminderSchedule.kt, OwnerFilter, sort keys, drafts
+                              #   ChoreSchedule.kt (repeats, due dates), TagAlarm.kt,
+                              #   ReminderSchedule.kt, OwnerFilter, sort keys, drafts
     repository/               # ChoreRepository, TaskRepository (Supabase); ReminderRepository (on-device)
     preferences/              # DataStore: SettingsRepository, CategoryStyleStore, ChoreSnoozeStore,
+                              #   ChoreLeadStore (per-chore "Show from"),
                               #   TagStickerStore (which ids this phone has met on a sticker)
     supabase/                 # SupabaseClientProvider, user-facing error trimming
     database/                 # Room (dash.db): saved custom colour themes only
@@ -100,11 +104,34 @@ LESSONS.md                    # Numbered lessons from bugs already fixed; check 
 |---|---|---|
 | Chores (`tags`), scans, tasks (`todos`), owners | Supabase | Yes |
 | Memos, including tag-alarms and their tag ids | DataStore on the phone | No |
-| Settings, credentials, category styles, snoozes, sticker record | DataStore on the phone | No |
+| Settings, credentials, category styles, snoozes, per-chore "Show from", sticker record | DataStore on the phone | No |
 | Saved custom themes | Room on the phone | No |
 
 A chore **is** a row in the `tags` table, and its `tag_id` is both its primary key
 and the id its NFC sticker carries. Memos never touch Supabase.
+
+### When a chore is due
+
+Every chore repeats. Most are timed from their last log: a chore every 7 days is
+due 7 days after it was last done (a chore with no repeat of its own uses its
+category's thresholds). A chore can also carry a **due date**, which only counts
+together with a repeat:
+
+- `interval_days` holds the repeat's length and `repeat_unit` says what it is
+  counted in (`week`, `month`, `year`; null for days). A yearly repeat is stored
+  as 365 days, so anything reading `interval_days` alone, like the web app, still
+  gets a sensible cadence.
+- `due_date` is the date the user picked, and it is never rewritten. The next due
+  date is worked out from it and the latest log: the log ticks off the occurrence
+  nearest to it, early or late, so a yearly bill paid a week early or a few days
+  late moves on to next year's date. Dates are counted from the one picked, so a
+  monthly chore on the 31st stays on the month end. Undoing a log undoes the move.
+- **Show from** (per chore, this phone only) keeps a chore in the hidden section
+  until that many days before it is due, overriding the automatic rules in
+  Settings › Display.
+
+The rules live in `data/model/ChoreSchedule.kt` and `Chore.kt`; `ChoreScheduleTest`
+and `ChoreUiStateTest` are their spec.
 
 ---
 
@@ -143,7 +170,9 @@ optionally the same one as the taskDash web app.
    [`supabase/schema.sql`](supabase/schema.sql), and run it. It creates `owners`,
    `tags`, `scans` and `todos` with their row-level security policies and the
    table grants the Data API needs. Every statement is idempotent, so re-running
-   it later is safe and never touches rows.
+   it later is safe and never touches rows. Re-run it after updating the app to
+   pick up new columns (chore due dates need `tags.due_date` and
+   `tags.repeat_unit`); until then everything else keeps working.
 3. Add at least one row to `owners`, for example
    `INSERT INTO owners (handle) VALUES ('alex');`.
 4. In Supabase, **Settings → API**: copy the **Project URL** and the publishable

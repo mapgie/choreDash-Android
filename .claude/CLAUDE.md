@@ -96,6 +96,7 @@ reading code.
 | To change... | Start at | Then |
 |---|---|---|
 | What a list shows (filter, sort, sections, hiding) | `ui/screens/<tab>/*ListViewModel.kt`, the `*UiState` class at the top | Its test in `app/src/test/.../ui/screens/<tab>/` |
+| When a chore is due (repeat units, due dates, status, badge) | `data/model/ChoreSchedule.kt` (`nextChoreDueDate`) and `Chore.kt` | `ChoreScheduleTest`, `ChoreModelTest`; LESSONS #64 |
 | A card's look | `ui/components/<Thing>Card.kt`; badges/chips in `ui/components/core/` | Tones in `ui/theme/StatusTone.kt` |
 | An edit sheet | `ui/components/Edit<Thing>Sheet.kt` / `AddReminderSheet.kt`; shared rows in `ui/components/sheet/SheetParts.kt` | Drafts in `data/model/SheetDraft.kt` |
 | When a memo or tag-alarm rings, arms, advances | `data/model/Reminder.kt` (memo lifecycle) and `data/model/TagAlarm.kt` (tag-alarm rules); `ReminderSchedule.kt` for the words | `ReminderModelTest`, `TagAlarmModelTest`, `ReminderScheduleTest` |
@@ -113,7 +114,12 @@ Facts that save a detour:
 - A **chore is a row in the `tags` table**; its `tagId` is the primary key and the
   NFC id. Chore ids and tag-alarm tag ids share one id space; a tag has one job.
 - **Memos are on-device** (`ReminderRepository`, DataStore). They never reach
-  Supabase. So are settings, category styles, snoozes and the sticker record.
+  Supabase. So are settings, category styles, snoozes, each chore's "Show from"
+  (`ChoreLeadStore`) and the sticker record.
+- **Every chore repeats.** A due date counts only alongside a repeat; the stored
+  `due_date` is never rewritten, the next one is derived from it and the last
+  log (`nextChoreDueDate`). `interval_days` keeps the approximate length next to
+  `repeat_unit` so readers of the old column still work.
 - **Private chores and tasks are on-device too** (`PrivateItemStore`, DataStore):
   anything in the reserved `Private` category (`PRIVATE_CATEGORY`,
   `isPrivateCategory`). `TaskRepository` and `ChoreRepository` route every read

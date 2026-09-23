@@ -35,26 +35,35 @@ class ChoreLeadStore @Inject constructor(
     /** Tag id to days before due, for every chore with its own setting. */
     val leadDays: Flow<Map<String, Int>> = context.choreLeadDataStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-        .map { prefs -> decode(prefs[Keys.LEAD_DAYS].orEmpty()) }
+        .map { prefs -> ChoreLeadCodec.decode(prefs[Keys.LEAD_DAYS].orEmpty()) }
 
     /** Sets [tagId]'s own lead time, or removes it (back to automatic) when [days] is null. */
     suspend fun set(tagId: String, days: Int?) {
         context.choreLeadDataStore.edit { prefs ->
-            val current = decode(prefs[Keys.LEAD_DAYS].orEmpty())
-            val updated = if (days == null || days < 0) current - tagId else current + (tagId to days)
-            prefs[Keys.LEAD_DAYS] = encode(updated)
+            val current = ChoreLeadCodec.decode(prefs[Keys.LEAD_DAYS].orEmpty())
+            val updated = ChoreLeadCodec.withLead(current, tagId, days)
+            prefs[Keys.LEAD_DAYS] = ChoreLeadCodec.encode(updated)
         }
     }
+}
 
-    // Entries are "<tagId>|<days>", split at the last separator so a stray '|'
-    // in a tag id cannot corrupt it (same scheme as ChoreSnoozeStore).
-    private fun decode(raw: Set<String>): Map<String, Int> = raw.mapNotNull { entry ->
+/**
+ * The stored form of [ChoreLeadStore]: one "<tagId>|<days>" string per chore,
+ * split at the last separator so a stray '|' in a tag id cannot corrupt it
+ * (same scheme as ChoreSnoozeStore). Pure, so it is tested on the JVM.
+ */
+internal object ChoreLeadCodec {
+    fun decode(raw: Set<String>): Map<String, Int> = raw.mapNotNull { entry ->
         val sep = entry.lastIndexOf('|')
         if (sep <= 0) return@mapNotNull null
         val days = entry.substring(sep + 1).toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null
         entry.substring(0, sep) to days
     }.toMap()
 
-    private fun encode(map: Map<String, Int>): Set<String> =
+    fun encode(map: Map<String, Int>): Set<String> =
         map.map { (tagId, days) -> "$tagId|$days" }.toSet()
+
+    /** [current] with [tagId] set to [days], or removed (back to automatic) when [days] is null or negative. */
+    fun withLead(current: Map<String, Int>, tagId: String, days: Int?): Map<String, Int> =
+        if (days == null || days < 0) current - tagId else current + (tagId to days)
 }

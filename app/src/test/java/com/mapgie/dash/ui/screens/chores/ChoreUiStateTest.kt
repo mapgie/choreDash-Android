@@ -19,7 +19,8 @@ import org.junit.Test
 /**
  * What the Chores list shows for a given [ChoreUiState]: owner scope, the
  * All / Overdue / Soon chips, the hidden (distant) section, swipe-to-snooze,
- * the sort pill orders, category grouping and the summary bar. Pure state logic, no ViewModel or Android involved.
+ * the sort pill orders, category grouping, the summary bar, dated chores and
+ * each chore's own "Show from". Pure state logic, no ViewModel or Android involved.
  *
  * Timestamps sit mid-window (36h, 300h, ...) so day arithmetic cannot flip
  * a bucket while the test runs.

@@ -51,9 +51,11 @@ fun HelpContent(
             content = accents.onChoreContainer,
             title = "Chores repeat",
             body = "A chore comes round again on its own cadence: every 3 days, every " +
-                "month. Log it with a tap, a swipe, or by holding the phone to its NFC " +
-                "tag. The colour spine and badge show how overdue it is. Chores sync " +
-                "across your household, so everyone sees the same list.",
+                "month, every year. Give it a due date to pin it to the calendar, like a " +
+                "bill due on 1 October each year. Log it with a tap, a swipe, or by " +
+                "holding the phone to its NFC tag. The colour spine and badge show how " +
+                "overdue it is. Chores sync across your household, so everyone sees the " +
+                "same list.",
         )
         SheetRowDivider()
         HelpRow(
@@ -208,7 +210,8 @@ fun HelpGettingAround(
                 icon = LucideIcons.Clock, container = container, content = content,
                 title = "Hide what isn't due",
                 body = "Settings › Display can hide chores until they're close to due and " +
-                    "tasks whose due date is far off, so the list shows only what needs doing.",
+                    "tasks whose due date is far off, so the list shows only what needs doing. " +
+                    "A chore's own Show from row sets how many days ahead it appears on this phone.",
             )
         }
     }
