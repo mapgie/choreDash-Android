@@ -31,6 +31,14 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.44.0] - 2026-09-24
+
+### Added
+- Repeating chores can have a due date. Set a repeat, then pick the date from the Due date row in the chore sheet; the card shows the date and counts the days to it.
+- Chore repeats can be counted in days, weeks, months or years, so a chore due 1 Oct every year stays on 1 Oct. Logging it, a little early or a little late, moves it to the next date.
+- Each chore can set its own "Show from" in the chore sheet: on this phone, keep it in the hidden section until a chosen number of days before it is due, or leave it on Auto.
+
+---
 ## [0.43.0] - 2026-09-13
 
 ### Added
