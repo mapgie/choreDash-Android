@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mapgie.dash.data.model.Chore
+import com.mapgie.dash.data.model.formatDueDate
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.core.CardIconChip
 import com.mapgie.dash.ui.components.core.MetaCaption
@@ -222,11 +223,15 @@ fun ChoreCard(
     }
 }
 
-/** "kitchen · every 3d · done 5d ago" caption line; "never done" before the first log. */
+/**
+ * "kitchen · every 3d · done 5d ago" caption line; "never done" before the first
+ * log. A dated chore adds its date: "admin · yearly · due 1 Oct · never done".
+ */
 private fun choreCaption(chore: Chore, showCategory: Boolean): String {
     val parts = mutableListOf<String>()
     if (showCategory && !chore.category.isNullOrBlank()) parts += chore.category.lowercase()
-    chore.intervalDays?.let { parts += "every ${it.toInt()}d" }
+    chore.repeat?.let { parts += it.shortLabel() }
+    chore.nextDueDate?.let { parts += "due ${formatDueDate(it)}" }
     parts += chore.lastScanned?.let { "done ${relativeTime(it)}" } ?: "never done"
     return parts.joinToString(" · ")
 }

@@ -724,11 +724,12 @@ fun ChoreListScreen(
             owners = uiState.owners,
             categories = uiState.categories,
             sheetState = editSheetState,
+            initialLeadDays = uiState.leadOverrides[chore.tagId],
             draft = remember(chore.id) { viewModel.choreDrafts.get(chore.id) },
             onDraftChange = { viewModel.choreDrafts.put(chore.id, it) },
             onDraftClear = { viewModel.choreDrafts.clear(chore.id) },
-            onSave = { tagId, label, category, owner, intervalDays ->
-                viewModel.updateChore(tagId, label, category, owner, intervalDays)
+            onSave = { tagId, label, category, owner, schedule, leadDays ->
+                viewModel.updateChore(tagId, label, category, owner, schedule, leadDays)
                 showEditSheet = false
             },
             onArchiveToggle = { c, archive ->
@@ -785,8 +786,8 @@ fun ChoreListScreen(
             draft = remember { viewModel.choreDrafts.get(NEW_DRAFT_KEY) },
             onDraftChange = { viewModel.choreDrafts.put(NEW_DRAFT_KEY, it) },
             onDraftClear = { viewModel.choreDrafts.clear(NEW_DRAFT_KEY) },
-            onSave = { tagId, label, category, owner, intervalDays ->
-                viewModel.addChore(tagId, label, category, owner, intervalDays)
+            onSave = { tagId, label, category, owner, schedule, leadDays ->
+                viewModel.addChore(tagId, label, category, owner, schedule, leadDays)
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()

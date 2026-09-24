@@ -23,16 +23,41 @@ data class ChoreDraft(
     val label: String = "",
     val category: String = "",
     val owner: String = "",
-    val intervalDays: Int? = null,
+    /** How many [repeatUnit]s between turns, or null for no repeat. */
+    val repeatEvery: Int? = null,
     val tagId: String = "",
+    /** A [RepeatUnit] name. */
+    val repeatUnit: String = RepeatUnit.DAY.name,
+    /** The due date as an epoch day, or null for a chore timed from its last log. */
+    val dueDateEpochDay: Long? = null,
+    /** This phone's "show from": hide until this many days before due, or null for automatic. */
+    val leadDays: Int? = null,
 ) {
     /** True when any field differs from [opened], the values the sheet started with. */
     fun differsFrom(opened: ChoreDraft): Boolean =
         label != opened.label ||
             category != opened.category ||
             owner != opened.owner ||
-            intervalDays != opened.intervalDays ||
-            tagId != opened.tagId
+            repeat() != opened.repeat() ||
+            tagId != opened.tagId ||
+            dueDateEpochDay != opened.dueDateEpochDay ||
+            leadDays != opened.leadDays
+
+    fun repeatUnitEnum(): RepeatUnit = RepeatUnit.entries.firstOrNull { it.name == repeatUnit } ?: RepeatUnit.DAY
+
+    /** The repeat the sheet would save; the unit alone means nothing without a count. */
+    fun repeat(): ChoreRepeat? = repeatEvery?.takeIf { it > 0 }?.let { ChoreRepeat(it, repeatUnitEnum()) }
+
+    fun dueDate(): LocalDate? = dueDateEpochDay?.let { LocalDate.ofEpochDay(it) }
+
+    /**
+     * The repeat and due date the sheet would save to the chore. Every chore
+     * repeats, so a due date left behind after the repeat was cleared is dropped.
+     */
+    fun schedule(): ChoreSchedule {
+        val repeat = repeat()
+        return ChoreSchedule(repeat = repeat, dueDate = if (repeat != null) dueDate() else null)
+    }
 
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
@@ -41,17 +66,22 @@ data class ChoreDraft(
         /**
          * The values the sheet opens with: [chore]'s own fields, or the New chore
          * defaults (General, [initialTagId] from an NFC scan) when [chore] is null.
+         * [leadDays] is this phone's "show from" for the chore, kept outside it.
          */
-        fun of(chore: Chore?, initialTagId: String = ""): ChoreDraft =
+        fun of(chore: Chore?, initialTagId: String = "", leadDays: Int? = null): ChoreDraft =
             if (chore == null) {
-                ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId)
+                ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId, leadDays = leadDays)
             } else {
+                val repeat = chore.repeat
                 ChoreDraft(
                     label = chore.label,
                     category = chore.category ?: "",
                     owner = chore.owner ?: "",
-                    intervalDays = chore.intervalDays?.toInt(),
+                    repeatEvery = repeat?.every,
                     tagId = chore.tagId,
+                    repeatUnit = (repeat?.unit ?: RepeatUnit.DAY).name,
+                    dueDateEpochDay = chore.dueDate?.toEpochDay(),
+                    leadDays = leadDays,
                 )
             }
     }

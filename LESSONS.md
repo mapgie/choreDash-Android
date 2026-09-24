@@ -1444,3 +1444,24 @@ same quiet treatment the neutral tone gets (outline spine, plain badge text, the
 type accent chip). Every card and sheet now does this, so "None" is just another
 null on a path that already had one. When a lookup gains a null case, grep for
 every `!!` and every hand-rolled "is this tone signalling" test on its result.
+
+## 64. A repeating due date is derived from the last log, never rewritten on log
+
+Chores gained a due date with a calendar repeat ("house insurance, 1 Oct, every
+year"). The obvious build moves `due_date` on a year whenever the chore is
+logged. But a log has four undo paths (the snackbar, the overview's history, the
+widget, an NFC re-tap) and each would then need to put the old date back, and a
+log from the web app would not move it at all.
+
+Instead `due_date` stays the anchor the user typed and `nextChoreDueDate` works
+out the next one from the latest log: the log ticks off the occurrence nearest
+to it, early or late, and occurrences before the anchor never come due. Undo
+deletes the scan and the date follows for free. Occurrences are always counted
+from the anchor (`anchor.plusMonths(k)`), never chained, so a 31 Jan monthly
+date comes back to 31 Mar after February's 28th.
+
+Two companions: new columns are left out of the PATCH unless they carry a value
+or the row already has one (`chorePatch`), because PostgREST rejects a body that
+names a column the live database has not had added yet; and `interval_days`
+keeps the approximate length (a year is 365) next to `repeat_unit`, so anything
+that reads only the old column still behaves.

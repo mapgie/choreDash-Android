@@ -13,6 +13,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,11 +49,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
+import com.mapgie.dash.data.model.ChoreRepeat
+import com.mapgie.dash.data.model.ChoreSchedule
+import com.mapgie.dash.data.model.RepeatUnit
+import com.mapgie.dash.data.model.formatDueDate
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
 import com.mapgie.dash.data.model.PRIVATE_CATEGORY
 import com.mapgie.dash.data.model.isPrivateCategory
 import com.mapgie.dash.data.model.Swatch
 import com.mapgie.dash.ui.components.sheet.DraftResumeRow
+import com.mapgie.dash.ui.components.sheet.LocalDateStateSaver
+import com.mapgie.dash.ui.components.sheet.enumStateSaver
 import com.mapgie.dash.ui.components.sheet.OwnerAvatarRow
 import com.mapgie.dash.ui.components.sheet.PrivateNote
 import com.mapgie.dash.ui.components.sheet.privateNoteFor
@@ -74,15 +83,19 @@ import com.mapgie.dash.ui.theme.statusTone
 import com.mapgie.dash.ui.theme.textColor
 import com.mapgie.dash.ui.theme.tintColor
 import com.mapgie.dash.util.CalendarShareUtils
+import com.mapgie.dash.util.calendarEventForDate
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneOffset
 
 /**
  * The Edit sheet for chores (handoff 7a), one grammar with the task sheet: the
  * title is the input, then one grouped settings card of compact rows (Category
- * value chip · Owner avatar row · Repeat every stepper · NFC tag), the same
- * Cancel + sage Save footer as the Log sheet, and a centred tertiary row (Add
- * to calendar · Share · Archive). With [chore] null it is the New chore sheet:
+ * value chip · Owner avatar row · Repeat every stepper and its unit · Due date
+ * chip · Show from chip · NFC tag), the same Cancel + sage Save footer as the Log sheet, and a
+ * centred tertiary row (Add to calendar · Share · Archive). With [chore] null
+ * it is the New chore sheet:
  * eyebrow NEW CHORE, empty title focused, and a tag ID field on the NFC row.
  *
  * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
@@ -102,11 +115,14 @@ fun EditChoreSheet(
     owners: List<String>,
     categories: List<String>,
     sheetState: SheetState,
-    onSave: (tagId: String, label: String, category: String?, owner: String?, intervalDays: Double?) -> Unit,
+    /** [leadDays] is this phone's "show from" for the chore; null means automatic. */
+    onSave: (tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
     onWriteTag: (tagId: String) -> Unit,
     onDismiss: () -> Unit,
     initialTagId: String = "",
+    /** This phone's "show from" for [chore], or null when it follows the automatic rule. */
+    initialLeadDays: Int? = null,
     draft: ChoreDraft? = null,
     onDraftChange: (ChoreDraft) -> Unit = {},
     onDraftClear: () -> Unit = {},
@@ -121,16 +137,28 @@ fun EditChoreSheet(
     // The values the sheet opened with, snapshotted once so the dirty check
     // compares against what the fields actually started as (LESSONS.md #27).
     // Every field is rememberSaveable so rotation and process death keep edits.
-    val opened = remember { ChoreDraft.of(chore, initialTagId) }
+    val opened = remember { ChoreDraft.of(chore, initialTagId, initialLeadDays) }
     var label by rememberSaveable { mutableStateOf(opened.label) }
     var category by rememberSaveable { mutableStateOf(opened.category) }
     var owner by rememberSaveable { mutableStateOf(opened.owner) }
-    var interval by rememberSaveable { mutableStateOf(opened.intervalDays) }
+    var interval by rememberSaveable { mutableStateOf(opened.repeatEvery) }
+    var repeatUnit by rememberSaveable(stateSaver = enumStateSaver<RepeatUnit>()) { mutableStateOf(opened.repeatUnitEnum()) }
+    var dueDate by rememberSaveable(stateSaver = LocalDateStateSaver) { mutableStateOf(opened.dueDate()) }
+    var leadDays by rememberSaveable { mutableStateOf(opened.leadDays) }
     var tagId by rememberSaveable { mutableStateOf(opened.tagId) }
 
     var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
     var showNewCategory by rememberSaveable { mutableStateOf(false) }
     var showIntervalEntry by rememberSaveable { mutableStateOf(false) }
+    var unitMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var dueMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showDueDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showFromMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showLeadEntry by rememberSaveable { mutableStateOf(false) }
+    // The picker works in UTC midnights, like the task sheet's.
+    val dueDatePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+    )
     var showArchiveConfirm by rememberSaveable { mutableStateOf(false) }
     var showShareChoice by rememberSaveable { mutableStateOf(false) }
     var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
@@ -142,7 +170,16 @@ fun EditChoreSheet(
         mutableStateOf(draft?.takeIf { it.differsFrom(opened) })
     }
 
-    val currentDraft = ChoreDraft(label = label, category = category, owner = owner, intervalDays = interval, tagId = tagId)
+    val currentDraft = ChoreDraft(
+        label = label,
+        category = category,
+        owner = owner,
+        repeatEvery = interval,
+        tagId = tagId,
+        repeatUnit = repeatUnit.name,
+        dueDateEpochDay = dueDate?.toEpochDay(),
+        leadDays = leadDays,
+    )
     val isDirty = currentDraft.differsFrom(opened)
 
     // Mirror every change into the draft store while the sheet is dirty.
@@ -154,7 +191,11 @@ fun EditChoreSheet(
         label = restored.label
         category = restored.category
         owner = restored.owner
-        interval = restored.intervalDays
+        interval = restored.repeatEvery
+        repeatUnit = restored.repeatUnitEnum()
+        dueDate = restored.dueDate()
+        leadDays = restored.leadDays
+        dueDatePickerState.selectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
         // A tag ID that arrived with an NFC scan wins over a draft that has none.
         tagId = restored.tagId.ifBlank { tagId }
         offeredDraft = null
@@ -191,10 +232,12 @@ fun EditChoreSheet(
         sheetScope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
 
-    fun calendarInfo() = calendarEventWithoutTime(
-        title = label.trim().ifBlank { chore?.label ?: "" },
-        description = category.trim().ifBlank { null }?.let { "Category: $it" }
-    )
+    fun calendarInfo() = currentDraft.schedule().dueDate.let { date ->
+        val title = label.trim().ifBlank { chore?.label ?: "" }
+        val description = category.trim().ifBlank { null }?.let { "Category: $it" }
+        if (date != null) calendarEventForDate(title = title, description = description, date = date)
+        else calendarEventWithoutTime(title = title, description = description)
+    }
 
     val tone = chore?.statusTone()
     val chipContainer = iconSwatch?.tintColor() ?: tone?.badgeContainerColor() ?: accents.choreContainer
@@ -273,15 +316,77 @@ fun EditChoreSheet(
                 SheetRowDivider()
                 SettingsRow(icon = LucideIcons.Repeat, label = "Repeat every") {
                     StepperPill(
-                        valueText = interval?.let { "$it d" } ?: "none",
+                        valueText = interval?.let { "$it ${repeatUnit.shortSuffix()}" } ?: "none",
                         onMinus = { interval = interval?.let { if (it <= 1) null else it - 1 } },
                         onPlus = { interval = (interval ?: 0) + 1 },
                         onValueClick = { showIntervalEntry = true },
                         minusEnabled = interval != null,
-                        minusDescription = "Repeat one day less often",
-                        plusDescription = "Repeat one day more often",
-                        valueDescription = "Repeat every ${interval?.let { "$it days" } ?: "no set interval"}. Type a number",
+                        minusDescription = "Repeat one ${repeatUnit.singular} less often",
+                        plusDescription = "Repeat one ${repeatUnit.singular} more often",
+                        valueDescription = "Repeat ${interval?.let { ChoreRepeat(it, repeatUnit).longLabel() } ?: "with no set interval"}. Type a number",
                     )
+                }
+                if (interval != null) {
+                    SheetRowDivider()
+                    SettingsRow(icon = LucideIcons.Clock, label = "Counted in") {
+                        Box {
+                            ValueChip(
+                                text = repeatUnit.plural.replaceFirstChar { it.uppercase() },
+                                onClick = { unitMenuOpen = true },
+                                contentDescription = "Repeat counted in ${repeatUnit.plural}. Change unit",
+                            )
+                            DropdownMenu(expanded = unitMenuOpen, onDismissRequest = { unitMenuOpen = false }) {
+                                RepeatUnit.entries.forEach { unit ->
+                                    DropdownMenuItem(
+                                        text = { Text(unit.plural.replaceFirstChar { it.uppercase() }) },
+                                        onClick = { repeatUnit = unit; unitMenuOpen = false },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                // Every chore repeats, so a due date is only offered alongside a repeat.
+                if (interval != null) {
+                    SheetRowDivider()
+                    SettingsRow(icon = LucideIcons.Calendar, label = "Due date") {
+                        val dueText = dueDate?.let { formatDueDate(it) } ?: "None"
+                        Box {
+                            ValueChip(
+                                text = dueText,
+                                onClick = { dueMenuOpen = true },
+                                contentDescription = "Due date: ${dueText.lowercase()}. Change due date",
+                            )
+                            DropdownMenu(expanded = dueMenuOpen, onDismissRequest = { dueMenuOpen = false }) {
+                                DropdownMenuItem(text = { Text("None") }, onClick = { dueDate = null; dueMenuOpen = false })
+                                DropdownMenuItem(
+                                    text = { Text("Pick a date…") },
+                                    onClick = { dueMenuOpen = false; showDueDatePicker = true },
+                                )
+                            }
+                        }
+                    }
+                }
+                SheetRowDivider()
+                SettingsRow(icon = LucideIcons.Target, label = "Show from") {
+                    val showFromText = leadDays?.let { leadDaysText(it) } ?: "Auto"
+                    Box {
+                        ValueChip(
+                            text = showFromText,
+                            onClick = { showFromMenuOpen = true },
+                            contentDescription = "Show from: ${showFromText.lowercase()}. Change when this chore appears in the list",
+                        )
+                        DropdownMenu(expanded = showFromMenuOpen, onDismissRequest = { showFromMenuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Auto") },
+                                onClick = { leadDays = null; showFromMenuOpen = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Days before due…") },
+                                onClick = { showFromMenuOpen = false; showLeadEntry = true },
+                            )
+                        }
+                    }
                 }
                 SheetRowDivider()
                 SettingsRow(icon = LucideIcons.NfcScan, label = "NFC tag") {
@@ -317,11 +422,12 @@ fun EditChoreSheet(
                 actionEnabled = canSave,
                 onCancel = { requestDismiss() },
                 onAction = {
-                    val intervalDays = interval?.toDouble()
+                    val schedule = currentDraft.schedule()
+                    val lead = leadDays
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
                     onDraftClear()
-                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, intervalDays) }
+                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, schedule, lead) }
                 },
             )
 
@@ -359,7 +465,7 @@ fun EditChoreSheet(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) text = v },
-                    label = { Text("Days (blank for none)") },
+                    label = { Text("${repeatUnit.plural.replaceFirstChar { it.uppercase() }} (blank for none)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -375,6 +481,57 @@ fun EditChoreSheet(
                 TextButton(onClick = { showIntervalEntry = false }) { Text("Cancel") }
             }
         )
+    }
+
+    if (showLeadEntry) {
+        var text by rememberSaveable { mutableStateOf(leadDays?.toString() ?: "") }
+        AlertDialog(
+            onDismissRequest = { showLeadEntry = false },
+            title = { Text("Show from") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "On this phone, keep this chore in the hidden section until this many days " +
+                            "before it is due. 0 shows it on the day. Blank goes back to Auto.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { v -> if (v.length <= 3 && v.all { it.isDigit() }) text = v },
+                        label = { Text("Days before due") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    leadDays = text.toIntOrNull()
+                    showLeadEntry = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeadEntry = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDueDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDueDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dueDatePickerState.selectedDateMillis?.let { millis ->
+                        dueDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                    }
+                    showDueDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDueDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = dueDatePickerState) }
     }
 
     if (showShareChoice) {
@@ -433,6 +590,21 @@ fun EditChoreSheet(
             }
         )
     }
+}
+
+/** The Show from chip: "On the day", "1 day before", "14 days before". */
+private fun leadDaysText(days: Int): String = when (days) {
+    0 -> "On the day"
+    1 -> "1 day before"
+    else -> "$days days before"
+}
+
+/** The stepper's unit suffix: "3 d", "2 w", "1 mo", "1 y". */
+private fun RepeatUnit.shortSuffix(): String = when (this) {
+    RepeatUnit.DAY -> "d"
+    RepeatUnit.WEEK -> "w"
+    RepeatUnit.MONTH -> "mo"
+    RepeatUnit.YEAR -> "y"
 }
 
 /** Compact inline field for a new chore's tag ID, on the NFC row. */

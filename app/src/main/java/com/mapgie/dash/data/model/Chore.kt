@@ -4,6 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 @Serializable
@@ -14,6 +16,10 @@ data class TagDto(
     @SerialName("category") val category: String? = null,
     @SerialName("owner") val owner: String? = null,
     @SerialName("interval_days") val intervalDays: Double? = null,
+    /** The due date the user set (ISO date), or null for a chore timed from its last log. */
+    @SerialName("due_date") val dueDate: String? = null,
+    /** [RepeatUnit.wire]: what [intervalDays] counts in. Null means days. */
+    @SerialName("repeat_unit") val repeatUnit: String? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
     @SerialName("created_at") val createdAt: String = ""
 )
@@ -43,10 +49,17 @@ data class TagInsert(
     @SerialName("label") val label: String,
     @SerialName("category") val category: String? = null,
     @SerialName("owner") val owner: String? = null,
-    @SerialName("interval_days") val intervalDays: Double? = null
+    @SerialName("interval_days") val intervalDays: Double? = null,
+    // Null (the default) is left out of the insert, so a chore without a date
+    // saves even before schema.sql has added these columns.
+    @SerialName("due_date") val dueDate: String? = null,
+    @SerialName("repeat_unit") val repeatUnit: String? = null,
 )
 
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
+
+/** A logged instant as a date on this phone's calendar. */
+private fun Instant.localDate(): LocalDate = atZone(ZoneId.systemDefault()).toLocalDate()
 
 data class Chore(
     val id: String,
@@ -58,10 +71,42 @@ data class Chore(
     val archivedAt: String?,
     val lastScanned: Instant?,
     val lastScanId: String?,
-    val status: ChoreStatus
+    val status: ChoreStatus,
+    /**
+     * The due date the user set; the chore then falls due on it and every [repeat]
+     * after. Every chore repeats, so a date without a repeat is ignored.
+     */
+    val dueDate: LocalDate? = null,
+    val repeatUnit: RepeatUnit = RepeatUnit.DAY,
 ) {
     /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
     val isPrivate: Boolean get() = isPrivateCategory(category)
+
+    /** How often this chore comes round, or null if it has no repeat. */
+    val repeat: ChoreRepeat? get() = ChoreRepeat.from(intervalDays, repeatUnit)
+
+    /**
+     * The date a dated chore is next due (see [nextChoreDueDate]); null for a
+     * chore timed from its last log. A chore is dated only with both a due date
+     * and a repeat, so this is null whenever either is missing.
+     */
+    val nextDueDate: LocalDate?
+        get() = nextDueDate(dueDate, repeat, lastScanned)
+
+    /**
+     * True when this chore falls due within [days] from now, or is already due.
+     * A dated chore counts calendar days; a chore with nothing to be due yet
+     * (never logged and undated) counts as within, so it shows.
+     */
+    fun isDueWithin(days: Int): Boolean {
+        daysUntilDue()?.let { return it <= days }
+        val due = dueInstant() ?: return true
+        return Duration.between(Instant.now(), due).toDays() <= days
+    }
+
+    /** Whole days from today to [nextDueDate]; negative when overdue. Null when undated. */
+    private fun daysUntilDue(): Long? =
+        nextDueDate?.let { ChronoUnit.DAYS.between(LocalDate.now(), it) }
 
     /** Hours until this chore is considered no longer "fresh", per its own thresholds. */
     private fun freshThresholdHours(): Long {
@@ -78,6 +123,7 @@ data class Chore(
      * Only interval-based chores can be distant; category-based chores have short intervals.
      */
     fun isDistant(): Boolean {
+        daysUntilDue()?.let { return it > 60 }
         val last = lastScanned ?: return false
         val fullIntervalHours = intervalDays?.let { (it * 24).toLong() } ?: return false
         val dueInstant = last.plus(fullIntervalHours, ChronoUnit.HOURS)
@@ -91,6 +137,11 @@ data class Chore(
      * which [computeStatus] turns the chore stale. Null if never scanned.
      */
     fun pressureFraction(): Float? {
+        daysUntilDue()?.let { left ->
+            // The share of the repeat already gone before the next date.
+            val window = (repeat?.intervalDays ?: return 1f).toFloat()
+            return (1f - left / window).coerceIn(0f, 1f)
+        }
         val last = lastScanned ?: return null
         val hoursSince = ChronoUnit.HOURS.between(last, Instant.now()).toFloat()
         val windowHours = if (intervalDays != null) {
@@ -105,9 +156,11 @@ data class Chore(
     /**
      * When this chore falls due: the last log plus the full repeat window (the
      * interval, or the category aging threshold), the same point at which
-     * [computeStatus] turns it stale. Null before the first log.
+     * [computeStatus] turns it stale. Null before the first log. For a dated
+     * chore, the start of [nextDueDate].
      */
     fun dueInstant(): Instant? {
+        nextDueDate?.let { return it.atStartOfDay(ZoneId.systemDefault()).toInstant() }
         val last = lastScanned ?: return null
         val windowHours = if (intervalDays != null) {
             (intervalDays * 24).toLong()
@@ -120,9 +173,18 @@ data class Chore(
     /**
      * The card badge: "35d over", "1d left", "6h left", "due now", or "never"
      * before the first log. Counted against [dueInstant], so the words agree with
-     * the spine colour and the Overdue filter.
+     * the spine colour and the Overdue filter. A dated chore counts whole days
+     * ("due today", "9d left").
      */
     fun dueBadgeText(): String {
+        daysUntilDue()?.let { left ->
+            // Counted in calendar days: a date is due all day, not from midnight on.
+            return when {
+                left < 0 -> "${-left}d over"
+                left == 0L -> "due today"
+                else -> "${left}d left"
+            }
+        }
         val due = dueInstant() ?: return "never"
         val diff = Duration.between(Instant.now(), due)
         val overdue = diff.isNegative
@@ -175,7 +237,12 @@ data class Chore(
         )
 
         fun from(tag: TagDto, lastScanned: Instant?, lastScanId: String?): Chore {
-            val status = computeStatus(tag.category, tag.intervalDays, lastScanned)
+            val dueDate = tag.dueDate?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
+            val repeatUnit = RepeatUnit.fromWire(tag.repeatUnit)
+            val repeat = ChoreRepeat.from(tag.intervalDays, repeatUnit)
+            val next = nextDueDate(dueDate, repeat, lastScanned)
+            val status = if (next != null && repeat != null) datedStatus(next, repeat)
+                         else computeStatus(tag.category, tag.intervalDays, lastScanned)
             return Chore(
                 id = tag.id,
                 tagId = tag.tagId,
@@ -186,8 +253,29 @@ data class Chore(
                 archivedAt = tag.archivedAt,
                 lastScanned = lastScanned,
                 lastScanId = lastScanId,
-                status = status
+                status = status,
+                dueDate = dueDate,
+                repeatUnit = repeatUnit,
             )
+        }
+
+        /** The next due date when [dueDate] and [repeat] are both set, else null (undated). */
+        private fun nextDueDate(dueDate: LocalDate?, repeat: ChoreRepeat?, lastScanned: Instant?): LocalDate? {
+            if (dueDate == null || repeat == null) return null
+            return nextChoreDueDate(dueDate, repeat, lastScanned?.localDate())
+        }
+
+        /**
+         * Status for a dated chore: stale from the due date on, soon within
+         * [dueSoonDays] of it, fresh before that.
+         */
+        private fun datedStatus(nextDue: LocalDate, repeat: ChoreRepeat): ChoreStatus {
+            val left = ChronoUnit.DAYS.between(LocalDate.now(), nextDue)
+            return when {
+                left <= 0 -> ChoreStatus.STALE
+                left <= dueSoonDays(repeat) -> ChoreStatus.AGING
+                else -> ChoreStatus.FRESH
+            }
         }
 
         private fun computeStatus(
