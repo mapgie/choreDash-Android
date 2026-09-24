@@ -8,6 +8,6 @@ permissions:
 
 jobs:
   release:
-    uses: mapgie/android-Actions/.github/workflows/release.yml@95e7e8181942991d22128cd5d12bb8027bcdb90a
+    uses: mapgie/android-Actions/.github/workflows/release.yml@d99437fe573b99a7730fd9dcc05c58535143eaf0
     with:
       app-name: Dash
