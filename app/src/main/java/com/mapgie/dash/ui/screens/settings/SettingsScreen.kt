@@ -76,6 +76,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.BuildConfig
 import com.mapgie.dash.data.model.AddMenuOption
 import com.mapgie.dash.data.model.CadenceBucket
@@ -1090,23 +1091,24 @@ private fun RemindersSubScreen(
                     "If the channel says silent, tap it and turn the sound back on in system settings."
             )
             AccentPillButton(
-                text = "Ring a test ${featureWord.lowercase()} in 10 seconds",
+                text = "Ring a test ${featureWord.lowercase()} in 1 minute",
                 onClick = {
                     viewModel.ringTestAlarm("Test ${featureWord.lowercase()}")
-                    testArmedAt = java.time.LocalTime.now().plusSeconds(10)
+                    testArmedAt = java.time.LocalTime.now().plusSeconds(AlarmScheduler.TEST_RING_DELAY_SECONDS)
                 },
             )
             SettingsCaption(
                 testArmedAt?.let { at ->
                     val armed = "Armed for ${at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))}. " +
-                        "It takes the same path a real ${featureWord.lowercase()} does. "
+                        "Leave the app or lock the phone now, so it rings the way a real ${featureWord.lowercase()} does. "
                     armed + when (currentDeliveryMode) {
                         "ALARM" -> "The Alarm style rings on the alarm stream and shows its full-screen screen whether the phone is locked or unlocked."
                         "SILENT" -> "The Silent style posts quietly: no sound or vibration by design."
                         else -> "Watch for the heads-up notification and its sound."
                     }
                 } ?: "Takes the same path a real ${featureWord.lowercase()} does: exact alarm, receiver, notification, " +
-                    "and, for the Alarm style, the full-screen ring, whether the phone is locked or not.",
+                    "and, for the Alarm style, the ring on the alarm stream, whether the phone is locked or not. " +
+                    "The minute gives you time to leave the app, which is when a real one fires.",
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }

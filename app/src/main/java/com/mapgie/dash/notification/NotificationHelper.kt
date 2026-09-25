@@ -1,6 +1,7 @@
 package com.mapgie.dash.notification
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -14,6 +15,7 @@ import com.mapgie.dash.MainActivity
 import com.mapgie.dash.R
 import com.mapgie.dash.alarm.AlarmActionReceiver
 import com.mapgie.dash.alarm.AlarmActivity
+import com.mapgie.dash.alarm.AlarmRingService
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_ID
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_KIND
 import com.mapgie.dash.ui.screens.reminder.REMINDER_VIEW_ARG_SOUND
@@ -204,12 +206,9 @@ object NotificationHelper {
         DeliveryMode.ringsOnAlarmStream(deliveryMode)
 
     // The Alarm style's ring screen: AlarmActivity turns the screen on over the lock
-    // screen and rings (AlarmRinger, USAGE_ALARM) until answered. This same intent is
-    // used two ways: as the notification's full-screen intent (below), and started
-    // directly by AlarmReceiver when the alarm fires (startAlarmRingScreen). CLEAR_TASK
-    // replaces a still-ringing alarm with the newer one rather than stacking two ringing
-    // screens; AlarmActivity is launchMode="singleInstance" so a redundant launch (both
-    // paths firing when the phone is locked) reuses the one instance instead of double-ringing.
+    // screen and shows Done / Snooze. It is the notification's full-screen intent, so
+    // Android opens it on a locked or sleeping phone; the ring itself is AlarmRingService's.
+    // CLEAR_TASK replaces a screen still up for an older alarm with the newer one.
     fun alarmActivityIntent(
         context: Context,
         kind: ReminderViewKind,
@@ -238,35 +237,44 @@ object NotificationHelper {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
+    /** The id a memo or task alert is posted under (see [AlertIds]). */
+    fun notifyId(kind: ReminderViewKind, id: String): Int = when (kind) {
+        ReminderViewKind.REMINDER -> AlertIds.reminder(id)
+        ReminderViewKind.TASK -> AlertIds.task(id)
+    }
+
     /**
-     * Brings up the Alarm style's full-screen ring the moment the alarm fires, so it
-     * sounds on the alarm stream via [com.mapgie.dash.alarm.AlarmRinger] regardless of
-     * lock state. A no-op unless [deliveryMode] is the Alarm style.
+     * Delivers an alert the moment its alarm fires. For the Alarm style the ring
+     * goes to [com.mapgie.dash.alarm.AlarmRingService], which posts [notification]
+     * as its own and rings on the alarm stream whether or not the phone is locked
+     * (LESSONS #65); every other style, or a refused service start, posts it plainly.
      *
-     * Why this is needed on top of the notification's full-screen intent: Android
-     * launches a full-screen intent only when the phone is locked or asleep. Awake and
-     * unlocked it shows a heads-up instead, and a posted notification's sound plays on
-     * the notification stream on most devices, whatever USAGE_ALARM the channel declares
-     * (LESSONS #52). That stream can be muted while the alarm stream is up, so the Alarm
-     * style would ring silently. Starting the activity ourselves runs AlarmRinger, which
-     * plays a MediaPlayer under USAGE_ALARM and therefore always uses the alarm stream.
-     *
-     * Only call this from a real-time alarm delivery (AlarmReceiver): a background
-     * activity start is granted only for a short window after an exact alarm fires. The
-     * runCatching keeps a denied start (e.g. an OEM that ignores the exemption) from
-     * costing the notification, which still carries the full-screen intent as a fallback.
+     * Only call this from a real-time alarm delivery (AlarmReceiver): starting the
+     * service from the background is allowed because an exact alarm just fired. A
+     * late delivery (BootWorker) posts with [showReminderAlert] / [showTaskReminder].
      */
-    fun startAlarmRingScreen(
+    @SuppressLint("MissingPermission")
+    fun deliverOnTime(
         context: Context,
         deliveryMode: String,
-        kind: ReminderViewKind,
-        id: String,
-        subject: String,
+        notifyId: Int,
+        notification: Notification,
         soundUri: String? = null,
     ) {
-        if (!isAlarmStyle(deliveryMode)) return
-        runCatching { context.startActivity(alarmActivityIntent(context, kind, id, subject, soundUri)) }
+        if (isAlarmStyle(deliveryMode) && AlarmRingService.start(context, notifyId, notification, soundUri)) return
+        NotificationManagerCompat.from(context).notify(notifyId, notification)
     }
+
+    // Swiping away a ringing alert ends the ring with it (Android 14+ lets the user
+    // swipe a foreground service's notification).
+    private fun ringDismissedIntent(context: Context, notifyId: Int): PendingIntent = PendingIntent.getBroadcast(
+        context, "ring_dismissed_$notifyId".hashCode(),
+        Intent(context, AlarmActionReceiver::class.java).apply {
+            action = AlarmActionReceiver.ACTION_RING_DISMISSED
+            putExtra(AlarmActionReceiver.EXTRA_NOTIFY_ID, notifyId)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
     /**
      * Applies the per-style presentation: the Alarm style is an alarm to the
@@ -274,17 +282,24 @@ object NotificationHelper {
      * reminders on their channel. [fullScreen] is only built for the Alarm style.
      */
     private fun NotificationCompat.Builder.styledFor(
+        context: Context,
         deliveryMode: String,
+        notifyId: Int,
         fullScreen: () -> PendingIntent,
     ): NotificationCompat.Builder = if (isAlarmStyle(deliveryMode)) {
         setCategory(NotificationCompat.CATEGORY_ALARM)
         setFullScreenIntent(fullScreen(), true)
+        setDeleteIntent(ringDismissedIntent(context, notifyId))
     } else {
         setCategory(NotificationCompat.CATEGORY_REMINDER)
     }
 
     @SuppressLint("MissingPermission")
     fun showTaskReminder(context: Context, taskId: String, taskTitle: String, deliveryMode: String = "NOTIFICATION") {
+        NotificationManagerCompat.from(context).notify(AlertIds.task(taskId), taskReminder(context, taskId, taskTitle, deliveryMode))
+    }
+
+    fun taskReminder(context: Context, taskId: String, taskTitle: String, deliveryMode: String = "NOTIFICATION"): Notification {
         val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
         val openIntent = PendingIntent.getActivity(
             context, taskId.hashCode(),
@@ -315,25 +330,22 @@ object NotificationHelper {
             doneIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("Task reminder")
             .setContentText(taskTitle)
             .setContentIntent(openIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .styledFor(deliveryMode) {
+            .styledFor(context, deliveryMode, AlertIds.task(taskId)) {
                 fullScreenIntent(context, ReminderViewKind.TASK, taskId, taskTitle, "fullscreen_$taskId".hashCode())
             }
             .addAction(0, "Snooze 15 min", snoozePI)
             .addAction(0, "Done", donePI)
             .build()
-
-        NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
     }
 
     @SuppressLint("MissingPermission")
-    /** [title] is the user's word for the feature ("Reminder", "Alarm", "Memo"); callers read it from settings. */
     fun showReminderAlert(
         context: Context,
         reminderId: String,
@@ -343,8 +355,24 @@ object NotificationHelper {
         title: String = "Reminder",
         soundUri: String? = null,
     ) {
+        NotificationManagerCompat.from(context).notify(
+            AlertIds.reminder(reminderId),
+            reminderAlert(context, reminderId, subject, deliveryMode, taskId, title, soundUri),
+        )
+    }
+
+    /** [title] is the user's word for the feature ("Reminder", "Alarm", "Memo"); callers read it from settings. */
+    fun reminderAlert(
+        context: Context,
+        reminderId: String,
+        subject: String,
+        deliveryMode: String = "NOTIFICATION",
+        taskId: String? = null,
+        title: String = "Reminder",
+        soundUri: String? = null,
+    ): Notification {
         val channelId = channelId(ReminderKind.TASK_REMINDER, deliveryMode)
-        val notifyId = ("reminder_$reminderId").hashCode()
+        val notifyId = AlertIds.reminder(reminderId)
         val openIntent = PendingIntent.getActivity(
             context, notifyId,
             Intent(context, MainActivity::class.java).apply {
@@ -375,21 +403,19 @@ object NotificationHelper {
             doneIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(title)
             .setContentText(subject)
             .setContentIntent(openIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .styledFor(deliveryMode) {
+            .styledFor(context, deliveryMode, notifyId) {
                 fullScreenIntent(context, ReminderViewKind.REMINDER, reminderId, subject, "fullscreen_reminder_$reminderId".hashCode(), soundUri)
             }
             .addAction(0, "Snooze 15 min", snoozePI)
             .addAction(0, "Done", donePI)
             .build()
-
-        NotificationManagerCompat.from(context).notify(notifyId, notification)
     }
 
     @SuppressLint("MissingPermission")

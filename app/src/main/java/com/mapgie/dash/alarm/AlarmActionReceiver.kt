@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.notification.AlertIds
 import com.mapgie.dash.notification.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +30,7 @@ class AlarmActionReceiver : BroadcastReceiver() {
             "com.mapgie.dash.ACTION_SNOOZE_TASK" -> {
                 val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
                 val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
-                nm.cancel(taskId.hashCode())
+                silenceAndClear(nm, AlertIds.task(taskId))
                 alarmScheduler.scheduleTask(
                     taskId,
                     taskTitle,
@@ -39,7 +40,7 @@ class AlarmActionReceiver : BroadcastReceiver() {
 
             "com.mapgie.dash.ACTION_DONE_TASK" -> {
                 val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
-                nm.cancel(taskId.hashCode())
+                silenceAndClear(nm, AlertIds.task(taskId))
                 val result = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
@@ -58,7 +59,7 @@ class AlarmActionReceiver : BroadcastReceiver() {
                 // Preserve the task link across the snooze, otherwise the re-fired
                 // reminder never marks its linked task as reminded.
                 val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
-                nm.cancel(("reminder_$reminderId").hashCode())
+                silenceAndClear(nm, AlertIds.reminder(reminderId))
                 alarmScheduler.scheduleReminder(
                     reminderId,
                     subject,
@@ -69,7 +70,7 @@ class AlarmActionReceiver : BroadcastReceiver() {
 
             "com.mapgie.dash.ACTION_DONE_REMINDER" -> {
                 val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID) ?: return
-                nm.cancel(("reminder_$reminderId").hashCode())
+                silenceAndClear(nm, AlertIds.reminder(reminderId))
                 val result = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
@@ -82,6 +83,24 @@ class AlarmActionReceiver : BroadcastReceiver() {
                     }
                 }
             }
+
+            // The user swiped away a ringing Alarm-style alert: the ring goes with it.
+            ACTION_RING_DISMISSED -> {
+                val notifyId = intent.getIntExtra(EXTRA_NOTIFY_ID, 0)
+                AlarmRingService.silence(notifyId, keepNotification = false)
+            }
         }
+    }
+
+    // An answered alert stops ringing and leaves the shade. The ring service owns a
+    // ringing alert's notification, so it removes it; cancel covers every other case.
+    private fun silenceAndClear(nm: NotificationManagerCompat, notifyId: Int) {
+        AlarmRingService.silence(notifyId, keepNotification = false)
+        nm.cancel(notifyId)
+    }
+
+    companion object {
+        const val ACTION_RING_DISMISSED = "com.mapgie.dash.ACTION_RING_DISMISSED"
+        const val EXTRA_NOTIFY_ID = "notify_id"
     }
 }

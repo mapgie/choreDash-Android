@@ -32,11 +32,15 @@ class AlarmScheduler @Inject constructor(
 
     /**
      * Arms a test ring [seconds] from now that travels the exact path a memo
-     * does: AlarmManager, AlarmReceiver, the notification, the full-screen ring.
+     * does: AlarmManager, AlarmReceiver, the notification, the ring service.
      * There is no record behind [TEST_REMINDER_ID]; the receiver and the ring
      * screen know to treat it as a stand-in.
+     *
+     * A minute, not seconds: an app the user left moments ago still counts as
+     * in use, so a quick test passes where a real memo, fired long after, fails
+     * (LESSONS #65). The delay lets the user put the app away first.
      */
-    fun scheduleTestRing(subject: String, seconds: Long = 10) {
+    fun scheduleTestRing(subject: String, seconds: Long = TEST_RING_DELAY_SECONDS) {
         cancelReminder(TEST_REMINDER_ID)
         scheduleReminder(TEST_REMINDER_ID, subject, Instant.now().plusSeconds(seconds))
     }
@@ -175,5 +179,6 @@ class AlarmScheduler @Inject constructor(
     companion object {
         /** The id the Settings "test alarm" rings under; no stored record carries it. */
         const val TEST_REMINDER_ID = "test-alarm"
+        const val TEST_RING_DELAY_SECONDS = 60L
     }
 }

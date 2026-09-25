@@ -1156,6 +1156,10 @@ on an unlocked phone. Two facts combine into the bug:
    heads-up instead, so `AlarmRinger` never ran and the only sound was the
    notification on the (muted) notification stream.
 
+> **Superseded by #65.** The direct activity start below only worked inside a few
+> seconds of the app being on screen, which is why the Settings test ring passed
+> while real alarms stayed silent. The diagnosis in this lesson stands; the fix is #65.
+
 Fix: when a real-time alarm fires, `AlarmReceiver` starts `AlarmActivity` itself
 (`NotificationHelper.startAlarmRingScreen`) for the Alarm style, so the alarm-stream
 ring plays whether the phone is locked or not. This is allowed because an app that
@@ -1465,3 +1469,41 @@ or the row already has one (`chorePatch`), because PostgREST rejects a body that
 names a column the live database has not had added yet; and `interval_days`
 keeps the approximate length (a year is 365) next to `repeat_unit`, so anything
 that reads only the old column still behaves.
+
+## 65. An alarm receiver cannot start an activity from the background: ring from a foreground service
+
+#52's fix had `AlarmReceiver` call `startActivity(AlarmActivity)` on the belief
+that an exact-alarm broadcast grants a background-activity-launch window. It
+does not; that exemption is not on Android's list. What made the fix look right
+was the Settings test ring: it fired 10 seconds after the tap, inside the short
+grace period Android gives an app that was just on screen, so the launch went
+through every time. A real memo fires long after the app was put away, the launch
+is blocked, and a blocked `startActivity` does not throw (logcat says
+"Background activity launch blocked"), so the `runCatching` around it caught
+nothing. The user saw a heads-up notification on the muted notification stream,
+Samsung in vibrate mode, with every permission row green.
+
+The documented exemption for alarms is a **foreground service** start: an app
+whose exact alarm just fired may start one. So the ring now lives in
+`AlarmRingService` (`foregroundServiceType="systemExempted"`, which Android 14+
+reserves for exact-alarm holders keeping an alarm ringing). `AlarmReceiver`
+builds the notification and hands it to `NotificationHelper.deliverOnTime`,
+which starts the service for the Alarm style; the service posts it with
+`startForeground` and loops `AlarmRinger` on the alarm stream, locked or not.
+`AlarmActivity` is only the answer screen now: it rings itself only when the
+service is not ringing (a late BootWorker delivery), and leaving it ends the ring.
+
+Rules that fall out:
+- **A test must fire in the conditions the bug needs.** A self-test that runs
+  seconds after a tap inherits "the app is in use" and cannot see a
+  background-start bug. The test ring now waits a minute and asks the user to
+  leave the app first.
+- **Every path that answers an alert silences the ring by the same id**
+  (`AlertIds`): the notification's Done / Snooze, the swipe (`setDeleteIntent`),
+  the ring screen, the in-app nudge, opening the app from the alert. A
+  foreground service's notification ignores `cancel()`, so the service removes
+  it (`STOP_FOREGROUND_REMOVE`) or leaves it behind for later (`DETACH`, on a
+  timeout or when the screen closes).
+- **Fall back, don't fail.** If Android refuses the service start, the alert is
+  posted the old way; the full-screen intent still opens the ring screen on a
+  locked phone and that screen rings itself.

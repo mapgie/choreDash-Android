@@ -34,6 +34,7 @@ import com.mapgie.dash.data.repository.ChoreRepository
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
+import com.mapgie.dash.alarm.AlarmRingService
 import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.ui.navigation.DashNavGraph
@@ -213,11 +214,15 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
         val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
-        pendingReminderView = when {
-            !reminderId.isNullOrBlank() -> ReminderViewKind.REMINDER.routeArg to reminderId
-            !taskId.isNullOrBlank() -> ReminderViewKind.TASK.routeArg to taskId
+        val (kind, id) = when {
+            !reminderId.isNullOrBlank() -> ReminderViewKind.REMINDER to reminderId
+            !taskId.isNullOrBlank() -> ReminderViewKind.TASK to taskId
             else -> return
         }
+        // Opening a ringing alert is answering it: the ring stops, the alert stays
+        // in the shade until Done or Snooze.
+        AlarmRingService.silence(NotificationHelper.notifyId(kind, id), keepNotification = true)
+        pendingReminderView = kind.routeArg to id
     }
 
     private fun handleNfcIntent(intent: Intent, fromForeground: Boolean) {

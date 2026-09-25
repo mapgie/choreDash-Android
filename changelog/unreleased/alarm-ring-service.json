@@ -1,0 +1,11 @@
+{
+  "bump": "patch",
+  "changed": [
+    "The test ring in Reminders & alerts now fires after a minute, so you can leave the app first and hear it the way a real alarm rings",
+    "Changing a reminder's time to one that has already passed today moves it to the next day, instead of leaving it on a date that has gone"
+  ],
+  "fixed": [
+    "Alarm-style reminders ring again when the phone is unlocked or in vibrate mode, instead of arriving as a silent notification",
+    "A reminder can no longer be saved with a time in the past, where it would never ring"
+  ]
+}

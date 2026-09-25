@@ -6,6 +6,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mapgie.dash.alarm.AlarmRingService
 import com.mapgie.dash.alarm.AlarmScheduler
 import com.mapgie.dash.data.model.ReminderLabelStyle
 import com.mapgie.dash.data.model.isTagAlarm
@@ -14,6 +15,7 @@ import com.mapgie.dash.data.model.reminderInstant
 import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.repository.ReminderRepository
 import com.mapgie.dash.data.repository.TaskRepository
+import com.mapgie.dash.notification.NotificationHelper
 import com.mapgie.dash.tagalarm.TagAlarmService
 import com.mapgie.dash.data.supabase.userFacingMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -240,12 +242,11 @@ class ReminderViewViewModel @Inject constructor(
         _uiState.update { it.copy(finished = true) }
     }
 
-    // Same notify ids NotificationHelper posts under.
+    // Answering ends the ring and clears the alert. A ringing alert's notification
+    // belongs to the ring service, which removes it; cancel covers the rest.
     private fun cancelNotification(kind: ReminderViewKind, id: String) {
-        val notifyId = when (kind) {
-            ReminderViewKind.REMINDER -> ("reminder_$id").hashCode()
-            ReminderViewKind.TASK -> id.hashCode()
-        }
+        val notifyId = NotificationHelper.notifyId(kind, id)
+        AlarmRingService.silence(notifyId, keepNotification = false)
         NotificationManagerCompat.from(context).cancel(notifyId)
     }
 }
