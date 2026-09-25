@@ -243,6 +243,17 @@ fun ChoreListScreen(
         viewModel.clearRecentSnooze()
     }
 
+    // A failed action (edit, log, archive, snooze) surfaces here so the list the
+    // user can still see stays put; only a failed load replaces it with Retry.
+    LaunchedEffect(uiState.actionError) {
+        val actionError = uiState.actionError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = actionError,
+            duration = SnackbarDuration.Long
+        )
+        viewModel.clearActionError()
+    }
+
     // Settings › Swipe actions decides what each direction does. Log and snooze
     // already show their own Undo via recentScan / recentSnooze; archive shows
     // its own here, since it takes the chore out of the list without a log.

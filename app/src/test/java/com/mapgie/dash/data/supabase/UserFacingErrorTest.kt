@@ -27,4 +27,15 @@ class UserFacingErrorTest {
         assertEquals("IllegalStateException", IllegalStateException().userFacingMessage())
         assertEquals("Request failed", userFacingMessage("URL: https://x"))
     }
+
+    @Test
+    fun `a missing-column error points the user at re-running the schema instead of the raw line`() {
+        val schemaMiss = "Could not find the 'due_date' column of 'tags' in the schema cache\n" +
+            "URL: https://example.supabase.co/rest/v1/tags?tag_id=eq.laundry-towels\n" +
+            "Headers: [apikey=[sb_publishable_abc]]\n" +
+            "Http Method: PATCH"
+        val expected = "Your Supabase project is missing a column this app version needs. " +
+            "In Supabase, open the SQL Editor and re-run supabase/schema.sql, then try again."
+        assertEquals(expected, userFacingMessage(schemaMiss))
+    }
 }

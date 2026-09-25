@@ -21,7 +21,17 @@ fun Throwable.userFacingMessage(): String {
 fun userFacingMessage(raw: String): String {
     val cut = REQUEST_DUMP.find(raw)?.range?.first
     val head = if (cut == null) raw else raw.substring(0, cut)
-    return head.trim().trimEnd(',', ';').ifEmpty { "Request failed" }
+    val message = head.trim().trimEnd(',', ';').ifEmpty { "Request failed" }
+    // PostgREST says "... in the schema cache" (PGRST204) when the app writes a
+    // column the project's tables don't have yet, e.g. a chore due_date on a
+    // database created before that column existed. The raw line means nothing to
+    // a user, so point them at the fix: re-running the idempotent schema.sql adds
+    // the missing columns (ALTER TABLE ... ADD COLUMN IF NOT EXISTS).
+    if (message.contains("schema cache", ignoreCase = true)) {
+        return "Your Supabase project is missing a column this app version needs. " +
+            "In Supabase, open the SQL Editor and re-run supabase/schema.sql, then try again."
+    }
+    return message
 }
 
 // The request dump's field labels, at the start of the message or after any whitespace.
