@@ -247,7 +247,7 @@ object NotificationHelper {
      * Delivers an alert the moment its alarm fires. For the Alarm style the ring
      * goes to [com.mapgie.dash.alarm.AlarmRingService], which posts [notification]
      * as its own and rings on the alarm stream whether or not the phone is locked
-     * (LESSONS #65); every other style, or a refused service start, posts it plainly.
+     * (LESSONS #66); every other style, or a refused service start, posts it plainly.
      *
      * Only call this from a real-time alarm delivery (AlarmReceiver): starting the
      * service from the background is allowed because an exact alarm just fired. A

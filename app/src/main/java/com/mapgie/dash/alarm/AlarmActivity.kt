@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
  * and this activity never starts.
  *
  * The ring is [AlarmRingService]'s, not this screen's, so it sounds either way
- * (LESSONS #65). This screen only rings itself (see [AlarmRinger]) when nothing
+ * (LESSONS #66). This screen only rings itself (see [AlarmRinger]) when nothing
  * else is: an alert delivered late by BootWorker, or one whose service start was
  * refused. Leaving the screen ends the ring, whoever owns it.
  *

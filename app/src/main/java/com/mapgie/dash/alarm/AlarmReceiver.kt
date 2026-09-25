@@ -47,7 +47,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         val sound = runCatching {
                             reminderRepository.loadReminders().firstOrNull { it.id == reminderId }?.sound
                         }.getOrNull()
-                        // The Alarm style rings from AlarmRingService, locked or not (LESSONS #65).
+                        // The Alarm style rings from AlarmRingService, locked or not (LESSONS #66).
                         NotificationHelper.deliverOnTime(
                             context, deliveryMode, NotificationHelper.notifyId(ReminderViewKind.REMINDER, reminderId),
                             NotificationHelper.reminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord, sound),

@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.minutes
  * Why a service and not [AlarmActivity]: the activity only runs when Android
  * lets it start. It launches the full-screen intent only on a locked or sleeping
  * phone, and it blocks a background activity start from an alarm receiver once
- * the app has been out of sight for more than a few seconds (LESSONS #65). A
+ * the app has been out of sight for more than a few seconds (LESSONS #66). A
  * foreground service started from an exact alarm is a documented exemption, so
  * the ring no longer depends on whether a screen was allowed to open. The ring
  * screen still shows over the lock screen through the notification's

@@ -71,7 +71,14 @@ const val UNCATEGORISED_LABEL = "Uncategorised"
 
 data class ChoreUiState(
     val loading: Boolean = false,
+    /** A load failure: the list can't be shown, so the screen offers Retry. */
     val error: String? = null,
+    /**
+     * A failure from an action on an already-loaded list (edit, log, archive,
+     * snooze). Shown as a snackbar so one failed write doesn't hide the chores
+     * the user can still see.
+     */
+    val actionError: String? = null,
     val active: List<Chore> = emptyList(),
     val archived: List<Chore> = emptyList(),
     val owners: List<String> = emptyList(),
@@ -418,7 +425,7 @@ class ChoreListViewModel @Inject constructor(
                 _uiState.update { it.copy(recentScan = RecentScan(choreLabel, scanId)) }
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }
@@ -446,7 +453,7 @@ class ChoreListViewModel @Inject constructor(
                 loadScanHistory(chore.tagId)
                 WidgetUpdater.updateAll(appContext)
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }
@@ -467,6 +474,11 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(recentScan = null) }
     }
 
+    /** Dismisses the snackbar shown after a failed action so it doesn't reappear. */
+    fun clearActionError() {
+        _uiState.update { it.copy(actionError = null) }
+    }
+
     fun updateChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
         viewModelScope.launch {
             runCatching {
@@ -475,7 +487,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.updateTag(tagId, label, category, owner, schedule)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }
@@ -491,7 +503,7 @@ class ChoreListViewModel @Inject constructor(
                 if (leadDays != null) choreLeadStore.set(resolvedTagId, leadDays)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }
@@ -504,7 +516,7 @@ class ChoreListViewModel @Inject constructor(
                     alarmScheduler.scheduleReminder(reminder.id, reminder.subject, at)
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }
@@ -524,7 +536,7 @@ class ChoreListViewModel @Inject constructor(
                 choreRepository.archiveTag(tagId, archived)
                 load()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = e.userFacingMessage()) }
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
             }
         }
     }

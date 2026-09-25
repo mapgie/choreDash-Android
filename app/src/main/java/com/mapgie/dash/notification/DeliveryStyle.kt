@@ -10,7 +10,7 @@ package com.mapgie.dash.notification
  * That is the crux of LESSONS #51 — a posted notification's sound can land on the
  * (often muted) notification stream whatever `USAGE_ALARM` the channel declares,
  * so for the Alarm mode `AlarmReceiver` hands the alert to `AlarmRingService`, whose
- * `AlarmRinger` plays under `USAGE_ALARM` (LESSONS #65). If the mapping below ever stops
+ * `AlarmRinger` plays under `USAGE_ALARM` (LESSONS #66). If the mapping below ever stops
  * treating [DeliveryMode.ALARM] as an alarm, an unlocked phone falls silent again.
  */
 enum class DeliveryStyle { ALARM, NOTIFICATION, SILENT }

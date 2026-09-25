@@ -38,7 +38,7 @@ class AlarmScheduler @Inject constructor(
      *
      * A minute, not seconds: an app the user left moments ago still counts as
      * in use, so a quick test passes where a real memo, fired long after, fails
-     * (LESSONS #65). The delay lets the user put the app away first.
+     * (LESSONS #66). The delay lets the user put the app away first.
      */
     fun scheduleTestRing(subject: String, seconds: Long = TEST_RING_DELAY_SECONDS) {
         cancelReminder(TEST_REMINDER_ID)

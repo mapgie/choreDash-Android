@@ -23,7 +23,7 @@
          on the alarm stream whether or not Android lets the ring screen open: an
          activity started from an alarm receiver is blocked once the app has been in
          the background for a few seconds, a foreground service started from an exact
-         alarm is not (LESSONS #65). -->
+         alarm is not (LESSONS #66). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- The service type Android 14+ reserves for apps holding exact-alarm permission
          that keep an alarm ringing from a foreground service. -->

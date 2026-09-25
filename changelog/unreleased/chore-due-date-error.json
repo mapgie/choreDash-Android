@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "A failed chore edit, log, archive or snooze now shows a brief message instead of replacing the whole list with an error page.",
+    "When a save fails because your Supabase project is missing a column, the app now tells you to re-run supabase/schema.sql instead of showing the raw database error."
+  ]
+}
