@@ -1465,3 +1465,24 @@ or the row already has one (`chorePatch`), because PostgREST rejects a body that
 names a column the live database has not had added yet; and `interval_days`
 keeps the approximate length (a year is 365) next to `repeat_unit`, so anything
 that reads only the old column still behaves.
+
+## 65. A failed action is not a failed load: keep them in separate state
+
+`ChoreUiState` had one `error` field, and the list screen showed a full-page
+Retry whenever it was non-null. But the ViewModel set that same field from
+every mutation (edit, log, archive, snooze), so one failed write hid every
+chore the user could still see behind an error page. This surfaced when adding
+a due date to a chore whose Supabase project lacked the `due_date` column: the
+PATCH failed and the whole list vanished.
+
+A load failure and an action failure are different states. `error` stays for
+"the list could not be shown" (offer Retry); `actionError` carries "that write
+did not go through" and shows as a snackbar over the list that is still there.
+Route each `onFailure` to the field that matches what failed.
+
+Companion: PostgREST's "Could not find the '<col>' column of '<table>' in the
+schema cache" (PGRST204) means the app wrote a column the live database has not
+had added yet. The raw line means nothing to a user, so `userFacingMessage`
+maps any "schema cache" error to "re-run supabase/schema.sql" (the schema is
+idempotent and adds missing columns with `ADD COLUMN IF NOT EXISTS`). The app
+cannot run DDL itself, so pointing at the fix is the most it can do.
