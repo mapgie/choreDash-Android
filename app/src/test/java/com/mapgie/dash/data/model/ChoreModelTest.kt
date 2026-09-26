@@ -172,4 +172,28 @@ class ChoreModelTest {
         assertFalse(chore(category = "Kitchen", lastScannedAgo = Duration.ofHours(36)).isDistant())
         assertFalse(chore(intervalDays = 365.0).isDistant())
     }
+
+    // ── NFC tag ───────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a chore carries its tag from the row, and none when the row has none`() {
+        val tagged = Chore.from(TagDto(id = "id1", tagId = "k1", label = "Bins", nfcId = "back-door"), null, null)
+        assertEquals("back-door", tagged.nfcId)
+        assertNull(Chore.from(TagDto(id = "id2", tagId = "k2", label = "Bins"), null, null).nfcId)
+    }
+
+    @Test
+    fun `an app-made key is told apart from a typed tag id`() {
+        assertTrue(isMintedChoreKey("dcb34369-394c-49be-9367-6e40e84b10ce"))
+        assertFalse(isMintedChoreKey("plant-airplant"))
+        assertFalse(isMintedChoreKey("04a1b2c3d4"))
+    }
+
+    @Test
+    fun `writing a tag for a chore with none mints a readable free id`() {
+        val santa = Chore.from(TagDto(id = "id1", tagId = "dcb34369-394c-49be-9367-6e40e84b10ce", label = "Book Santa"), null, null)
+        assertEquals("book-santa", nfcIdToWrite(santa, emptySet()))
+        assertEquals("book-santa-2", nfcIdToWrite(santa, setOf("book-santa")))
+        assertEquals("sleigh", nfcIdToWrite(santa.copy(nfcId = "sleigh"), setOf("sleigh")))
+    }
 }

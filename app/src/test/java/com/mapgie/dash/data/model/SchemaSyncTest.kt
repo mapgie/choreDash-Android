@@ -67,6 +67,20 @@ class SchemaSyncTest {
     }
 
     @Test
+    fun `the schema adds the nfc id column to an existing tags table, filling it once`() {
+        // Added inside a guarded block so the one-time fill from tag_id never
+        // runs again and re-links a tag the app has unlinked.
+        assertTrue(
+            "supabase/schema.sql never adds tags.nfc_id to an existing table",
+            Regex("""ALTER TABLE tags ADD COLUMN nfc_id\b""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+        assertTrue(
+            "supabase/schema.sql must check information_schema before adding nfc_id",
+            Regex("""column_name\s*=\s*'nfc_id'""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+    }
+
+    @Test
     fun `every table is granted to the anon role for the Data API`() {
         // From 2026 Supabase stops auto-exposing public tables to the Data API, so
         // a table the app reaches through the anon key must carry an explicit GRANT

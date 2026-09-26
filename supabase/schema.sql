@@ -14,7 +14,9 @@
 --
 -- If you're sharing this project with the taskDash web app, the `owners` and
 -- `todos` tables are compatible with it. Applying this file does not drop or
--- edit any row; it only creates/adjusts tables, policies, constraints and grants.
+-- edit any row, with one exception: the run that adds `tags.nfc_id` fills it
+-- in once from `tag_id` (see there). Otherwise it only creates/adjusts tables,
+-- policies, constraints and grants.
 --
 -- This schema grants the `anon` role full read/write access (no auth), matching
 -- how the app connects with the Supabase anon key. Only share your Project URL
@@ -42,11 +44,17 @@ CREATE POLICY "anon delete owners" ON owners FOR DELETE TO anon USING (true);
 -- INSERT INTO owners (handle) VALUES ('alex'), ('sam');
 
 -- ─────────────────────────────────────────────────────────────────────────
--- tags — chores, one row per NFC tag/label tracked by choreDash.
+-- tags — chores, one row per chore tracked by choreDash.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS tags (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- The chore's key: scans point at it, and it never changes. Older chores used
+  -- the id on their NFC sticker here; new ones get a random one.
   tag_id        text NOT NULL UNIQUE,
+  -- The id the chore's NFC tag carries, or NULL for a chore with no tag.
+  -- Separate from tag_id so a tag can be unlinked and reused without touching
+  -- the chore's history.
+  nfc_id        text UNIQUE,
   label         text NOT NULL,
   category      text,
   owner         text REFERENCES owners(handle),
@@ -66,6 +74,23 @@ CREATE TABLE IF NOT EXISTS tags (
 -- re-asserted in "Constraint sync" below.
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS due_date    date;
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS repeat_unit text;
+
+-- nfc_id arrived after tag_id had been doing both jobs. It is added, and filled
+-- in, only on the run that creates it: every chore whose tag_id someone typed
+-- (a sticker's id) keeps that id as its tag, while an app-made random id (a
+-- UUID, minted when no tag was given) means the chore has no tag. Later runs
+-- leave the column alone, so a tag the app has unlinked stays unlinked.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'tags' AND column_name = 'nfc_id'
+  ) THEN
+    ALTER TABLE tags ADD COLUMN nfc_id text UNIQUE;
+    UPDATE tags SET nfc_id = tag_id
+    WHERE tag_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS tags_owner_idx    ON tags(owner);
 CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);

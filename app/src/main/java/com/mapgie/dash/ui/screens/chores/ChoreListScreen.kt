@@ -110,12 +110,18 @@ fun ChoreListScreen(
     onNfcConsumed: () -> Unit,
     nfcWriteRequest: String?,
     nfcWriteResult: NfcWriteResult?,
-    onStartNfcWrite: (String) -> Unit,
+    /** Writes [nfcId] to a tag; [linkChore] is the key of a chore to link to it once written. */
+    onStartNfcWrite: (nfcId: String, linkChore: String?) -> Unit,
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
     pendingAddIntent: AddMenuOption? = null,
     onPendingAddIntentConsumed: () -> Unit = {},
     onOpenReminderSettings: () -> Unit = {},
+    /** The next tag the phone reads while an edit sheet listens for one (MainActivity). */
+    nfcCapturedTagId: String? = null,
+    onStartNfcCapture: () -> Unit = {},
+    onCancelNfcCapture: () -> Unit = {},
+    onNfcCaptureConsumed: () -> Unit = {},
     viewModel: ChoreListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -171,7 +177,7 @@ fun ChoreListScreen(
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
         val tagId = pendingNfcTagId ?: return@LaunchedEffect
         showNfcDialog = false
-        val chore = (uiState.active + uiState.archived).find { it.tagId == tagId }
+        val chore = (uiState.active + uiState.archived).find { it.nfcId == tagId }
         when {
             chore != null -> {
                 logTargetChore = chore
@@ -713,8 +719,9 @@ fun ChoreListScreen(
             },
             onWriteTag = { c ->
                 showLogSheet = false
-                onStartNfcWrite(c.tagId)
+                viewModel.nfcIdToWriteFor(c) { id -> onStartNfcWrite(id, c.tagId.takeIf { c.nfcId != id }) }
             },
+            onUnlinkTag = { c -> viewModel.unlinkTag(c) },
             onDismiss = {
                 showLogSheet = false
                 if (uiState.pendingNfcTagId != null) {
@@ -739,20 +746,29 @@ fun ChoreListScreen(
             draft = remember(chore.id) { viewModel.choreDrafts.get(chore.id) },
             onDraftChange = { viewModel.choreDrafts.put(chore.id, it) },
             onDraftClear = { viewModel.choreDrafts.clear(chore.id) },
-            onSave = { tagId, label, category, owner, schedule, leadDays ->
-                viewModel.updateChore(tagId, label, category, owner, schedule, leadDays)
+            scannedTagId = nfcCapturedTagId,
+            onStartScan = onStartNfcCapture,
+            onCancelScan = onCancelNfcCapture,
+            onScanConsumed = onNfcCaptureConsumed,
+            onSave = { nfcId, label, category, owner, schedule, leadDays ->
+                viewModel.updateChore(chore.tagId, nfcId, label, category, owner, schedule, leadDays)
                 showEditSheet = false
             },
             onArchiveToggle = { c, archive ->
                 viewModel.archiveChore(c.tagId, archive)
                 showEditSheet = false
             },
-            onWriteTag = { tagId ->
+            onWriteTag = { nfcId ->
                 showEditSheet = false
-                onStartNfcWrite(tagId)
+                onStartNfcWrite(nfcId, chore.tagId.takeIf { chore.nfcId != nfcId })
             },
             onDismiss = { showEditSheet = false }
         )
+    }
+
+    // A write can link a chore to its tag (MainActivity), so reload once it lands.
+    LaunchedEffect(nfcWriteResult) {
+        if (nfcWriteRequest != null && nfcWriteResult == NfcWriteResult.Success) viewModel.load()
     }
 
     if (nfcWriteRequest != null) {
@@ -787,7 +803,7 @@ fun ChoreListScreen(
     if (showAddSheet) {
         EditChoreSheet(
             chore = null,
-            initialTagId = addSheetTagId,
+            initialNfcId = addSheetTagId,
             icon = LucideIcons.HouseCheck,
             badgeSwatch = null,
             iconSwatch = null,
@@ -797,8 +813,12 @@ fun ChoreListScreen(
             draft = remember { viewModel.choreDrafts.get(NEW_DRAFT_KEY) },
             onDraftChange = { viewModel.choreDrafts.put(NEW_DRAFT_KEY, it) },
             onDraftClear = { viewModel.choreDrafts.clear(NEW_DRAFT_KEY) },
-            onSave = { tagId, label, category, owner, schedule, leadDays ->
-                viewModel.addChore(tagId, label, category, owner, schedule, leadDays)
+            scannedTagId = nfcCapturedTagId,
+            onStartScan = onStartNfcCapture,
+            onCancelScan = onCancelNfcCapture,
+            onScanConsumed = onNfcCaptureConsumed,
+            onSave = { nfcId, label, category, owner, schedule, leadDays ->
+                viewModel.addChore(nfcId, label, category, owner, schedule, leadDays)
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()
@@ -806,9 +826,10 @@ fun ChoreListScreen(
                 }
             },
             onArchiveToggle = { _, _ -> },
-            onWriteTag = { tagId ->
+            onWriteTag = { nfcId ->
                 showAddSheet = false
-                onStartNfcWrite(tagId)
+                // The chore is not saved yet; its tag id is kept in the sheet's draft.
+                onStartNfcWrite(nfcId, null)
             },
             onDismiss = {
                 showAddSheet = false

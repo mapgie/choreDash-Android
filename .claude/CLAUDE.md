@@ -111,8 +111,12 @@ reading code.
 
 Facts that save a detour:
 
-- A **chore is a row in the `tags` table**; its `tagId` is the primary key and the
-  NFC id. Chore ids and tag-alarm tag ids share one id space; a tag has one job.
+- A **chore is a row in the `tags` table**; its `tagId` is the chore's key
+  (logs, snoozes, "Show from", widget pins point at it) and is never shown.
+  Its NFC tag is the separate, nullable `nfcId` (`nfc_id`): null means no tag,
+  and `ChoreRepository.setNfcId` links or unlinks one. NFC taps resolve by
+  `findByNfcId`, never by key. Chore NFC ids and tag-alarm tag ids share one id
+  space; a tag has one job (LESSONS #67).
 - **Memos are on-device** (`ReminderRepository`, DataStore). They never reach
   Supabase. So are settings, category styles, snoozes, each chore's "Show from"
   (`ChoreLeadStore`) and the sticker record.

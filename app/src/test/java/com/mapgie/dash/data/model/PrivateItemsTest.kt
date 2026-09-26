@@ -138,4 +138,30 @@ class PrivateItemsTest {
             .withoutScan("s2")
         assertEquals(listOf("s1"), items.scansFor("nfc-1").map { it.id })
     }
+
+    // ── A chore's NFC tag, split from its key ─────────────────────────────────
+
+    private val santaKey = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11"
+
+    @Test
+    fun `an older private chore keeps a typed tag id as its tag and loses a minted one`() {
+        val items = PrivateItems(chores = listOf(chore("laundry-bin"), chore(santaKey))).withNfcIdsSplit()
+        assertEquals(listOf("laundry-bin", null), items.chores.map { it.nfcId })
+        assertEquals(listOf("laundry-bin", santaKey), items.chores.map { it.tagId })
+        assertTrue(items.nfcIdsSplit)
+    }
+
+    @Test
+    fun `a tag unlinked after the split is never put back`() {
+        val split = PrivateItems(chores = listOf(chore("laundry-bin"))).withNfcIdsSplit()
+        val unlinked = split.updateChore("laundry-bin") { it.copy(nfcId = null) }
+        assertNull(unlinked.withNfcIdsSplit().chores.single().nfcId)
+    }
+
+    @Test
+    fun `a private chore is found by its tag, not its key`() {
+        val items = PrivateItems(chores = listOf(chore(santaKey).copy(nfcId = "santa-sticker")), nfcIdsSplit = true)
+        assertEquals(santaKey, items.choreByNfcId("santa-sticker")?.tagId)
+        assertNull(items.choreByNfcId(santaKey))
+    }
 }
