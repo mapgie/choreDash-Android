@@ -47,11 +47,12 @@ class AlarmReceiver : BroadcastReceiver() {
                         val sound = runCatching {
                             reminderRepository.loadReminders().firstOrNull { it.id == reminderId }?.sound
                         }.getOrNull()
-                        NotificationHelper.showReminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord, sound)
-                        // Alarm style only: ring on the alarm stream even when the phone is
-                        // unlocked, where Android shows a heads-up rather than launching the
-                        // full-screen intent (NotificationHelper.startAlarmRingScreen).
-                        NotificationHelper.startAlarmRingScreen(context, deliveryMode, ReminderViewKind.REMINDER, reminderId, subject, sound)
+                        // The Alarm style rings from AlarmRingService, locked or not (LESSONS #66).
+                        NotificationHelper.deliverOnTime(
+                            context, deliveryMode, NotificationHelper.notifyId(ReminderViewKind.REMINDER, reminderId),
+                            NotificationHelper.reminderAlert(context, reminderId, subject, deliveryMode, taskId, featureWord, sound),
+                            sound,
+                        )
                         try {
                             // A repeating memo comes back with its next ring armed; a
                             // once-only one is now spent and syncReminder just clears it.
@@ -64,8 +65,10 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                     taskId != null -> {
                         val taskTitle = intent.getStringExtra(NotificationHelper.EXTRA_TASK_TITLE) ?: "Task"
-                        NotificationHelper.showTaskReminder(context, taskId, taskTitle, deliveryMode)
-                        NotificationHelper.startAlarmRingScreen(context, deliveryMode, ReminderViewKind.TASK, taskId, taskTitle)
+                        NotificationHelper.deliverOnTime(
+                            context, deliveryMode, NotificationHelper.notifyId(ReminderViewKind.TASK, taskId),
+                            NotificationHelper.taskReminder(context, taskId, taskTitle, deliveryMode),
+                        )
                         try {
                             // Mark reminded=true in Supabase so other clients know the alert was sent.
                             taskRepository.markReminded(taskId)

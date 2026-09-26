@@ -61,7 +61,7 @@ class SettingsViewModel @Inject constructor(
     private val alarmScheduler: AlarmScheduler,
 ) : ViewModel() {
 
-    /** Settings › Reminders & alerts: ring a test alarm in ten seconds through the real alarm path. */
+    /** Settings › Reminders & alerts: ring a test alarm in a minute through the real alarm path. */
     fun ringTestAlarm(subject: String) {
         alarmScheduler.scheduleTestRing(subject)
     }

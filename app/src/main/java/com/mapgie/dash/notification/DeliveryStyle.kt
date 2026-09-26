@@ -9,8 +9,8 @@ package com.mapgie.dash.notification
  * Robolectric: **which stored mode must ring on the phone's alarm audio stream.**
  * That is the crux of LESSONS #51 — a posted notification's sound can land on the
  * (often muted) notification stream whatever `USAGE_ALARM` the channel declares,
- * so for the Alarm mode `AlarmReceiver` launches `AlarmActivity` itself and
- * `AlarmRinger` plays under `USAGE_ALARM`. If the mapping below ever stops
+ * so for the Alarm mode `AlarmReceiver` hands the alert to `AlarmRingService`, whose
+ * `AlarmRinger` plays under `USAGE_ALARM` (LESSONS #66). If the mapping below ever stops
  * treating [DeliveryMode.ALARM] as an alarm, an unlocked phone falls silent again.
  */
 enum class DeliveryStyle { ALARM, NOTIFICATION, SILENT }
@@ -34,10 +34,21 @@ object DeliveryMode {
 
     /**
      * True for the one mode that must sound on the **alarm** audio stream rather
-     * than the notification stream. `AlarmReceiver` gates its direct
-     * `startAlarmRingScreen` launch on this, so keep it in lockstep with the real
+     * than the notification stream. `NotificationHelper.deliverOnTime` gates the
+     * `AlarmRingService` start on this, so keep it in lockstep with the real
      * ring behaviour: this returning false for [ALARM] is exactly the regression
      * that made the Alarm style silent on an unlocked phone (LESSONS #51).
      */
     fun ringsOnAlarmStream(deliveryMode: String): Boolean = styleOf(deliveryMode) == DeliveryStyle.ALARM
+}
+
+/**
+ * The ids memo and task alerts are posted under. Everything that silences or
+ * clears an alert (the notification's actions, the ring screen, the in-app nudge,
+ * the ring service) must name the same id, and an installed app has alerts in the
+ * shade under these exact values, so they must not change.
+ */
+object AlertIds {
+    fun reminder(reminderId: String): Int = "reminder_$reminderId".hashCode()
+    fun task(taskId: String): Int = taskId.hashCode()
 }

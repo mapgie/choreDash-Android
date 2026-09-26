@@ -80,9 +80,11 @@ import com.mapgie.dash.data.model.formatRingTime
 import com.mapgie.dash.data.model.isTagAlarm
 import com.mapgie.dash.data.model.nextMorning
 import com.mapgie.dash.data.model.nextOccurrence
+import com.mapgie.dash.data.model.onceOnlyRingSavable
 import com.mapgie.dash.data.model.parseRepeatDays
 import com.mapgie.dash.data.model.parseRingTimes
 import com.mapgie.dash.data.model.remindAtInstant
+import com.mapgie.dash.data.model.ringForPickedTime
 import com.mapgie.dash.data.model.suggestTagId
 import com.mapgie.dash.ui.components.core.LocalReminderLabel
 import com.mapgie.dash.ui.components.core.MetaCaption
@@ -271,7 +273,10 @@ fun AddReminderSheet(
         followUps = if (tagAlarmOn) followUps.map { formatRingTime(it) } else emptyList(),
     )
     val isDirty = currentDraft.differsFrom(opened)
-    val canSave = subject.isNotBlank() && (tagAlarmOn || !(repeatOn && days.isEmpty()))
+    val canSave = subject.isNotBlank() && (tagAlarmOn || !(repeatOn && days.isEmpty())) &&
+        (tagAlarmOn || repeatOn || onceOnlyRingSavable(
+            Instant.ofEpochMilli(currentDraft.ringAtEpochMillis), Instant.ofEpochMilli(opened.ringAtEpochMillis), now,
+        ))
 
     // The tag the phone just read while this sheet was waiting for one. A tag has
     // one job: an id a chore or another tag-alarm owns is refused, with the owner named.
@@ -911,7 +916,8 @@ fun AddReminderSheet(
             initialHour = ringAt.hour,
             initialMinute = ringAt.minute,
             onConfirm = { h, m ->
-                ringAt = ringAt.withHour(h).withMinute(m).withSecond(0).withNano(0)
+                // A time already gone today moves to its next occurrence (ringForPickedTime).
+                ringAt = ringForPickedTime(ringAt, LocalTime.of(h, m), Instant.now())
                 showTimePicker = false
             },
             onDismiss = { showTimePicker = false }

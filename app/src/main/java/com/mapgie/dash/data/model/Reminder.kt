@@ -152,6 +152,28 @@ fun nextOccurrence(after: Instant, timeOfDay: LocalTime, days: Set<DayOfWeek>, z
     return null
 }
 
+/**
+ * The ring a memo means when its time of day is set to [time] at [now]: the
+ * picked day at [time] while that is still ahead, otherwise the next [time]
+ * after [now] (today, or tomorrow once today's has gone). A clock app's rule:
+ * nobody sets a ring for a moment that has already passed, so changing only the
+ * time on yesterday's memo means today, not yesterday.
+ */
+fun ringForPickedTime(picked: ZonedDateTime, time: LocalTime, now: Instant): ZonedDateTime {
+    val at = time.withSecond(0).withNano(0)
+    val onPickedDay = picked.with(at)
+    if (onPickedDay.toInstant().isAfter(now)) return onPickedDay
+    return nextMorning(now, at, picked.zone).atZone(picked.zone)
+}
+
+/**
+ * Whether a once-only memo can be saved with [ring]: it is still ahead, or it is
+ * the ring the memo opened with, so renaming a memo that has already rung is
+ * still allowed. A ring moved into the past would never fire.
+ */
+fun onceOnlyRingSavable(ring: Instant, opened: Instant, now: Instant): Boolean =
+    ring.isAfter(now) || ring == opened
+
 /** The next ring of a repeating memo strictly after [after], keeping its local time of day. */
 fun ReminderDto.nextOccurrenceAfter(after: Instant, zone: ZoneId = ZoneId.systemDefault()): Instant? {
     val time = timeOfDay(zone) ?: return null
