@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -116,16 +117,23 @@ fun EditChoreSheet(
     categories: List<String>,
     sheetState: SheetState,
     /** [leadDays] is this phone's "show from" for the chore; null means automatic. */
-    onSave: (tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
+    /** [nfcId] is the chore's NFC tag id, or null for a chore with no tag. */
+    onSave: (nfcId: String?, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
-    onWriteTag: (tagId: String) -> Unit,
+    onWriteTag: (nfcId: String) -> Unit,
     onDismiss: () -> Unit,
-    initialTagId: String = "",
+    /** The id of a tag just scanned, for a new chore made from an unknown tag. */
+    initialNfcId: String = "",
     /** This phone's "show from" for [chore], or null when it follows the automatic rule. */
     initialLeadDays: Int? = null,
     draft: ChoreDraft? = null,
     onDraftChange: (ChoreDraft) -> Unit = {},
     onDraftClear: () -> Unit = {},
+    /** The id the phone read while this sheet was listening for a tag ([onStartScan]). */
+    scannedTagId: String? = null,
+    onStartScan: () -> Unit = {},
+    onCancelScan: () -> Unit = {},
+    onScanConsumed: () -> Unit = {},
 ) {
     val sheetScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -137,7 +145,7 @@ fun EditChoreSheet(
     // The values the sheet opened with, snapshotted once so the dirty check
     // compares against what the fields actually started as (LESSONS.md #27).
     // Every field is rememberSaveable so rotation and process death keep edits.
-    val opened = remember { ChoreDraft.of(chore, initialTagId, initialLeadDays) }
+    val opened = remember { ChoreDraft.of(chore, initialNfcId, initialLeadDays) }
     var label by rememberSaveable { mutableStateOf(opened.label) }
     var category by rememberSaveable { mutableStateOf(opened.category) }
     var owner by rememberSaveable { mutableStateOf(opened.owner) }
@@ -145,7 +153,8 @@ fun EditChoreSheet(
     var repeatUnit by rememberSaveable(stateSaver = enumStateSaver<RepeatUnit>()) { mutableStateOf(opened.repeatUnitEnum()) }
     var dueDate by rememberSaveable(stateSaver = LocalDateStateSaver) { mutableStateOf(opened.dueDate()) }
     var leadDays by rememberSaveable { mutableStateOf(opened.leadDays) }
-    var tagId by rememberSaveable { mutableStateOf(opened.tagId) }
+    var nfcId by rememberSaveable { mutableStateOf(opened.nfcId) }
+    var scanning by rememberSaveable { mutableStateOf(false) }
 
     var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
     var showNewCategory by rememberSaveable { mutableStateOf(false) }
@@ -175,12 +184,30 @@ fun EditChoreSheet(
         category = category,
         owner = owner,
         repeatEvery = interval,
-        tagId = tagId,
+        nfcId = nfcId,
         repeatUnit = repeatUnit.name,
         dueDateEpochDay = dueDate?.toEpochDay(),
         leadDays = leadDays,
     )
     val isDirty = currentDraft.differsFrom(opened)
+
+    // Scanning links a sticker as it is, without writing it: the way to give a
+    // chore a tag another chore or a tag-alarm let go of. The activity's "capture
+    // the next tag" request follows [scanning] and is withdrawn with the sheet.
+    LaunchedEffect(scanning) {
+        if (scanning) onStartScan() else onCancelScan()
+    }
+    DisposableEffect(Unit) {
+        onDispose { onCancelScan() }
+    }
+    LaunchedEffect(scannedTagId) {
+        val scanned = scannedTagId ?: return@LaunchedEffect
+        if (scanning) {
+            scanning = false
+            nfcId = scanned
+        }
+        onScanConsumed()
+    }
 
     // Mirror every change into the draft store while the sheet is dirty.
     LaunchedEffect(currentDraft) {
@@ -196,8 +223,8 @@ fun EditChoreSheet(
         dueDate = restored.dueDate()
         leadDays = restored.leadDays
         dueDatePickerState.selectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
-        // A tag ID that arrived with an NFC scan wins over a draft that has none.
-        tagId = restored.tagId.ifBlank { tagId }
+        // A new chore's tag that arrived with an NFC scan wins over a draft that has none.
+        nfcId = if (isNew) restored.nfcId.ifBlank { nfcId } else restored.nfcId
         offeredDraft = null
     }
 
@@ -390,22 +417,31 @@ fun EditChoreSheet(
                 }
                 SheetRowDivider()
                 SettingsRow(icon = LucideIcons.NfcScan, label = "NFC tag") {
-                    if (isNew) {
-                        TagIdField(value = tagId, onValueChange = { tagId = it })
-                    } else {
-                        Text(
-                            text = tagId.ifBlank { "no label" },
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                            color = if (tagId.isNotBlank()) tokens.tagLabel else tokens.inkFaint,
-                            maxLines = 1,
-                            modifier = Modifier.widthIn(max = 120.dp),
-                        )
-                    }
-                    if (tagId.isNotBlank()) {
+                    // Blank means no tag. Clearing it unlinks the tag on Save; the
+                    // sticker keeps its id, free for another chore or a tag-alarm.
+                    TagIdField(
+                        value = nfcId,
+                        onValueChange = { nfcId = it },
+                        placeholder = if (scanning) "Hold a tag" else "No tag",
+                    )
+                    if (nfcId.isBlank()) {
                         ValueChip(
-                            text = if (isNew) "Write tag" else "Rewrite",
-                            onClick = { hideThen { onWriteTag(tagId.trim()) } },
-                            contentDescription = "Write this chore's ID to an NFC tag",
+                            text = if (scanning) "Cancel" else "Scan",
+                            onClick = { scanning = !scanning },
+                            contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to link it to this chore",
+                            chevron = false,
+                        )
+                    } else {
+                        ValueChip(
+                            text = "Write",
+                            onClick = { hideThen { onWriteTag(nfcId.trim()) } },
+                            contentDescription = "Write this tag id to an NFC tag",
+                            chevron = false,
+                        )
+                        ValueChip(
+                            text = if (opened.nfcId.isNotBlank()) "Unlink" else "Clear",
+                            onClick = { nfcId = "" },
+                            contentDescription = "Remove the NFC tag from this chore",
                             chevron = false,
                         )
                     }
@@ -427,7 +463,8 @@ fun EditChoreSheet(
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
                     onDraftClear()
-                    hideThen { onSave(tagId.trim(), label.trim(), categoryValue, ownerValue, schedule, lead) }
+                    val tag = currentDraft.nfcIdOrNull()
+                    hideThen { onSave(tag, label.trim(), categoryValue, ownerValue, schedule, lead) }
                 },
             )
 
@@ -607,18 +644,18 @@ private fun RepeatUnit.shortSuffix(): String = when (this) {
     RepeatUnit.YEAR -> "y"
 }
 
-/** Compact inline field for a new chore's tag ID, on the NFC row. */
+/** Compact inline field for the chore's NFC tag id, on the NFC row; empty reads "No tag". */
 @Composable
-private fun TagIdField(value: String, onValueChange: (String) -> Unit) {
+private fun TagIdField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
     val tokens = LocalDashTokens.current
     Box(
         modifier = Modifier
-            .widthIn(min = 90.dp, max = 150.dp)
+            .widthIn(min = 72.dp, max = 120.dp)
             .padding(vertical = 4.dp),
     ) {
         if (value.isEmpty()) {
             Text(
-                text = "Tag ID",
+                text = placeholder,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
                 color = tokens.inkFaint,
             )
@@ -636,7 +673,7 @@ private fun TagIdField(value: String, onValueChange: (String) -> Unit) {
             cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Tag ID" },
+                .semantics { contentDescription = "NFC tag id" },
         )
     }
 }

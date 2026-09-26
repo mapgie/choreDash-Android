@@ -31,6 +31,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.TagStickerStore
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.supabase.userFacingMessage
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteRequest
 import com.mapgie.dash.nfc.NfcWriteResult
@@ -239,8 +240,13 @@ class MainActivity : ComponentActivity() {
                     if (result == NfcWriteResult.Success && leaving != null) forgetSticker(leaving)
                 } else {
                     val result = NfcHandler.writeUri(tag, uri)
-                    nfcWriteResult = result
                     if (result == NfcWriteResult.Success) recordSticker(writeRequest.id)
+                    val chore = writeRequest.linkChore
+                    if (result == NfcWriteResult.Success && chore != null) {
+                        linkChoreThenReport(chore, writeRequest.id)
+                    } else {
+                        nfcWriteResult = result
+                    }
                 }
             }
             return
@@ -258,6 +264,21 @@ class MainActivity : ComponentActivity() {
             }
         }
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
+    }
+
+    // The sticker now carries the id; link the chore to it before reporting, so a
+    // screen that reloads on the result already sees the chore on its tag.
+    private fun linkChoreThenReport(choreTagId: String, nfcId: String) {
+        lifecycleScope.launch {
+            nfcWriteResult = runCatching { choreRepository.setNfcId(choreTagId, nfcId) }
+                .fold(
+                    onSuccess = {
+                        WidgetUpdater.updateAll(applicationContext)
+                        NfcWriteResult.Success
+                    },
+                    onFailure = { e -> NfcWriteResult.Error("Written, but not linked: ${e.userFacingMessage()}") },
+                )
+        }
     }
 
     private fun recordSticker(tagId: String) {
@@ -302,13 +323,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun autoLogChore(tagId: String) {
+    private fun autoLogChore(nfcId: String) {
         lifecycleScope.launch {
             runCatching {
-                val label = choreRepository.findByTagId(tagId)?.label ?: tagId
-                choreRepository.logChore(tagId)
+                val chore = choreRepository.findByNfcId(nfcId)
+                if (chore == null) {
+                    Toast.makeText(this@MainActivity, "This tag isn't linked to a chore", Toast.LENGTH_SHORT).show()
+                    return@runCatching
+                }
+                choreRepository.logChore(chore.tagId)
                 WidgetUpdater.updateAll(applicationContext)
-                Toast.makeText(this@MainActivity, "$label logged", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "${chore.label} logged", Toast.LENGTH_SHORT).show()
             }.onFailure {
                 Toast.makeText(this@MainActivity, "Could not log chore", Toast.LENGTH_SHORT).show()
             }

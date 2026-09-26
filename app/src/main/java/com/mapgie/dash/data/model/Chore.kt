@@ -8,6 +8,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
+/**
+ * A chore row in Supabase's `tags` table (or the same shape on this phone for a
+ * private chore). [tagId] is the chore's key, which its logs point at and which
+ * never changes; [nfcId] is the id its NFC tag carries, or null when it has none.
+ */
 @Serializable
 data class TagDto(
     @SerialName("id") val id: String,
@@ -21,7 +26,9 @@ data class TagDto(
     /** [RepeatUnit.wire]: what [intervalDays] counts in. Null means days. */
     @SerialName("repeat_unit") val repeatUnit: String? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
-    @SerialName("created_at") val createdAt: String = ""
+    @SerialName("created_at") val createdAt: String = "",
+    /** The id the chore's NFC tag carries; null for a chore with no tag. */
+    @SerialName("nfc_id") val nfcId: String? = null,
 )
 
 @Serializable
@@ -54,7 +61,26 @@ data class TagInsert(
     // saves even before schema.sql has added these columns.
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("repeat_unit") val repeatUnit: String? = null,
+    // Null is left out too, so a tagless chore saves before schema.sql adds nfc_id.
+    @SerialName("nfc_id") val nfcId: String? = null,
 )
+
+/**
+ * True for an id the app minted itself (a UUID) rather than one a person typed
+ * or a sticker carried. Before chores had a separate [TagDto.nfcId], a chore
+ * saved without a tag got one of these as its tag id, so it means "no tag".
+ */
+fun isMintedChoreKey(id: String): Boolean = MINTED_KEY.matches(id)
+
+private val MINTED_KEY = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+/**
+ * The id to write to an NFC tag for [chore]: the one it is linked to, or for a
+ * chore with no tag a readable one made from its name ("book-santa"), kept clear
+ * of [taken] (every id already in use) by a numeric suffix.
+ */
+fun nfcIdToWrite(chore: Chore, taken: Set<String>): String =
+    chore.nfcId ?: freeTagId(chore.label, taken)
 
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
 
@@ -63,6 +89,7 @@ private fun Instant.localDate(): LocalDate = atZone(ZoneId.systemDefault()).toLo
 
 data class Chore(
     val id: String,
+    /** The chore's key: its logs, snoozes, widget pin and memos point at it. Never shown. */
     val tagId: String,
     val label: String,
     val category: String?,
@@ -78,6 +105,8 @@ data class Chore(
      */
     val dueDate: LocalDate? = null,
     val repeatUnit: RepeatUnit = RepeatUnit.DAY,
+    /** The id this chore's NFC tag carries, or null when it has no tag. */
+    val nfcId: String? = null,
 ) {
     /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
     val isPrivate: Boolean get() = isPrivateCategory(category)
@@ -256,6 +285,7 @@ data class Chore(
                 status = status,
                 dueDate = dueDate,
                 repeatUnit = repeatUnit,
+                nfcId = tag.nfcId,
             )
         }
 

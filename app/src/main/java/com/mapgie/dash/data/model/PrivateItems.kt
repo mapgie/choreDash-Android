@@ -19,6 +19,12 @@ data class PrivateItems(
     val tasks: List<TaskDto> = emptyList(),
     val chores: List<TagDto> = emptyList(),
     val scans: List<ScanDto> = emptyList(),
+    /**
+     * Set once [withNfcIdsSplit] has run. A document written before chores had
+     * an [TagDto.nfcId] has it false; after the split it is true, so a tag
+     * unlinked later is never put back.
+     */
+    val nfcIdsSplit: Boolean = false,
 ) {
     // ── Tasks ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +44,23 @@ data class PrivateItems(
 
     // ── Chores and their logs ─────────────────────────────────────────────────
 
+    /**
+     * Gives every chore from before the split its NFC id: the tag id itself when
+     * a person typed it (a sticker's id), none when the app minted it (the same
+     * rule as schema.sql's one-time fill for shared chores). A no-op once done.
+     */
+    fun withNfcIdsSplit(): PrivateItems {
+        if (nfcIdsSplit) return this
+        return copy(
+            chores = chores.map { if (it.nfcId == null && !isMintedChoreKey(it.tagId)) it.copy(nfcId = it.tagId) else it },
+            nfcIdsSplit = true,
+        )
+    }
+
     fun hasChore(tagId: String): Boolean = chores.any { it.tagId == tagId }
+
+    /** The chore whose NFC tag carries [nfcId], or null. */
+    fun choreByNfcId(nfcId: String): TagDto? = chores.firstOrNull { it.nfcId == nfcId }
 
     fun chore(tagId: String): TagDto? = chores.firstOrNull { it.tagId == tagId }
 

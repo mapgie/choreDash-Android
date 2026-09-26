@@ -130,7 +130,7 @@ data class ReminderUiState(
      */
     fun takenTagIds(editingId: String? = null): Map<String, String> {
         val taken = LinkedHashMap<String, String>()
-        chores.forEach { chore -> taken[chore.tagId] = "the chore \"${chore.label}\"" }
+        chores.forEach { chore -> chore.nfcId?.let { taken[it] = "the chore \"${chore.label}\"" } }
         reminders.forEach { memo ->
             val tag = memo.tagId ?: return@forEach
             if (memo.isTagAlarm && memo.id != editingId && memo.archivedAt == null) {

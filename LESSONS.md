@@ -1528,3 +1528,36 @@ Rules that fall out:
 - **Fall back, don't fail.** If Android refuses the service start, the alert is
   posted the old way; the full-screen intent still opens the ring screen on a
   locked phone and that screen rings itself.
+
+---
+
+## 67. A physical tag is an attribute of a record, not its key: split them before "unlink" can exist
+
+LESSONS #48 kept `tags.tag_id NOT NULL UNIQUE` as a chore's key *and* its NFC id,
+and minted a UUID for a chore saved without a tag. That satisfied the schema,
+but the UUID then showed everywhere a tag id is shown (the chore sheet, Settings
+› NFC tags), so a tagless chore looked tagged, the id could not be cleared, and
+a tag could never be unlinked: changing `tag_id` would orphan the chore's logs
+(`scans.tag_id` references it), snoozes, "Show from" and widget pins.
+
+Fix: a separate nullable `nfc_id text UNIQUE` column. `tag_id` stays the
+immutable key (new chores get a random one, never shown); every NFC tap, the
+"which chore is this tag" lookup and the Settings page read `nfc_id`. Linking or
+unlinking is one column write that touches nothing keyed on the chore.
+
+The migration is the delicate part. Existing rows need `nfc_id` filled from
+`tag_id` (a typed id is a sticker's id; a UUID means "no tag"), but schema.sql
+reruns on every deploy, so an unconditional `UPDATE ... WHERE nfc_id IS NULL`
+would re-link every tag the user later unlinked. The fill runs inside a `DO`
+block that first checks `information_schema.columns` and only runs on the pass
+that adds the column. The on-device copy (private chores) does the same with a
+`nfcIdsSplit` flag in the stored document.
+
+Rules that fall out:
+- **When a user-visible attribute doubles as a foreign-key target, it cannot be
+  optional or editable.** Give the record its own key before adding "clear" or
+  "unlink".
+- **A one-time data fill in an idempotent schema file needs its own guard**, not
+  a `WHERE ... IS NULL` that a later, deliberate null also matches.
+- **Assign an id to a physical thing after the write succeeds**, not before: a
+  cancelled write should leave the record as it was (`NfcWriteRequest.linkChore`).

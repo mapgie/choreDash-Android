@@ -26,9 +26,9 @@ enum class TagOwnerKind(val label: String) {
 }
 
 /**
- * One line on Settings › NFC tags: the id a tag answers with (null for a
- * tag-alarm that has no tag yet), what it belongs to, and that owner's id
- * (a chore's tag id, a tag-alarm's record id) for the row's actions.
+ * One line on Settings › NFC tags: the id a tag answers with (null for a chore
+ * or tag-alarm with no tag), what it belongs to, and that owner's id (a
+ * chore's key, a tag-alarm's record id) for the row's actions.
  */
 data class TagEntry(
     val tagId: String?,
@@ -40,7 +40,7 @@ data class TagEntry(
     val onSticker: Boolean = false,
 )
 
-/** The chip row over the Chores list: every chore, only those on a sticker, or only those without. */
+/** The chip row over the Chores list: every chore, only those linked to a tag, or only those without one. */
 enum class ChoreTagFilter(val label: String) {
     ALL("All"),
     ON_STICKER("On a tag"),
@@ -65,26 +65,26 @@ data class TagsUiState(
         get() = chores
             .map {
                 TagEntry(
-                    it.tagId, it.label, TagOwnerKind.CHORE, it.tagId,
+                    it.nfcId, it.label, TagOwnerKind.CHORE, it.tagId,
                     archived = it.archivedAt != null,
-                    onSticker = it.tagId in stickers,
+                    onSticker = it.nfcId != null && it.nfcId in stickers,
                 )
             }
             .sortedWith(compareBy({ it.archived }, { it.name.lowercase() }))
 
-    /** The chores under the selected chip. */
+    /** The chores under the selected chip: a chore is on a tag when it is linked to one. */
     val filteredChoreTags: List<TagEntry>
         get() = when (choreFilter) {
             ChoreTagFilter.ALL -> choreTags
-            ChoreTagFilter.ON_STICKER -> choreTags.filter { it.onSticker }
-            ChoreTagFilter.NO_STICKER -> choreTags.filterNot { it.onSticker }
+            ChoreTagFilter.ON_STICKER -> choreTags.filter { it.tagId != null }
+            ChoreTagFilter.NO_STICKER -> choreTags.filter { it.tagId == null }
         }
 
     /** How many chores each chip would show, for its "· N". */
     fun choreCount(filter: ChoreTagFilter): Int = when (filter) {
         ChoreTagFilter.ALL -> choreTags.size
-        ChoreTagFilter.ON_STICKER -> choreTags.count { it.onSticker }
-        ChoreTagFilter.NO_STICKER -> choreTags.count { !it.onSticker }
+        ChoreTagFilter.ON_STICKER -> choreTags.count { it.tagId != null }
+        ChoreTagFilter.NO_STICKER -> choreTags.count { it.tagId == null }
     }
 
     val tagAlarms: List<TagEntry>
@@ -93,15 +93,18 @@ data class TagsUiState(
             .map { TagEntry(it.tagId, it.subject, TagOwnerKind.TAG_ALARM, it.id, onSticker = it.tagId in stickers) }
             .sortedBy { it.name.lowercase() }
 
-    /** Every id some chore or tag-alarm answers to. */
+    /**
+     * Every id some chore or tag-alarm answers to, plus every chore's key: an
+     * older chore's key is the id on its sticker, so a fresh id steers clear of it.
+     */
     val takenTagIds: Set<String>
-        get() = (choreTags + tagAlarms).mapNotNull { it.tagId }.toSet()
+        get() = (choreTags + tagAlarms).mapNotNull { it.tagId }.toSet() + chores.map { it.tagId }
 
     /** What a scanned id belongs to, or null when nothing in the app knows it. */
     fun identify(tagId: String): TagEntry? =
         (choreTags + tagAlarms).firstOrNull { it.tagId == tagId }
 
-    /** A friendly, unused id for a tag-alarm called [subject], for a first write from this page. */
+    /** A friendly, unused id for a chore or tag-alarm called [subject], for a first write from this page. */
     fun freeTagIdFor(subject: String): String = freeTagId(subject, takenTagIds)
 }
 
@@ -150,6 +153,15 @@ class TagsViewModel @Inject constructor(
     fun unlink(memoId: String) {
         viewModelScope.launch {
             runCatching { reminderRepository.setTagAlarmTag(memoId, null) }
+                .onFailure { e -> _uiState.update { it.copy(error = e.userFacingMessage()) } }
+        }
+    }
+
+    /** Unlinks the chore with key [choreTagId] from its tag; the chore and the tag are untouched. */
+    fun unlinkChore(choreTagId: String) {
+        viewModelScope.launch {
+            runCatching { choreRepository.setNfcId(choreTagId, null) }
+                .onSuccess { load() }
                 .onFailure { e -> _uiState.update { it.copy(error = e.userFacingMessage()) } }
         }
     }
