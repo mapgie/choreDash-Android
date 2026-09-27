@@ -27,6 +27,7 @@ class SheetDraftTest {
         lastScanned = null,
         lastScanId = null,
         status = ChoreStatus.NEVER,
+        nfcId = "04a1b2",
     )
 
     private val taxes = TaskDto(
@@ -81,6 +82,22 @@ class SheetDraftTest {
     }
 
     @Test
+    fun `a chore with no tag opens with a blank tag field, never its key`() {
+        val tagless = meds.copy(tagId = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", nfcId = null)
+        assertEquals("", ChoreDraft.of(tagless).nfcId)
+        assertNull(ChoreDraft.of(tagless).nfcIdOrNull())
+    }
+
+    @Test
+    fun `clearing the tag field saves no tag and counts as a change`() {
+        val opened = ChoreDraft.of(meds)
+        assertEquals("04a1b2", opened.nfcIdOrNull())
+        val cleared = opened.copy(nfcId = "  ")
+        assertTrue(cleared.differsFrom(opened))
+        assertNull(cleared.nfcIdOrNull())
+    }
+
+    @Test
     fun `changing the unit of no repeat is not a change`() {
         val opened = ChoreDraft.of(meds).copy(repeatEvery = null)
         assertFalse(opened.copy(repeatUnit = RepeatUnit.YEAR.name).differsFrom(opened))
@@ -88,9 +105,9 @@ class SheetDraftTest {
 
     @Test
     fun `a new chore sheet opens on General with the scanned tag id`() {
-        val opened = ChoreDraft.of(null, initialTagId = "abc123")
-        assertEquals(ChoreDraft(category = GENERAL_CATEGORY, tagId = "abc123"), opened)
-        assertFalse(ChoreDraft(category = GENERAL_CATEGORY, tagId = "abc123").differsFrom(opened))
+        val opened = ChoreDraft.of(null, initialNfcId = "abc123")
+        assertEquals(ChoreDraft(category = GENERAL_CATEGORY, nfcId = "abc123"), opened)
+        assertFalse(ChoreDraft(category = GENERAL_CATEGORY, nfcId = "abc123").differsFrom(opened))
         assertNull(opened.displayName())
         assertEquals("Water plants", opened.copy(label = " Water plants ").displayName())
     }

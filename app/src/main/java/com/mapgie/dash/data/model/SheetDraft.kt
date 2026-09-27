@@ -25,7 +25,8 @@ data class ChoreDraft(
     val owner: String = "",
     /** How many [repeatUnit]s between turns, or null for no repeat. */
     val repeatEvery: Int? = null,
-    val tagId: String = "",
+    /** The id of the chore's NFC tag; blank for a chore with no tag. */
+    val nfcId: String = "",
     /** A [RepeatUnit] name. */
     val repeatUnit: String = RepeatUnit.DAY.name,
     /** The due date as an epoch day, or null for a chore timed from its last log. */
@@ -39,7 +40,7 @@ data class ChoreDraft(
             category != opened.category ||
             owner != opened.owner ||
             repeat() != opened.repeat() ||
-            tagId != opened.tagId ||
+            nfcId.trim() != opened.nfcId.trim() ||
             dueDateEpochDay != opened.dueDateEpochDay ||
             leadDays != opened.leadDays
 
@@ -59,18 +60,21 @@ data class ChoreDraft(
         return ChoreSchedule(repeat = repeat, dueDate = if (repeat != null) dueDate() else null)
     }
 
+    /** The NFC id the sheet would save: null when the field is blank, so the chore has no tag. */
+    fun nfcIdOrNull(): String? = nfcId.trim().ifBlank { null }
+
     /** The name to say when offering this draft back: the title typed so far, if any. */
     fun displayName(): String? = label.trim().ifBlank { null }
 
     companion object {
         /**
          * The values the sheet opens with: [chore]'s own fields, or the New chore
-         * defaults (General, [initialTagId] from an NFC scan) when [chore] is null.
+         * defaults (General, [initialNfcId] from an NFC scan) when [chore] is null.
          * [leadDays] is this phone's "show from" for the chore, kept outside it.
          */
-        fun of(chore: Chore?, initialTagId: String = "", leadDays: Int? = null): ChoreDraft =
+        fun of(chore: Chore?, initialNfcId: String = "", leadDays: Int? = null): ChoreDraft =
             if (chore == null) {
-                ChoreDraft(category = GENERAL_CATEGORY, tagId = initialTagId, leadDays = leadDays)
+                ChoreDraft(category = GENERAL_CATEGORY, nfcId = initialNfcId, leadDays = leadDays)
             } else {
                 val repeat = chore.repeat
                 ChoreDraft(
@@ -78,7 +82,7 @@ data class ChoreDraft(
                     category = chore.category ?: "",
                     owner = chore.owner ?: "",
                     repeatEvery = repeat?.every,
-                    tagId = chore.tagId,
+                    nfcId = chore.nfcId.orEmpty(),
                     repeatUnit = (repeat?.unit ?: RepeatUnit.DAY).name,
                     dueDateEpochDay = chore.dueDate?.toEpochDay(),
                     leadDays = leadDays,

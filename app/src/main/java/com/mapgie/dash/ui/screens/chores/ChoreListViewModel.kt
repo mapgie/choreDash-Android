@@ -21,6 +21,8 @@ import com.mapgie.dash.data.model.SortOrder
 import com.mapgie.dash.data.model.SwipePair
 import com.mapgie.dash.data.model.SwipeSubject
 import com.mapgie.dash.data.model.defaultSnoozeDuration
+import com.mapgie.dash.data.model.isTagAlarm
+import com.mapgie.dash.data.model.nfcIdToWrite
 import com.mapgie.dash.data.model.remindAtInstant
 import com.mapgie.dash.data.preferences.CategoryStyleStore
 import com.mapgie.dash.data.preferences.ChoreLeadStore
@@ -39,13 +41,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 import javax.inject.Inject
 
 enum class ChoreFilter(val label: String) {
@@ -479,12 +481,13 @@ class ChoreListViewModel @Inject constructor(
         _uiState.update { it.copy(actionError = null) }
     }
 
-    fun updateChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
+    fun updateChore(tagId: String, nfcId: String?, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
         viewModelScope.launch {
             runCatching {
                 // On-device and written first, so it sticks even if the Supabase edit fails.
                 choreLeadStore.set(tagId, leadDays)
-                choreRepository.updateTag(tagId, label, category, owner, schedule)
+                requireTagFree(nfcId)
+                choreRepository.updateTag(tagId, label, category, owner, schedule, nfcId)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(actionError = e.userFacingMessage()) }
@@ -492,15 +495,13 @@ class ChoreListViewModel @Inject constructor(
         }
     }
 
-    fun addChore(tagId: String, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
+    /** Adds a chore; [nfcId] is its NFC tag's id, or null for a chore with no tag. */
+    fun addChore(nfcId: String?, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) {
         viewModelScope.launch {
             runCatching {
-                requireTagFree(tagId)
-                // A chore isn't required to have a physical NFC tag; generate a unique
-                // id to satisfy the tags table's NOT NULL UNIQUE constraint when none was entered.
-                val resolvedTagId = tagId.ifBlank { UUID.randomUUID().toString() }
-                choreRepository.createTag(resolvedTagId, label, category, owner, schedule)
-                if (leadDays != null) choreLeadStore.set(resolvedTagId, leadDays)
+                requireTagFree(nfcId)
+                val created = choreRepository.createTag(label, category, owner, schedule, nfcId)
+                if (leadDays != null) choreLeadStore.set(created.tagId, leadDays)
                 load()
             }.onFailure { e ->
                 _uiState.update { it.copy(actionError = e.userFacingMessage()) }
@@ -524,10 +525,43 @@ class ChoreListViewModel @Inject constructor(
     // A tag has one job: an id a tag-alarm is linked to cannot become a chore's too.
     // (A scanned tag never gets this far, MainActivity routes it to the tag-alarm;
     // this catches an id typed into the sheet.)
-    private suspend fun requireTagFree(tagId: String) {
-        if (tagId.isBlank()) return
+    private suspend fun requireTagFree(tagId: String?) {
+        if (tagId.isNullOrBlank()) return
         val owner = reminderRepository.findTagAlarmByTagId(tagId) ?: return
         throw IllegalArgumentException("That tag already belongs to the tag-alarm \"${owner.subject}\". A tag has one job.")
+    }
+
+    /**
+     * Unlinks [chore] from its NFC tag. The chore and its history stay; the
+     * sticker keeps its id, which is now free to write or link elsewhere.
+     */
+    fun unlinkTag(chore: Chore) {
+        viewModelScope.launch {
+            runCatching {
+                choreRepository.setNfcId(chore.tagId, null)
+                load()
+                WidgetUpdater.updateAll(appContext)
+            }.onFailure { e ->
+                _uiState.update { it.copy(actionError = e.userFacingMessage()) }
+            }
+        }
+    }
+
+    /**
+     * The id to write to a tag for [chore]: its own, or for a chore with no tag a
+     * readable one from its name, clear of every id in use. The chore is linked
+     * to it only once the write succeeds (MainActivity), so a cancelled write
+     * leaves it with no tag.
+     */
+    fun nfcIdToWriteFor(chore: Chore, then: (String) -> Unit) {
+        viewModelScope.launch {
+            val chores = _uiState.value.active + _uiState.value.archived
+            val alarmTags = runCatching { reminderRepository.remindersFlow.first() }.getOrDefault(emptyList())
+                .filter { it.isTagAlarm }
+                .mapNotNull { it.tagId }
+            val taken = chores.flatMap { listOfNotNull(it.nfcId, it.tagId) }.toSet() + alarmTags
+            then(nfcIdToWrite(chore, taken))
+        }
     }
 
     fun archiveChore(tagId: String, archived: Boolean) {

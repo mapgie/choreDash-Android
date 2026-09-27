@@ -15,10 +15,10 @@ import java.time.Instant
  */
 class TagsUiStateTest {
 
-    private fun chore(tagId: String, label: String, archived: Boolean = false) = Chore(
-        id = "c-$tagId", tagId = tagId, label = label, category = null, owner = null,
+    private fun chore(key: String, label: String, archived: Boolean = false, nfcId: String? = key) = Chore(
+        id = "c-$key", tagId = key, label = label, category = null, owner = null,
         intervalDays = null, archivedAt = if (archived) "2026-07-01T00:00:00Z" else null,
-        lastScanned = null, lastScanId = null, status = ChoreStatus.NEVER,
+        lastScanned = null, lastScanId = null, status = ChoreStatus.NEVER, nfcId = nfcId,
     )
 
     private fun tagAlarm(id: String, subject: String, tagId: String?, archived: Boolean = false) = ReminderDto(
@@ -60,27 +60,49 @@ class TagsUiStateTest {
         assertNull(state.identify("old-office"))
     }
 
-    // ── On a sticker ──────────────────────────────────────────────────────────
+    // ── On a tag ──────────────────────────────────────────────────────────────
 
-    private val withStickers = state.copy(
+    private val mixed = state.copy(
+        chores = listOf(
+            chore("laundry", "Laundry"),
+            chore("3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", "Book Santa", nfcId = null),
+            chore("car-service", "Car service", nfcId = null),
+        ),
         stickers = mapOf("laundry" to Instant.parse("2026-07-10T08:00:00Z"), "office-a" to Instant.parse("2026-07-10T08:00:00Z")),
     )
 
     @Test
-    fun `a chore is on a sticker only when this phone has written or read its id`() {
-        assertEquals(listOf(false, true, false), withStickers.choreTags.map { it.onSticker })
-        assertEquals(listOf(false, true), withStickers.tagAlarms.map { it.onSticker })
+    fun `a chore with no tag lists no tag id, never its key`() {
+        val santa = mixed.choreTags.first { it.name == "Book Santa" }
+        assertNull(santa.tagId)
+        assertEquals("3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", santa.ownerId)
     }
 
     @Test
-    fun `the sticker chips split the chores and count each side`() {
-        assertEquals(listOf("Laundry"), withStickers.copy(choreFilter = ChoreTagFilter.ON_STICKER).filteredChoreTags.map { it.name })
-        assertEquals(listOf("Car service", "Bins"), withStickers.copy(choreFilter = ChoreTagFilter.NO_STICKER).filteredChoreTags.map { it.name })
-        assertEquals(3, withStickers.choreCount(ChoreTagFilter.ALL))
-        assertEquals(1, withStickers.choreCount(ChoreTagFilter.ON_STICKER))
-        assertEquals(2, withStickers.choreCount(ChoreTagFilter.NO_STICKER))
-        // Without any evidence, nothing is on a sticker and the All chip shows everything.
-        assertEquals(3, state.copy(choreFilter = ChoreTagFilter.NO_STICKER).filteredChoreTags.size)
+    fun `the tag chips split chores by whether they are linked to a tag`() {
+        assertEquals(listOf("Laundry"), mixed.copy(choreFilter = ChoreTagFilter.ON_STICKER).filteredChoreTags.map { it.name })
+        assertEquals(listOf("Book Santa", "Car service"), mixed.copy(choreFilter = ChoreTagFilter.NO_STICKER).filteredChoreTags.map { it.name })
+        assertEquals(3, mixed.choreCount(ChoreTagFilter.ALL))
+        assertEquals(1, mixed.choreCount(ChoreTagFilter.ON_STICKER))
+        assertEquals(2, mixed.choreCount(ChoreTagFilter.NO_STICKER))
+    }
+
+    @Test
+    fun `a tag unlinked from a chore belongs to nothing`() {
+        assertNull(mixed.identify("car-service"))
+        assertEquals("Laundry", mixed.identify("laundry")?.name)
+    }
+
+    @Test
+    fun `a tag-alarm is on a sticker only when this phone has written or read its id`() {
+        assertEquals(listOf(false, true), mixed.tagAlarms.map { it.onSticker })
+    }
+
+    @Test
+    fun `a fresh tag id steers clear of a chore's key even after its tag is unlinked`() {
+        // An older chore's key is the id on its sticker, so it is never handed out again.
+        assertEquals("car-service-2", mixed.freeTagIdFor("Car service"))
+        assertEquals("book-santa", mixed.freeTagIdFor("Book Santa"))
     }
 
     @Test

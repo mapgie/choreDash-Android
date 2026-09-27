@@ -209,23 +209,41 @@ internal fun TagsSubScreen(
                     SettingsCardRow(
                         title = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER) "No chores on a tag yet" else "Every chore is on a tag",
                         subtitle = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER)
-                            "A chore counts once this phone writes its id to a tag or reads it off one." else null,
+                            "A chore gets a tag when you write one for it, or scan one from its edit sheet." else null,
                     )
                 } else {
                     shown.forEachIndexed { index, entry ->
                         if (index > 0) SettingsHairline()
                         SettingsCardRow(
                             title = entry.name,
-                            subtitle = entry.tagId +
-                                (if (entry.onSticker) " · on a tag" else "") +
+                            subtitle = (entry.tagId ?: "No tag") +
                                 (if (entry.archived) " · archived" else ""),
                         ) {
-                            ValueChip(
-                                text = "Write",
-                                onClick = { onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, entry.ownerId)) },
-                                contentDescription = "Write ${entry.name}'s id to a tag",
-                                chevron = false,
-                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                ValueChip(
+                                    text = "Write",
+                                    onClick = {
+                                        // A chore with no tag gets a readable id, linked once the write lands.
+                                        val tagId = entry.tagId
+                                        if (tagId != null) {
+                                            onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId))
+                                        } else {
+                                            val minted = uiState.freeTagIdFor(entry.name)
+                                            onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, minted, linkChore = entry.ownerId))
+                                        }
+                                    },
+                                    contentDescription = "Write ${entry.name}'s tag id to a tag",
+                                    chevron = false,
+                                )
+                                if (entry.tagId != null) {
+                                    ValueChip(
+                                        text = "Unlink",
+                                        onClick = { pendingUnlink = entry },
+                                        contentDescription = "Unlink ${entry.name} from its tag",
+                                        chevron = false,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -271,9 +289,14 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Write stamps the id on a blank tag. A card that can't be written (an office pass) is linked by scanning it from the tag-alarm's own sheet instead. \"On a tag\" is what this phone has written or read; a tag made elsewhere counts once you tap it.")
+            SettingsCaption("Write stamps the id on a blank tag. A card that can't be written (an office pass) is linked by scanning it from the chore's or tag-alarm's own sheet instead. Unlink frees a tag without erasing it.")
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    // A write can link a chore to its tag (MainActivity), so reload once it lands.
+    LaunchedEffect(nfcWriteResult) {
+        if (tagWritePending && nfcWriteResult == NfcWriteResult.Success) viewModel.load()
     }
 
     if (tagWritePending) {
@@ -307,11 +330,16 @@ internal fun TagsSubScreen(
         AlertDialog(
             onDismissRequest = { pendingUnlink = null },
             title = { Text("Unlink “${entry.name}”?") },
-            text = { Text("Tapping its tag will no longer set this tag-alarm. The tag itself is untouched, so it can be written or linked again.") },
+            text = {
+                Text(
+                    if (entry.kind == TagOwnerKind.CHORE) "Tapping its tag will no longer log this chore. The chore keeps its history, and the tag itself is untouched, so it can be linked to something else without erasing it."
+                    else "Tapping its tag will no longer set this tag-alarm. The tag itself is untouched, so it can be written or linked again."
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     pendingUnlink = null
-                    viewModel.unlink(entry.ownerId)
+                    if (entry.kind == TagOwnerKind.CHORE) viewModel.unlinkChore(entry.ownerId) else viewModel.unlink(entry.ownerId)
                 }) { Text("Unlink", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {

@@ -252,8 +252,8 @@ fun DashNavGraph(
                             nfcWriteRequest = nfcWriteRequest
                                 ?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE && !it.fromSettings }?.id,
                             nfcWriteResult = nfcWriteResult,
-                            onStartNfcWrite = { tagId ->
-                                onStartNfcWriteRequest(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId))
+                            onStartNfcWrite = { nfcId, linkChore ->
+                                onStartNfcWriteRequest(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, nfcId, linkChore = linkChore))
                             },
                             onCancelNfcWrite = onCancelNfcWrite,
                             onNfcWriteResultConsumed = onNfcWriteResultConsumed,
@@ -263,6 +263,10 @@ fun DashNavGraph(
                                 pendingSettingsSubScreen = SettingsSubScreen.REMINDERS
                                 navigateTo(Screen.Settings.route)
                             },
+                            nfcCapturedTagId = nfcCapturedTagId,
+                            onStartNfcCapture = onStartNfcCapture,
+                            onCancelNfcCapture = onCancelNfcCapture,
+                            onNfcCaptureConsumed = onNfcCaptureConsumed,
                         )
                     }
                     composable(Screen.Tasks.route) {

@@ -1,0 +1,13 @@
+{
+  "bump": "minor",
+  "added": [
+    "Unlink a chore from its NFC tag from the chore sheet or Settings › NFC tags, so the tag can serve another chore or a tag-alarm without erasing it.",
+    "Scan a tag from a chore's edit sheet to link it as it is, without rewriting it."
+  ],
+  "changed": [
+    "Writing a tag for a chore that has none gives it a readable id from its name, and links it only once the write succeeds."
+  ],
+  "fixed": [
+    "A new chore saved without a tag no longer gets a long made-up id that looked like a tag and could not be removed. A chore with no tag now says \"No tag\"."
+  ]
+}

@@ -107,8 +107,10 @@ LESSONS.md                    # Numbered lessons from bugs already fixed; check 
 | Settings, credentials, category styles, snoozes, per-chore "Show from", sticker record | DataStore on the phone | No |
 | Saved custom themes | Room on the phone | No |
 
-A chore **is** a row in the `tags` table, and its `tag_id` is both its primary key
-and the id its NFC sticker carries. Memos never touch Supabase.
+A chore **is** a row in the `tags` table. Its `tag_id` is the chore's key (its
+logs in `scans` point at it, and it never changes); `nfc_id` is the id its NFC
+tag carries, or null for a chore with no tag. A tag can be unlinked from a chore
+and reused without erasing it. Memos never touch Supabase.
 
 ### When a chore is due
 

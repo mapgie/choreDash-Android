@@ -52,4 +52,23 @@ class ChorePayloadTest {
         val payload = chorePatch("Vacuum", null, null, ChoreSchedule(dueDate = LocalDate.of(2026, 10, 1)), includeSchedule = true)
         assertFalse(payload.containsKey("lead_days"))
     }
+
+    @Test
+    fun `a chore edit that leaves its tag alone never names nfc_id`() {
+        // A database without the nfc_id column rejects any PATCH naming it.
+        val payload = chorePatch("Vacuum", null, null, ChoreSchedule(), includeSchedule = false, nfcId = "vacuum", includeNfcId = false)
+        assertFalse(payload.containsKey("nfc_id"))
+    }
+
+    @Test
+    fun `unlinking a chore's tag sends an explicit null`() {
+        val payload = chorePatch("Vacuum", null, null, ChoreSchedule(), includeSchedule = false, nfcId = null, includeNfcId = true)
+        assertEquals(JsonNull, payload["nfc_id"])
+    }
+
+    @Test
+    fun `linking a chore to a tag writes its id`() {
+        val payload = chorePatch("Vacuum", null, null, ChoreSchedule(), includeSchedule = false, nfcId = "hall-cupboard", includeNfcId = true)
+        assertEquals(JsonPrimitive("hall-cupboard"), payload["nfc_id"])
+    }
 }
