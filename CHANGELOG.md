@@ -31,6 +31,25 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.45.0] - 2026-09-29
+
+### Added
+- Unlink a chore from its NFC tag from the chore sheet or Settings › NFC tags, so the tag can serve another chore or a tag-alarm without erasing it.
+- Scan a tag from a chore's edit sheet to link it as it is, without rewriting it.
+
+### Changed
+- The test ring in Reminders & alerts now fires after a minute, so you can leave the app first and hear it the way a real alarm rings
+- Changing a reminder's time to one that has already passed today moves it to the next day, instead of leaving it on a date that has gone
+- Writing a tag for a chore that has none gives it a readable id from its name, and links it only once the write succeeds.
+
+### Fixed
+- Alarm-style reminders ring again when the phone is unlocked or in vibrate mode, instead of arriving as a silent notification
+- A reminder can no longer be saved with a time in the past, where it would never ring
+- A failed chore edit, log, archive or snooze now shows a brief message instead of replacing the whole list with an error page.
+- When a save fails because your Supabase project is missing a column, the app now tells you to re-run supabase/schema.sql instead of showing the raw database error.
+- A new chore saved without a tag no longer gets a long made-up id that looked like a tag and could not be removed. A chore with no tag now says "No tag".
+
+---
 ## [0.44.0] - 2026-09-24
 
 ### Added
