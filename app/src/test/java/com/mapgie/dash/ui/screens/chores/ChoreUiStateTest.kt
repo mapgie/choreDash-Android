@@ -5,6 +5,7 @@ import com.mapgie.dash.data.model.CategoryCatalog
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreSortKey
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.NfcTagDto
 import com.mapgie.dash.data.model.OwnerFilter
 import com.mapgie.dash.data.model.PRIVATE_CATEGORY
 import com.mapgie.dash.data.model.SortOrder
@@ -426,5 +427,16 @@ class ChoreUiStateTest {
     fun `a pinned chore shows whatever its own show-from says`() {
         val state = ChoreUiState(active = listOf(tenDay), pinnedChoreId = tenDay.id, leadOverrides = leads(tenDay to 1))
         assertEquals(listOf("ten-day"), ids(state.displayed))
+    }
+
+    // ── NFC tags ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a chore sheet cannot take a tag another chore has, but keeps its own`() {
+        val bins = chore("bins").copy(nfcTags = listOf(NfcTagDto("back-door", "Back door", "tag-bins"), NfcTagDto("gate", "Gate", "tag-bins")))
+        val plants = chore("plants").copy(nfcTags = listOf(NfcTagDto("sill", "Sill", "tag-plants")))
+        val state = ChoreUiState(active = listOf(bins), archived = listOf(plants))
+        assertEquals(mapOf("sill" to "plants"), state.tagsOfOtherChores("tag-bins"))
+        assertEquals(setOf("back-door", "gate", "sill"), state.tagsOfOtherChores(null).keys)
     }
 }

@@ -1561,3 +1561,34 @@ Rules that fall out:
   a `WHERE ... IS NULL` that a later, deliberate null also matches.
 - **Assign an id to a physical thing after the write succeeds**, not before: a
   cancelled write should leave the record as it was (`NfcWriteRequest.linkChore`).
+
+---
+
+## 68. When one-per-record becomes many-per-record, give the physical thing its own table, keyed by itself
+
+`tags.nfc_id` (LESSONS #67) held one tag per chore. Two asks broke it at once: a
+chore with a tag by the front door *and* one by the back, and a tag scanned and
+named before any chore exists for it. Neither fits a column on the chore: the
+first needs a list, the second needs a row with no chore at all.
+
+The fix is a table keyed by the thing itself: `nfc_tags (nfc_id PRIMARY KEY,
+name, chore_tag_id NULL REFERENCES tags(tag_id) ON DELETE SET NULL)`. Every case
+falls out of one nullable column: many rows pointing at one chore is "several
+tags", a NULL is "saved, not attached", and SET NULL means deleting a chore
+frees its tags instead of forgetting them. The primary key is the "a tag has one
+job" rule, enforced by the database rather than a pre-check.
+
+Things that came with it:
+- **Carry the old column across once, in the same guarded block that creates the
+  table** (`IF NOT EXISTS ... information_schema.tables`), as with #67's fill. An
+  unguarded `INSERT ... SELECT` would re-attach every tag the app later detached.
+  Leave the old column in place for app versions that still read it; just stop
+  writing it.
+- **A child row of a private record lives where its parent lives.** Private
+  chores are on the phone (#61), so their tags are too; attaching a tag to a chore
+  in the other store moves it, copy first and delete second. A chore moving across
+  the boundary moves its tags, and the order matters: before deleting the shared
+  chore (whose foreign key would free them), after inserting it (whose key they need).
+- **Diff the list, don't replace it.** Saving a chore sends the wanted ids;
+  `nfcTagChanges` (pure, tested) turns that into attach, detach, and "taken by
+  another chore", checked whole before any write so a refusal never half-applies.

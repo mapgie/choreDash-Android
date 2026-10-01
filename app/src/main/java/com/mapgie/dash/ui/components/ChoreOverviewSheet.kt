@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
@@ -63,7 +64,6 @@ import com.mapgie.dash.ui.components.sheet.SheetSectionLabel
 import com.mapgie.dash.ui.components.sheet.SheetTimePickerDialog
 import com.mapgie.dash.ui.components.sheet.UtilityAction
 import com.mapgie.dash.ui.components.sheet.UtilityRow
-import com.mapgie.dash.ui.components.sheet.ValueChip
 import com.mapgie.dash.ui.theme.BadgeShape
 import com.mapgie.dash.ui.theme.LocalDashTokens
 import com.mapgie.dash.ui.theme.LucideIcons
@@ -109,8 +109,6 @@ fun ChoreOverviewSheet(
     onAddReminder: (Chore) -> Unit,
     onEdit: (Chore) -> Unit,
     onWriteTag: (Chore) -> Unit,
-    /** Unlinks the chore from its NFC tag, leaving the sticker free for something else. */
-    onUnlinkTag: (Chore) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetScope = rememberCoroutineScope()
@@ -126,7 +124,6 @@ fun ChoreOverviewSheet(
     var showTimePicker by remember { mutableStateOf(false) }
     var showRemoveLastLogConfirm by remember { mutableStateOf(false) }
     var allHistoryRequested by remember { mutableStateOf(false) }
-    var showUnlinkConfirm by remember { mutableStateOf(false) }
 
     fun calendarInfo() = calendarEventWithoutTime(
         title = chore.label,
@@ -193,42 +190,33 @@ fun ChoreOverviewSheet(
                         color = tokens.inkFaint,
                     )
                 }
-                val nfcId = chore.nfcId
+                val tagNames = chore.nfcTags.joinToString(", ") { it.name }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 6.dp),
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = when (chore.nfcTags.size) {
+                                0 -> "No NFC tag"
+                                1 -> "NFC tag $tagNames"
+                                else -> "NFC tags $tagNames"
+                            }
+                        },
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = if (nfcId != null) "NFC tag $nfcId" else "No NFC tag"
-                            },
-                    ) {
-                        Icon(
-                            imageVector = LucideIcons.Nfc,
-                            contentDescription = null,
-                            tint = if (nfcId != null) tokens.tagLabel else tokens.inkFaint,
-                            modifier = Modifier.size(13.dp),
-                        )
-                        Text(
-                            text = nfcId ?: "No tag",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold),
-                            color = if (nfcId != null) tokens.tagLabel else tokens.inkFaint,
-                            maxLines = 1,
-                        )
-                    }
-                    if (nfcId != null) {
-                        ValueChip(
-                            text = "Unlink",
-                            onClick = { showUnlinkConfirm = true },
-                            contentDescription = "Unlink this chore from its NFC tag",
-                            chevron = false,
-                        )
-                    }
+                    Icon(
+                        imageVector = LucideIcons.Nfc,
+                        contentDescription = null,
+                        tint = if (chore.nfcTags.isNotEmpty()) tokens.tagLabel else tokens.inkFaint,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        text = tagNames.ifEmpty { "No tag" },
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold),
+                        color = if (chore.nfcTags.isNotEmpty()) tokens.tagLabel else tokens.inkFaint,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
 
@@ -281,7 +269,7 @@ fun ChoreOverviewSheet(
                     ),
                     UtilityAction(
                         icon = LucideIcons.NfcScan, label = "Tag",
-                        contentDescription = if (chore.nfcId != null) "Write this chore's NFC tag again" else "Write a new NFC tag for this chore",
+                        contentDescription = "Write a new NFC tag for this chore",
                         onClick = { hideThen { onWriteTag(chore) } },
                     ),
                     UtilityAction(
@@ -428,28 +416,6 @@ fun ChoreOverviewSheet(
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveLastLogConfirm = false }) { Text("Keep") }
-            }
-        )
-    }
-
-    if (showUnlinkConfirm) {
-        AlertDialog(
-            onDismissRequest = { showUnlinkConfirm = false },
-            title = { Text("Unlink the tag?") },
-            text = {
-                Text(
-                    "“${chore.label}” keeps its history but no longer answers to the tag ${chore.nfcId}. " +
-                        "The tag itself is untouched, so you can link it to another chore or a tag-alarm without erasing it."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showUnlinkConfirm = false
-                    onUnlinkTag(chore)
-                }) { Text("Unlink") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUnlinkConfirm = false }) { Text("Keep") }
             }
         )
     }
