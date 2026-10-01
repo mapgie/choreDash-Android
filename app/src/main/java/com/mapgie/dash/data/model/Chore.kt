@@ -11,7 +11,8 @@ import java.time.temporal.ChronoUnit
 /**
  * A chore row in Supabase's `tags` table (or the same shape on this phone for a
  * private chore). [tagId] is the chore's key, which its logs point at and which
- * never changes; [nfcId] is the id its NFC tag carries, or null when it has none.
+ * never changes. Its NFC tags are rows of their own ([NfcTagDto]); [nfcId] is
+ * the legacy single-tag column, read only to carry old tags across.
  */
 @Serializable
 data class TagDto(
@@ -27,7 +28,10 @@ data class TagDto(
     @SerialName("repeat_unit") val repeatUnit: String? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
     @SerialName("created_at") val createdAt: String = "",
-    /** The id the chore's NFC tag carries; null for a chore with no tag. */
+    /**
+     * Legacy: the one tag a chore had before [NfcTagDto]. Kept so older rows and
+     * on-device documents can be carried across once; never written now.
+     */
     @SerialName("nfc_id") val nfcId: String? = null,
 )
 
@@ -61,8 +65,6 @@ data class TagInsert(
     // saves even before schema.sql has added these columns.
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("repeat_unit") val repeatUnit: String? = null,
-    // Null is left out too, so a tagless chore saves before schema.sql adds nfc_id.
-    @SerialName("nfc_id") val nfcId: String? = null,
 )
 
 /**
@@ -75,12 +77,12 @@ fun isMintedChoreKey(id: String): Boolean = MINTED_KEY.matches(id)
 private val MINTED_KEY = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 /**
- * The id to write to an NFC tag for [chore]: the one it is linked to, or for a
- * chore with no tag a readable one made from its name ("book-santa"), kept clear
- * of [taken] (every id already in use) by a numeric suffix.
+ * The id to write to a new NFC tag for [chore]: a readable one made from its
+ * name ("book-santa"), kept clear of [taken] (every id already in use) by a
+ * numeric suffix. A chore can have many tags, so each write is a new one.
  */
 fun nfcIdToWrite(chore: Chore, taken: Set<String>): String =
-    chore.nfcId ?: freeTagId(chore.label, taken)
+    freeTagId(chore.label, taken)
 
 enum class ChoreStatus { NEVER, FRESH, AGING, STALE }
 
@@ -105,9 +107,15 @@ data class Chore(
      */
     val dueDate: LocalDate? = null,
     val repeatUnit: RepeatUnit = RepeatUnit.DAY,
-    /** The id this chore's NFC tag carries, or null when it has no tag. */
-    val nfcId: String? = null,
+    /** The NFC tags a tap on which logs this chore, oldest first; empty when it has none. */
+    val nfcTags: List<NfcTagDto> = emptyList(),
 ) {
+    /** The ids this chore's tags answer with. */
+    val nfcIds: List<String> get() = nfcTags.map { it.nfcId }
+
+    /** True when a tap on the tag [nfcId] logs this chore. */
+    fun answersTo(nfcId: String): Boolean = nfcTags.any { it.nfcId == nfcId }
+
     /** True for a chore in the reserved private category: on this phone only, never in Supabase. */
     val isPrivate: Boolean get() = isPrivateCategory(category)
 
@@ -265,7 +273,12 @@ data class Chore(
             "Plants" to 5L
         )
 
-        fun from(tag: TagDto, lastScanned: Instant?, lastScanId: String?): Chore {
+        fun from(
+            tag: TagDto,
+            lastScanned: Instant?,
+            lastScanId: String?,
+            nfcTags: List<NfcTagDto> = emptyList(),
+        ): Chore {
             val dueDate = tag.dueDate?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
             val repeatUnit = RepeatUnit.fromWire(tag.repeatUnit)
             val repeat = ChoreRepeat.from(tag.intervalDays, repeatUnit)
@@ -285,7 +298,7 @@ data class Chore(
                 status = status,
                 dueDate = dueDate,
                 repeatUnit = repeatUnit,
-                nfcId = tag.nfcId,
+                nfcTags = nfcTags.attachedTo(tag.tagId),
             )
         }
 

@@ -101,6 +101,7 @@ reading code.
 | A card's look | `ui/components/<Thing>Card.kt`; badges/chips in `ui/components/core/` | Tones in `ui/theme/StatusTone.kt` |
 | An edit sheet | `ui/components/Edit<Thing>Sheet.kt` / `AddReminderSheet.kt`; shared rows in `ui/components/sheet/SheetParts.kt` | Drafts in `data/model/SheetDraft.kt` |
 | When a memo or tag-alarm rings, arms, advances | `data/model/Reminder.kt` (memo lifecycle) and `data/model/TagAlarm.kt` (tag-alarm rules); `ReminderSchedule.kt` for the words | `ReminderModelTest`, `TagAlarmModelTest`, `ReminderScheduleTest` |
+| Saved NFC tags, attaching them to chores | `data/repository/NfcTagRepository.kt`; pure rules in `data/model/NfcTag.kt` (`nfcTagChanges`) | `NfcTagTest`; Settings › NFC tags is `TagsSubScreen` + `TagsUiStateTest` |
 | Arming / turning off a tag-alarm from anywhere | `tagalarm/TagAlarmService.kt` (the only entry point) | Callers: `MainActivity`, `RemindersListViewModel`, `ReminderViewViewModel` |
 | What happens on an NFC tap | `MainActivity.handleNfcIntent` → `routeScannedTag` (tag-alarm first, then chore paths) | `nfc/NfcHandler.kt` for reading, writing, erasing |
 | Scheduling, ringing, boot, snooze | `alarm/AlarmScheduler.kt` (`syncReminder` after every mutation), `AlarmReceiver`, `AlarmActionReceiver`, `BootWorker`, `AlarmRingService` (owns the ring) + `AlarmRinger`, `AlarmActivity` (the ring screen) | `notification/NotificationHelper.kt` for channels and the full-screen intent |
@@ -114,10 +115,12 @@ Facts that save a detour:
 
 - A **chore is a row in the `tags` table**; its `tagId` is the chore's key
   (logs, snoozes, "Show from", widget pins point at it) and is never shown.
-  Its NFC tag is the separate, nullable `nfcId` (`nfc_id`): null means no tag,
-  and `ChoreRepository.setNfcId` links or unlinks one. NFC taps resolve by
-  `findByNfcId`, never by key. Chore NFC ids and tag-alarm tag ids share one id
-  space; a tag has one job (LESSONS #67).
+  Its NFC tags are rows of their own in `nfc_tags` (`NfcTagDto`,
+  `NfcTagRepository`): one row per physical tag, with a name and a nullable
+  `chore_tag_id`. A tag can be saved with no chore; a chore can have many tags;
+  a tag logs one chore at most. NFC taps resolve through the saved tag, never by
+  key. `tags.nfc_id` is legacy, kept for older app versions. Chore tag ids and
+  tag-alarm tag ids share one id space; a tag has one job (LESSONS #67, #68).
 - **Memos are on-device** (`ReminderRepository`, DataStore). They never reach
   Supabase. So are settings, category styles, snoozes, each chore's "Show from"
   (`ChoreLeadStore`) and the sticker record.

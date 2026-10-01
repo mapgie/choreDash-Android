@@ -81,6 +81,25 @@ class SchemaSyncTest {
     }
 
     @Test
+    fun `the schema creates nfc_tags once, carrying each chore's old tag across`() {
+        // Created and filled inside a guarded block, so a re-run never re-attaches
+        // a tag the app has since detached.
+        assertTrue(
+            "supabase/schema.sql must check information_schema before creating nfc_tags",
+            Regex("""table_name\s*=\s*'nfc_tags'""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+        assertTrue(
+            "supabase/schema.sql must fill nfc_tags from tags.nfc_id when it creates it",
+            Regex("""INSERT INTO nfc_tags[^;]*FROM tags""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+        assertTrue(
+            "nfc_tags.chore_tag_id must free a tag when its chore is deleted, not delete the tag",
+            Regex("""chore_tag_id\s+text\s+REFERENCES tags\(tag_id\)\s+ON DELETE SET NULL""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(schema),
+        )
+    }
+
+    @Test
     fun `every table is granted to the anon role for the Data API`() {
         // From 2026 Supabase stops auto-exposing public tables to the Data API, so
         // a table the app reaches through the anon key must carry an explicit GRANT

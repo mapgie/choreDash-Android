@@ -150,21 +150,26 @@ class ReminderUiStateTest {
     }
 
     @Test
-    fun `taken tag ids name every chore tag and every other tag-alarm tag`() {
+    fun `taken tag ids name every tag of every chore and every other tag-alarm tag`() {
         val chore = com.mapgie.dash.data.model.Chore(
             id = "c1", tagId = "kitchen", label = "Kitchen", category = null, owner = null,
             intervalDays = null, archivedAt = null, lastScanned = null, lastScanId = null,
-            status = com.mapgie.dash.data.model.ChoreStatus.NEVER, nfcId = "kitchen",
+            status = com.mapgie.dash.data.model.ChoreStatus.NEVER,
+            nfcTags = listOf(
+                com.mapgie.dash.data.model.NfcTagDto("kitchen", "Kitchen", "kitchen"),
+                com.mapgie.dash.data.model.NfcTagDto("pantry", "Pantry", "kitchen"),
+            ),
         )
         // A chore with no tag holds nothing: its key is never a tag id.
-        val tagless = chore.copy(id = "c2", tagId = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", label = "Book Santa", nfcId = null)
+        val tagless = chore.copy(id = "c2", tagId = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", label = "Book Santa", nfcTags = emptyList())
         val office = tagAlarm("office", armed = false, tagId = "bedside")
         val home = tagAlarm("home", armed = false, tagId = "card")
         val untagged = tagAlarm("untagged", armed = false, tagId = null)
         val state = ReminderUiState(reminders = listOf(office, home, untagged), chores = listOf(chore, tagless))
         val taken = state.takenTagIds(editingId = "office")
-        assertEquals(setOf("kitchen", "card"), taken.keys)
+        assertEquals(setOf("kitchen", "pantry", "card"), taken.keys)
         assertEquals("the chore \"Kitchen\"", taken["kitchen"])
+        assertEquals("the chore \"Kitchen\"", taken["pantry"])
         assertEquals("the tag-alarm \"home\"", taken["card"])
     }
 

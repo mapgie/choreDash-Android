@@ -3,6 +3,7 @@ package com.mapgie.dash.data.repository
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreSchedule
 import com.mapgie.dash.data.model.ChoreStatus
+import com.mapgie.dash.data.model.NfcTagDto
 import com.mapgie.dash.data.model.PrivateMove
 import com.mapgie.dash.data.model.ScanDto
 import com.mapgie.dash.data.model.ScanInsert
@@ -25,7 +26,9 @@ import javax.inject.Singleton
 data class ChoreLoadResult(
     val active: List<Chore>,
     val archived: List<Chore>,
-    val owners: List<String>
+    val owners: List<String>,
+    /** Every saved NFC tag, attached or not: what the chore sheet offers to attach. */
+    val savedTags: List<NfcTagDto> = emptyList(),
 )
 
 /**
@@ -37,14 +40,17 @@ data class ChoreLoadResult(
  * changes the category across that boundary moves the chore and its logs (see
  * [privateMove]); the tag id, the chore's key, never changes.
  *
- * A chore's NFC tag is a separate, optional [TagDto.nfcId]: null until a tag is
- * linked, and cleared again by [setNfcId] so the sticker can serve something
- * else. A tag has one job, so an NFC id belongs to at most one chore.
+ * A chore's NFC tags are saved tags ([NfcTagDto], [NfcTagRepository]) that
+ * point at its key. A chore can have any number; a tag has one job, so it
+ * points at one chore at most. Saving a chore with a tag list goes through
+ * [NfcTagRepository.setChoreTags], and a move across the private boundary takes
+ * the chore's tags with it.
  */
 @Singleton
 class ChoreRepository @Inject constructor(
     private val clientProvider: SupabaseClientProvider,
     private val privateStore: PrivateItemStore,
+    private val nfcTags: NfcTagRepository,
 ) {
     private suspend fun requireClient() = clientProvider.awaitClient()
 
@@ -58,6 +64,8 @@ class ChoreRepository @Inject constructor(
             }
             .decodeList<ScanDto>()
         val onDevice = privateStore.current()
+        // A database without nfc_tags yet still lists its chores, tagless.
+        val savedTags = runCatching { nfcTags.all() }.getOrElse { nfcTags.onDevice() }
 
         val lastScanByTagId = mutableMapOf<String, ScanDto>()
         for (scan in scans + onDevice.scans.sortedByDescending { it.scannedAt }) {
@@ -78,7 +86,8 @@ class ChoreRepository @Inject constructor(
             val chore = Chore.from(
                 tag = tag,
                 lastScanned = lastScan?.scannedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
-                lastScanId = lastScan?.id
+                lastScanId = lastScan?.id,
+                nfcTags = savedTags,
             )
             if (tag.archivedAt == null) active.add(chore) else archived.add(chore)
         }
@@ -87,38 +96,12 @@ class ChoreRepository @Inject constructor(
             it.status == ChoreStatus.STALE || it.status == ChoreStatus.NEVER
         }.thenBy { it.lastScanned ?: Instant.EPOCH })
 
-        return ChoreLoadResult(active = active, archived = archived, owners = owners)
+        return ChoreLoadResult(active = active, archived = archived, owners = owners, savedTags = savedTags)
     }
 
     /** The chore with [tagId], shared or private, or null. */
     suspend fun findByTagId(tagId: String): TagDto? =
         privateStore.current().chore(tagId) ?: findShared(tagId)
-
-    /** The chore whose NFC tag carries [nfcId], shared or private, or null. */
-    suspend fun findByNfcId(nfcId: String): TagDto? =
-        privateStore.current().choreByNfcId(nfcId) ?: findSharedByNfcId(nfcId)
-
-    private suspend fun findSharedByNfcId(nfcId: String): TagDto? {
-        val client = requireClient()
-        // A database without the nfc_id column yet rejects the filter: nothing matches.
-        return runCatching {
-            client.from("tags")
-                .select { filter { eq("nfc_id", nfcId) } }
-                .decodeSingleOrNull<TagDto>()
-        }.getOrNull()
-    }
-
-    /**
-     * Refuses [nfcId] when another chore's tag already carries it. The shared
-     * table's UNIQUE would refuse it too, but with a database error, and it
-     * cannot see private chores.
-     */
-    private suspend fun requireNfcIdFree(nfcId: String?, forTagId: String?) {
-        if (nfcId == null) return
-        val owner = findByNfcId(nfcId) ?: return
-        if (owner.tagId == forTagId) return
-        throw IllegalArgumentException("That tag already belongs to the chore \"${owner.label}\". A tag has one job.")
-    }
 
     private suspend fun findShared(tagId: String): TagDto? {
         val client = requireClient()
@@ -174,12 +157,14 @@ class ChoreRepository @Inject constructor(
         category: String?,
         owner: String?,
         schedule: ChoreSchedule,
-        nfcId: String?,
+        /** The chore's NFC tag ids after the edit, or null to leave its tags alone. */
+        nfcIds: List<String>? = null,
     ) {
         val intervalDays = schedule.repeat?.intervalDays
         val repeatUnit = schedule.repeat?.unit?.wire
         val due = schedule.dueDate?.toString()
-        requireNfcIdFree(nfcId, forTagId = tagId)
+        // A tag another chore has refuses the edit before any of it is written.
+        if (nfcIds != null) nfcTags.requireFree(nfcIds, choreTagId = tagId)
         val stored = privateStore.current().chore(tagId)
         when (privateMove(stored != null, category)) {
             PrivateMove.STAY_SHARED -> {
@@ -188,21 +173,15 @@ class ChoreRepository @Inject constructor(
                 // schema.sql's due_date / repeat_unit columns applied yet. The read
                 // costs one round trip per edit and exists only for that window: once
                 // every project has the columns, drop it and always send them.
-                // nfc_id likewise goes only when the tag changed.
                 val shared = findShared(tagId)
                 val hadSchedule = shared?.let { it.dueDate != null || it.repeatUnit != null } ?: true
-                val tagChanged = if (shared != null) shared.nfcId != nfcId else nfcId != null
-                patchShared(
-                    tagId,
-                    chorePatch(label, category, owner, schedule, includeSchedule = hadSchedule, nfcId = nfcId, includeNfcId = tagChanged),
-                )
+                patchShared(tagId, chorePatch(label, category, owner, schedule, includeSchedule = hadSchedule))
             }
             PrivateMove.STAY_PRIVATE -> privateStore.update {
                 it.updateChore(tagId) { t ->
                     t.copy(
                         label = label, category = category, owner = owner,
                         intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
-                        nfcId = nfcId,
                     )
                 }
             }
@@ -211,15 +190,19 @@ class ChoreRepository @Inject constructor(
                 // then delete the row from Supabase (its scans cascade). The copy is
                 // written first so nothing is ever lost; if the delete fails the copy
                 // is taken back and the error surfaces, leaving the chore shared.
+                // Its tags come along before the delete, which would free them.
                 val shared = findShared(tagId) ?: throw IllegalStateException("Chore $tagId not found")
                 val history = sharedScanHistory(tagId, limit = ALL_SCANS)
                 val row = shared.copy(
                     label = label, category = category, owner = owner,
                     intervalDays = intervalDays, dueDate = due, repeatUnit = repeatUnit,
-                    nfcId = nfcId,
                 )
                 privateStore.update { it.withChore(row).withScans(history) }
-                runCatching { deleteShared(tagId) }.onFailure { e ->
+                runCatching {
+                    nfcTags.moveChoreTags(tagId, toPrivate = true)
+                    deleteShared(tagId)
+                }.onFailure { e ->
+                    runCatching { nfcTags.moveChoreTags(tagId, toPrivate = false) }
                     privateStore.update { it.withoutChore(tagId) }
                     throw e
                 }
@@ -239,7 +222,6 @@ class ChoreRepository @Inject constructor(
                         intervalDays = intervalDays,
                         dueDate = due,
                         repeatUnit = repeatUnit,
-                        nfcId = nfcId,
                     )
                 )
                 val history = privateStore.current().scansFor(tagId)
@@ -247,23 +229,12 @@ class ChoreRepository @Inject constructor(
                     client.from("scans").insert(history.map { ScanInsert(tagId = tagId, scannedAt = it.scannedAt) })
                 }
                 if (row.archivedAt != null) archiveShared(tagId, row.archivedAt)
+                nfcTags.moveChoreTags(tagId, toPrivate = false)
                 privateStore.update { it.withoutChore(tagId) }
             }
         }
-    }
-
-    /**
-     * Links the chore with [tagId] to the NFC tag carrying [nfcId], or unlinks
-     * it with null. The chore, its logs and the sticker itself are untouched; an
-     * unlinked sticker's id is free for another chore or a tag-alarm.
-     */
-    suspend fun setNfcId(tagId: String, nfcId: String?) {
-        requireNfcIdFree(nfcId, forTagId = tagId)
-        if (privateStore.current().hasChore(tagId)) {
-            privateStore.update { it.updateChore(tagId) { t -> t.copy(nfcId = nfcId) } }
-            return
-        }
-        patchShared(tagId, buildJsonObject { put("nfc_id", nfcId) })
+        // Last, once the chore sits where it will stay, so its tags land beside it.
+        if (nfcIds != null) nfcTags.setChoreTags(tagId, nfcIds, defaultName = label)
     }
 
     private suspend fun patchShared(tagId: String, patch: JsonObject) {
@@ -287,20 +258,34 @@ class ChoreRepository @Inject constructor(
     }
 
     /**
-     * Adds a chore. Its key is minted here and never shown; [nfcId] is the id
-     * of its NFC tag, or null for a chore with no tag.
+     * Adds a chore. Its key is minted here and never shown; [nfcIds] are the ids
+     * of the NFC tags a tap on which logs it (none for a chore with no tag).
+     * A tag another chore has refuses the whole add, before anything is written.
      */
     suspend fun createTag(
         label: String,
         category: String?,
         owner: String?,
         schedule: ChoreSchedule,
-        nfcId: String?,
+        nfcIds: List<String> = emptyList(),
     ): TagDto {
         val intervalDays = schedule.repeat?.intervalDays
         val tagId = UUID.randomUUID().toString()
-        // NFC ids are unique across both stores: a sticker has one job.
-        requireNfcIdFree(nfcId, forTagId = null)
+        // Checked up front so a refused tag doesn't leave a chore saved without it.
+        nfcTags.requireFree(nfcIds)
+        val created = insertChore(tagId, label, category, owner, schedule, intervalDays)
+        if (nfcIds.isNotEmpty()) nfcTags.setChoreTags(tagId, nfcIds, defaultName = label)
+        return created
+    }
+
+    private suspend fun insertChore(
+        tagId: String,
+        label: String,
+        category: String?,
+        owner: String?,
+        schedule: ChoreSchedule,
+        intervalDays: Double?,
+    ): TagDto {
         if (isPrivateCategory(category)) {
             val row = TagDto(
                 id = UUID.randomUUID().toString(),
@@ -312,7 +297,6 @@ class ChoreRepository @Inject constructor(
                 dueDate = schedule.dueDate?.toString(),
                 repeatUnit = schedule.repeat?.unit?.wire,
                 createdAt = Instant.now().toString(),
-                nfcId = nfcId,
             )
             privateStore.update { it.withChore(row) }
             return row
@@ -328,7 +312,6 @@ class ChoreRepository @Inject constructor(
                     intervalDays = intervalDays,
                     dueDate = schedule.dueDate?.toString(),
                     repeatUnit = schedule.repeat?.unit?.wire,
-                    nfcId = nfcId,
                 )
             ) { select() }
             .decodeSingle<TagDto>()
@@ -368,8 +351,8 @@ class ChoreRepository @Inject constructor(
  * clears the column instead of being dropped (LESSONS.md #33) while
  * interval_days stays numeric. `due_date` and `repeat_unit` are sent only when
  * [includeSchedule] is set or there is a value to write: a database without
- * those columns rejects any body that names them. `nfc_id` is sent only when
- * [includeNfcId] says the tag changed, for the same reason.
+ * those columns rejects any body that names them. NFC tags are rows of their
+ * own (`nfc_tags`), so the legacy `nfc_id` column is never named.
  */
 internal fun chorePatch(
     label: String,
@@ -377,8 +360,6 @@ internal fun chorePatch(
     owner: String?,
     schedule: ChoreSchedule,
     includeSchedule: Boolean,
-    nfcId: String? = null,
-    includeNfcId: Boolean = false,
 ): JsonObject = buildJsonObject {
     put("label", label)
     put("category", category)
@@ -389,7 +370,6 @@ internal fun chorePatch(
         put("due_date", schedule.dueDate?.toString())
         put("repeat_unit", repeatUnit)
     }
-    if (includeNfcId) put("nfc_id", nfcId)
 }
 
 @kotlinx.serialization.Serializable

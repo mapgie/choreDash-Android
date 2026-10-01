@@ -27,7 +27,7 @@ class SheetDraftTest {
         lastScanned = null,
         lastScanId = null,
         status = ChoreStatus.NEVER,
-        nfcId = "04a1b2",
+        nfcTags = listOf(NfcTagDto(nfcId = "04a1b2", name = "Pill box", choreTagId = "04a1b2")),
     )
 
     private val taxes = TaskDto(
@@ -45,7 +45,7 @@ class SheetDraftTest {
     fun `a draft that matches the opened chore is not offered`() {
         val opened = ChoreDraft.of(meds)
         assertFalse(ChoreDraft.of(meds).differsFrom(opened))
-        assertEquals(ChoreDraft("Meds", "Health", "sam", 28, "04a1b2"), opened)
+        assertEquals(ChoreDraft("Meds", "Health", "sam", 28, listOf("04a1b2")), opened)
     }
 
     @Test
@@ -82,19 +82,27 @@ class SheetDraftTest {
     }
 
     @Test
-    fun `a chore with no tag opens with a blank tag field, never its key`() {
-        val tagless = meds.copy(tagId = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", nfcId = null)
-        assertEquals("", ChoreDraft.of(tagless).nfcId)
-        assertNull(ChoreDraft.of(tagless).nfcIdOrNull())
+    fun `a chore with no tag opens with no tags, never its key`() {
+        val tagless = meds.copy(tagId = "3f2c1a4e-0b7d-4c55-9a1e-2d6f8b0c9e11", nfcTags = emptyList())
+        assertEquals(emptyList<String>(), ChoreDraft.of(tagless).nfcIdList())
     }
 
     @Test
-    fun `clearing the tag field saves no tag and counts as a change`() {
+    fun `removing a chore's tag saves no tag and counts as a change`() {
         val opened = ChoreDraft.of(meds)
-        assertEquals("04a1b2", opened.nfcIdOrNull())
-        val cleared = opened.copy(nfcId = "  ")
-        assertTrue(cleared.differsFrom(opened))
-        assertNull(cleared.nfcIdOrNull())
+        assertEquals(listOf("04a1b2"), opened.nfcIdList())
+        val removed = opened.withoutNfcId("04a1b2")
+        assertTrue(removed.differsFrom(opened))
+        assertEquals(emptyList<String>(), removed.nfcIdList())
+    }
+
+    @Test
+    fun `a chore draft holds several tags, each once, in the order they were added`() {
+        val opened = ChoreDraft.of(meds)
+        val more = opened.withNfcId(" back-door ").withNfcId("04a1b2").withNfcId("back-door").withNfcId("  ")
+        assertEquals(listOf("04a1b2", "back-door"), more.nfcIdList())
+        assertTrue(more.differsFrom(opened))
+        assertFalse(more.withoutNfcId("back-door").differsFrom(opened))
     }
 
     @Test
@@ -106,8 +114,9 @@ class SheetDraftTest {
     @Test
     fun `a new chore sheet opens on General with the scanned tag id`() {
         val opened = ChoreDraft.of(null, initialNfcId = "abc123")
-        assertEquals(ChoreDraft(category = GENERAL_CATEGORY, nfcId = "abc123"), opened)
-        assertFalse(ChoreDraft(category = GENERAL_CATEGORY, nfcId = "abc123").differsFrom(opened))
+        assertEquals(ChoreDraft(category = GENERAL_CATEGORY, nfcIds = listOf("abc123")), opened)
+        assertFalse(ChoreDraft(category = GENERAL_CATEGORY, nfcIds = listOf("abc123")).differsFrom(opened))
+        assertEquals(emptyList<String>(), ChoreDraft.of(null).nfcIds)
         assertNull(opened.displayName())
         assertEquals("Water plants", opened.copy(label = " Water plants ").displayName())
     }

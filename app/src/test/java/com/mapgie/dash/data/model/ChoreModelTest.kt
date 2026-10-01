@@ -176,10 +176,25 @@ class ChoreModelTest {
     // ── NFC tag ───────────────────────────────────────────────────────────────
 
     @Test
-    fun `a chore carries its tag from the row, and none when the row has none`() {
-        val tagged = Chore.from(TagDto(id = "id1", tagId = "k1", label = "Bins", nfcId = "back-door"), null, null)
-        assertEquals("back-door", tagged.nfcId)
-        assertNull(Chore.from(TagDto(id = "id2", tagId = "k2", label = "Bins"), null, null).nfcId)
+    fun `a chore carries every saved tag attached to it, and only those`() {
+        val saved = listOf(
+            NfcTagDto("back-door", "Back door", choreTagId = "k1", createdAt = "2026-07-02T00:00:00Z"),
+            NfcTagDto("front-door", "Front door", choreTagId = "k1", createdAt = "2026-07-01T00:00:00Z"),
+            NfcTagDto("garage", "Garage", choreTagId = "k2"),
+            NfcTagDto("spare", "Spare"),
+        )
+        val bins = Chore.from(TagDto(id = "id1", tagId = "k1", label = "Bins"), null, null, saved)
+        assertEquals(listOf("front-door", "back-door"), bins.nfcIds)
+        assertTrue(bins.answersTo("back-door"))
+        assertFalse(bins.answersTo("garage"))
+        assertFalse(bins.answersTo("spare"))
+    }
+
+    @Test
+    fun `the legacy single tag column alone gives a chore no tag`() {
+        // nfc_tags is the record now; tags.nfc_id is only carried across once by schema.sql.
+        val legacy = Chore.from(TagDto(id = "id1", tagId = "k1", label = "Bins", nfcId = "back-door"), null, null)
+        assertEquals(emptyList<String>(), legacy.nfcIds)
     }
 
     @Test
@@ -190,10 +205,11 @@ class ChoreModelTest {
     }
 
     @Test
-    fun `writing a tag for a chore with none mints a readable free id`() {
+    fun `writing a tag for a chore mints a readable free id, even when it has tags`() {
         val santa = Chore.from(TagDto(id = "id1", tagId = "dcb34369-394c-49be-9367-6e40e84b10ce", label = "Book Santa"), null, null)
         assertEquals("book-santa", nfcIdToWrite(santa, emptySet()))
         assertEquals("book-santa-2", nfcIdToWrite(santa, setOf("book-santa")))
-        assertEquals("sleigh", nfcIdToWrite(santa.copy(nfcId = "sleigh"), setOf("sleigh")))
+        val tagged = santa.copy(nfcTags = listOf(NfcTagDto("book-santa", "Desk", santa.tagId)))
+        assertEquals("book-santa-2", nfcIdToWrite(tagged, setOf("book-santa")))
     }
 }

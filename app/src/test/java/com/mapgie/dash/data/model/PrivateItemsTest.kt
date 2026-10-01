@@ -160,8 +160,46 @@ class PrivateItemsTest {
 
     @Test
     fun `a private chore is found by its tag, not its key`() {
-        val items = PrivateItems(chores = listOf(chore(santaKey).copy(nfcId = "santa-sticker")), nfcIdsSplit = true)
+        val items = PrivateItems(
+            chores = listOf(chore(santaKey)),
+            nfcTags = listOf(NfcTagDto("santa-sticker", "Desk", choreTagId = santaKey)),
+            nfcIdsSplit = true,
+            nfcTagsSplit = true,
+        )
         assertEquals(santaKey, items.choreByNfcId("santa-sticker")?.tagId)
         assertNull(items.choreByNfcId(santaKey))
+    }
+
+    // ── Saved tags on the phone ───────────────────────────────────────────────
+
+    @Test
+    fun `an older private chore's one tag becomes a saved tag attached to it, named after it`() {
+        val items = PrivateItems(
+            chores = listOf(chore("laundry-bin").copy(nfcId = "laundry-bin"), chore(santaKey)),
+            nfcIdsSplit = true,
+        ).withNfcTagsSplit()
+        assertEquals(listOf(NfcTagDto("laundry-bin", "laundry-bin", "laundry-bin", createdAt = "")), items.nfcTags)
+        assertTrue(items.nfcTagsSplit)
+    }
+
+    @Test
+    fun `a tag detached after the carry-across is never put back`() {
+        val split = PrivateItems(chores = listOf(chore("laundry-bin").copy(nfcId = "laundry-bin")), nfcIdsSplit = true)
+            .withNfcTagsSplit()
+        val detached = split.withNfcTag(split.nfcTags.single().copy(choreTagId = null))
+        assertNull(detached.withNfcTagsSplit().choreByNfcId("laundry-bin"))
+        assertEquals(1, detached.withNfcTagsSplit().nfcTags.size)
+    }
+
+    @Test
+    fun `a private chore can have several tags, and a tag is stored once`() {
+        val items = PrivateItems(chores = listOf(chore(santaKey)), nfcIdsSplit = true, nfcTagsSplit = true)
+            .withNfcTag(NfcTagDto("desk", "Desk", santaKey))
+            .withNfcTag(NfcTagDto("fridge", "Fridge", santaKey))
+            .withNfcTag(NfcTagDto("desk", "Study desk", santaKey))
+        assertEquals(listOf("fridge", "desk"), items.nfcTags.map { it.nfcId })
+        assertEquals("Study desk", items.nfcTag("desk")?.name)
+        assertEquals(santaKey, items.choreByNfcId("fridge")?.tagId)
+        assertNull(items.withoutNfcTag("fridge").choreByNfcId("fridge"))
     }
 }

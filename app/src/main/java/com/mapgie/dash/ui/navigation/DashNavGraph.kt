@@ -252,8 +252,10 @@ fun DashNavGraph(
                             nfcWriteRequest = nfcWriteRequest
                                 ?.takeIf { it.kind == NfcWriteRequest.Kind.CHORE && !it.fromSettings }?.id,
                             nfcWriteResult = nfcWriteResult,
-                            onStartNfcWrite = { nfcId, linkChore ->
-                                onStartNfcWriteRequest(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, nfcId, linkChore = linkChore))
+                            onStartNfcWrite = { nfcId, linkChore, name ->
+                                onStartNfcWriteRequest(
+                                    NfcWriteRequest(NfcWriteRequest.Kind.CHORE, nfcId, linkChore = linkChore, linkName = name)
+                                )
                             },
                             onCancelNfcWrite = onCancelNfcWrite,
                             onNfcWriteResultConsumed = onNfcWriteResultConsumed,

@@ -31,6 +31,7 @@ import com.mapgie.dash.data.preferences.SettingsRepository
 import com.mapgie.dash.data.preferences.TagStickerStore
 import com.mapgie.dash.data.preferences.ThemeMode
 import com.mapgie.dash.data.repository.ChoreRepository
+import com.mapgie.dash.data.repository.NfcTagRepository
 import com.mapgie.dash.data.supabase.userFacingMessage
 import com.mapgie.dash.nfc.NfcHandler
 import com.mapgie.dash.nfc.NfcWriteRequest
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var choreRepository: ChoreRepository
+    @Inject lateinit var nfcTagRepository: NfcTagRepository
     @Inject lateinit var tagAlarmService: TagAlarmService
     @Inject lateinit var tagStickerStore: TagStickerStore
 
@@ -243,7 +245,7 @@ class MainActivity : ComponentActivity() {
                     if (result == NfcWriteResult.Success) recordSticker(writeRequest.id)
                     val chore = writeRequest.linkChore
                     if (result == NfcWriteResult.Success && chore != null) {
-                        linkChoreThenReport(chore, writeRequest.id)
+                        linkChoreThenReport(chore, writeRequest.id, writeRequest.linkName)
                     } else {
                         nfcWriteResult = result
                     }
@@ -266,11 +268,11 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(WIDGET_DESTINATION_EXTRA)?.let { pendingWidgetDestination = it }
     }
 
-    // The sticker now carries the id; link the chore to it before reporting, so a
-    // screen that reloads on the result already sees the chore on its tag.
-    private fun linkChoreThenReport(choreTagId: String, nfcId: String) {
+    // The sticker now carries the id; save it attached to the chore before
+    // reporting, so a screen that reloads on the result already sees the tag.
+    private fun linkChoreThenReport(choreTagId: String, nfcId: String, name: String) {
         lifecycleScope.launch {
-            nfcWriteResult = runCatching { choreRepository.setNfcId(choreTagId, nfcId) }
+            nfcWriteResult = runCatching { nfcTagRepository.attach(nfcId, choreTagId, name) }
                 .fold(
                     onSuccess = {
                         WidgetUpdater.updateAll(applicationContext)
@@ -326,9 +328,11 @@ class MainActivity : ComponentActivity() {
     private fun autoLogChore(nfcId: String) {
         lifecycleScope.launch {
             runCatching {
-                val chore = choreRepository.findByNfcId(nfcId)
+                val saved = nfcTagRepository.find(nfcId)
+                val chore = saved?.choreTagId?.let { choreRepository.findByTagId(it) }
                 if (chore == null) {
-                    Toast.makeText(this@MainActivity, "This tag isn't linked to a chore", Toast.LENGTH_SHORT).show()
+                    val message = if (saved != null) "${saved.name} isn't attached to a chore" else "This tag isn't linked to a chore"
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                     return@runCatching
                 }
                 choreRepository.logChore(chore.tagId)
