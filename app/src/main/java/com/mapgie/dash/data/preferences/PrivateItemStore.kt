@@ -45,8 +45,9 @@ class PrivateItemStore @Inject constructor(
     suspend fun current(): PrivateItems = items.first()
 
     private fun decode(raw: String?): PrivateItems =
-        (raw?.let { runCatching { json.decodeFromString<PrivateItems>(it) }.getOrNull() } ?: PrivateItems(nfcIdsSplit = true))
+        (raw?.let { runCatching { json.decodeFromString<PrivateItems>(it) }.getOrNull() } ?: PrivateItems(nfcIdsSplit = true, nfcTagsSplit = true))
             .withNfcIdsSplit()
+            .withNfcTagsSplit()
 
     /** Applies [transform] to the stored document and writes the result back, returning it. */
     suspend fun update(transform: (PrivateItems) -> PrivateItems): PrivateItems {

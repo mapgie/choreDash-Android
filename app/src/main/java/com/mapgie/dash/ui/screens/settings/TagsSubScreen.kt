@@ -1,5 +1,6 @@
 package com.mapgie.dash.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,7 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,16 +49,13 @@ import com.mapgie.dash.ui.theme.PillShape
 
 /**
  * Settings › NFC tags: tag maintenance in one place. An Identify card reads
- * whatever tag is held to the phone and says what the app makes of it (a
- * chore, a tag-alarm, or nothing). Below it, every chore's tag and every
- * tag-alarm, each with a Write chip that stamps its id on a blank sticker
- * through the same write dialog the chore sheet uses; a tag-alarm can also be
- * unlinked, or given an id here when it has none.
+ * whatever tag is held to the phone (a written sticker, a blank one, a card or
+ * a fob) and says what the app makes of it; an unknown one can be saved under
+ * a name, a saved one attached to a chore. Below it: every saved tag with the
+ * chore it logs (attach, detach, rename, forget), every chore with its tags and
+ * a Write chip that stamps a new one, and every tag-alarm.
  *
- * "On a sticker" is this phone's own evidence ([com.mapgie.dash.data.preferences.TagStickerStore]):
- * it wrote the id to a sticker, or read it off one. Every chore has a tag id in
- * Supabase whether a sticker exists or not, so the chip row over Chores splits
- * them on that evidence, and a sticker made elsewhere counts once it is tapped.
+ * A chore can have any number of tags; a tag logs one chore at most.
  *
  * Identify uses the activity's capture mode ([onStartNfcCapture] /
  * [nfcCapturedTagId]), the same one the memo sheet's scan uses, so a tap while
@@ -110,7 +111,15 @@ internal fun TagsSubScreen(
         onNfcCaptureConsumed()
     }
 
-    val readEntry = readId?.let { uiState.identify(it) }
+    val identity = readId?.let { uiState.identify(it) }
+    // Dialogs: save a scanned tag, edit or forget a saved one, pick a chore to attach to.
+    var savingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var forgettingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var attachingId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun savedName(tagId: String): String =
+        uiState.savedTags.firstOrNull { it.nfcId == tagId }?.name ?: tagId
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
@@ -124,7 +133,7 @@ internal fun TagsSubScreen(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            SettingsCaption("Every tag the app recognises. A tag has one job: it belongs to one chore or one tag-alarm.")
+            SettingsCaption("Scan any tag, save it with a name, and attach it to a chore now or later. A chore can have several tags; a tag logs one chore.")
 
             SettingsSectionLabel("Identify a tag")
             SettingsCard {
@@ -138,10 +147,8 @@ internal fun TagsSubScreen(
                 ) {
                     val (title, subtitle) = when {
                         scanning -> "Listening" to "Hold a tag to the back of your phone."
-                        readId == null -> "Scan a tag" to "See which chore or tag-alarm it belongs to."
-                        readEntry == null -> readId!! to "Not linked to anything. Open a chore or tag-alarm to link it."
-                        else -> readId!! to "${readEntry.kind.label}: ${readEntry.name}" +
-                            if (readEntry.archived) " (archived)" else ""
+                        identity == null -> "Scan a tag" to "See what it is, or save it with a name."
+                        else -> identity.tagId to identity.summary
                     }
                     SettingsRowText(
                         title = title,
@@ -157,6 +164,22 @@ internal fun TagsSubScreen(
                             contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to identify it",
                             chevron = false,
                         )
+                        if (!scanning && identity != null && identity.canSave) {
+                            ValueChip(
+                                text = "Save",
+                                onClick = { savingId = identity.tagId },
+                                contentDescription = "Save this tag with a name",
+                                chevron = false,
+                            )
+                        }
+                        if (!scanning && identity != null && identity.canAttach) {
+                            ValueChip(
+                                text = "Attach",
+                                onClick = { attachingId = identity.tagId },
+                                contentDescription = "Attach this tag to a chore",
+                                chevron = false,
+                            )
+                        }
                         if (!scanning) {
                             ValueChip(
                                 text = "Erase",
@@ -168,7 +191,58 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Erase wipes whatever a tag carries so it can be written for something else. The chore or tag-alarm it belonged to is untouched.")
+            SettingsCaption("Erase wipes whatever a tag carries so it can be written for something else. A saved tag that is erased answers with its hardware id afterwards, so scan and save it again.")
+
+            SettingsSectionLabel("Saved tags")
+            SettingsCard {
+                val saved = uiState.savedTagEntries
+                if (uiState.loading && uiState.savedTags.isEmpty()) {
+                    SettingsCardRow(title = "Loading tags", subtitle = "From Supabase.")
+                } else if (saved.isEmpty()) {
+                    SettingsCardRow(
+                        title = "No saved tags",
+                        subtitle = if (uiState.error != null) "They couldn't be loaded." else "Scan one above and save it.",
+                    )
+                } else {
+                    saved.forEachIndexed { index, entry ->
+                        if (index > 0) SettingsHairline()
+                        val tag = entry.tag
+                        SettingsCardRow(
+                            title = tag.name,
+                            subtitle = tag.nfcId + " · " + when {
+                                entry.choreName == null -> "Not attached"
+                                entry.choreArchived -> "${entry.choreName} (archived)"
+                                else -> entry.choreName
+                            },
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                if (entry.choreName == null) {
+                                    ValueChip(
+                                        text = "Attach",
+                                        onClick = { attachingId = tag.nfcId },
+                                        contentDescription = "Attach ${tag.name} to a chore",
+                                        chevron = false,
+                                    )
+                                } else {
+                                    ValueChip(
+                                        text = "Detach",
+                                        onClick = { viewModel.detachTag(tag.nfcId) },
+                                        contentDescription = "Detach ${tag.name} from ${entry.choreName}",
+                                        chevron = false,
+                                    )
+                                }
+                                ValueChip(
+                                    text = "Edit",
+                                    onClick = { editingId = tag.nfcId },
+                                    contentDescription = "Rename or forget ${tag.name}",
+                                    chevron = false,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            SettingsCaption("Detach keeps a tag saved, free for another chore. A tag can also be added from a chore's own edit sheet.")
 
             SettingsSectionLabel("Chores")
             Row(
@@ -209,41 +283,31 @@ internal fun TagsSubScreen(
                     SettingsCardRow(
                         title = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER) "No chores on a tag yet" else "Every chore is on a tag",
                         subtitle = if (uiState.choreFilter == ChoreTagFilter.ON_STICKER)
-                            "A chore gets a tag when you write one for it, or scan one from its edit sheet." else null,
+                            "Attach a saved tag above, or write a new one for a chore." else null,
                     )
                 } else {
                     shown.forEachIndexed { index, entry ->
                         if (index > 0) SettingsHairline()
                         SettingsCardRow(
                             title = entry.name,
-                            subtitle = (entry.tagId ?: "No tag") +
+                            subtitle = entry.tags.joinToString(", ") { it.name }.ifEmpty { "No tag" } +
                                 (if (entry.archived) " · archived" else ""),
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                ValueChip(
-                                    text = "Write",
-                                    onClick = {
-                                        // A chore with no tag gets a readable id, linked once the write lands.
-                                        val tagId = entry.tagId
-                                        if (tagId != null) {
-                                            onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, tagId))
-                                        } else {
-                                            val minted = uiState.freeTagIdFor(entry.name)
-                                            onStartTagWrite(NfcWriteRequest(NfcWriteRequest.Kind.CHORE, minted, linkChore = entry.ownerId))
-                                        }
-                                    },
-                                    contentDescription = "Write ${entry.name}'s tag id to a tag",
-                                    chevron = false,
-                                )
-                                if (entry.tagId != null) {
-                                    ValueChip(
-                                        text = "Unlink",
-                                        onClick = { pendingUnlink = entry },
-                                        contentDescription = "Unlink ${entry.name} from its tag",
-                                        chevron = false,
+                            ValueChip(
+                                text = "Write",
+                                onClick = {
+                                    // A new tag with a readable id, attached once the write lands.
+                                    val minted = uiState.freeTagIdFor(entry.name)
+                                    onStartTagWrite(
+                                        NfcWriteRequest(
+                                            NfcWriteRequest.Kind.CHORE, minted,
+                                            linkChore = entry.choreTagId, linkName = entry.name,
+                                        )
                                     )
-                                }
-                            }
+                                },
+                                contentDescription = "Write a new tag for ${entry.name}",
+                                chevron = false,
+                            )
                         }
                     }
                 }
@@ -289,12 +353,12 @@ internal fun TagsSubScreen(
                     }
                 }
             }
-            SettingsCaption("Write stamps the id on a blank tag. A card that can't be written (an office pass) is linked by scanning it from the chore's or tag-alarm's own sheet instead. Unlink frees a tag without erasing it.")
+            SettingsCaption("Write stamps an id on a blank tag. A card that can't be written (an office pass) is scanned and saved instead. Unlink frees a tag without erasing it.")
             Spacer(Modifier.height(8.dp))
         }
     }
 
-    // A write can link a chore to its tag (MainActivity), so reload once it lands.
+    // A write can attach a tag to a chore (MainActivity), so reload once it lands.
     LaunchedEffect(nfcWriteResult) {
         if (tagWritePending && nfcWriteResult == NfcWriteResult.Success) viewModel.load()
     }
@@ -313,7 +377,7 @@ internal fun TagsSubScreen(
         AlertDialog(
             onDismissRequest = { confirmErase = false },
             title = { Text("Erase a tag?") },
-            text = { Text("The next tag you hold to the phone is wiped. Whatever chore or tag-alarm it pointed at stays in the app and can be written to a tag again.") },
+            text = { Text("The next tag you hold to the phone is wiped. Whatever chore or tag-alarm it pointed at stays in the app.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmErase = false
@@ -326,20 +390,101 @@ internal fun TagsSubScreen(
         )
     }
 
+    savingId?.let { tagId ->
+        TagNameDialog(
+            title = "Save this tag",
+            initial = "",
+            confirmLabel = "Save",
+            onConfirm = { name ->
+                savingId = null
+                viewModel.saveTag(tagId, name)
+            },
+            onDismiss = { savingId = null },
+        )
+    }
+
+    editingId?.let { tagId ->
+        TagNameDialog(
+            title = "Edit tag",
+            initial = savedName(tagId),
+            confirmLabel = "Save",
+            onConfirm = { name ->
+                editingId = null
+                viewModel.renameTag(tagId, name)
+            },
+            onDismiss = { editingId = null },
+            onForget = {
+                editingId = null
+                forgettingId = tagId
+            },
+        )
+    }
+
+    forgettingId?.let { tagId ->
+        AlertDialog(
+            onDismissRequest = { forgettingId = null },
+            title = { Text("Forget “${savedName(tagId)}”?") },
+            text = { Text("Tapping it will no longer log anything, and it leaves this list. The tag itself is untouched, so it can be scanned and saved again.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    forgettingId = null
+                    viewModel.forgetTag(tagId)
+                }) { Text("Forget", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { forgettingId = null }) { Text("Cancel") }
+            },
+        )
+    }
+
+    attachingId?.let { tagId ->
+        AlertDialog(
+            onDismissRequest = { attachingId = null },
+            title = { Text("Attach “${savedName(tagId)}” to") },
+            text = {
+                val chores = uiState.attachableChores
+                if (chores.isEmpty()) {
+                    Text("No chores yet. Add one from the Chores tab.")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        chores.forEach { chore ->
+                            Text(
+                                text = chore.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .semantics { role = Role.Button }
+                                    .clickable {
+                                        attachingId = null
+                                        viewModel.attachTag(tagId, chore.tagId)
+                                    }
+                                    .padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { attachingId = null }) { Text("Cancel") }
+            },
+        )
+    }
+
     pendingUnlink?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingUnlink = null },
             title = { Text("Unlink “${entry.name}”?") },
-            text = {
-                Text(
-                    if (entry.kind == TagOwnerKind.CHORE) "Tapping its tag will no longer log this chore. The chore keeps its history, and the tag itself is untouched, so it can be linked to something else without erasing it."
-                    else "Tapping its tag will no longer set this tag-alarm. The tag itself is untouched, so it can be written or linked again."
-                )
-            },
+            text = { Text("Tapping its tag will no longer set this tag-alarm. The tag itself is untouched, so it can be written or linked again.") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingUnlink = null
-                    if (entry.kind == TagOwnerKind.CHORE) viewModel.unlinkChore(entry.ownerId) else viewModel.unlink(entry.ownerId)
+                    viewModel.unlink(entry.ownerId)
                 }) { Text("Unlink", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
@@ -347,4 +492,43 @@ internal fun TagsSubScreen(
             },
         )
     }
+}
+
+/** Names a tag: saving a scanned one, or renaming (and, with [onForget], forgetting) a saved one. */
+@Composable
+private fun TagNameDialog(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onForget: (() -> Unit)? = null,
+) {
+    var text by rememberSaveable { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Name, like Back door") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (onForget != null) {
+                    TextButton(onClick = onForget) {
+                        Text("Forget this tag", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }

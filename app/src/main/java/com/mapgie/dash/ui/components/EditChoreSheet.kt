@@ -3,13 +3,13 @@ package com.mapgie.dash.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -37,21 +37,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapgie.dash.data.model.Chore
 import com.mapgie.dash.data.model.ChoreDraft
 import com.mapgie.dash.data.model.ChoreRepeat
 import com.mapgie.dash.data.model.ChoreSchedule
+import com.mapgie.dash.data.model.NfcTagDto
 import com.mapgie.dash.data.model.RepeatUnit
 import com.mapgie.dash.data.model.formatDueDate
 import com.mapgie.dash.data.model.GENERAL_CATEGORY
@@ -87,6 +91,8 @@ import com.mapgie.dash.util.CalendarShareUtils
 import com.mapgie.dash.util.calendarEventForDate
 import com.mapgie.dash.util.calendarEventWithoutTime
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -94,10 +100,13 @@ import java.time.ZoneOffset
  * The Edit sheet for chores (handoff 7a), one grammar with the task sheet: the
  * title is the input, then one grouped settings card of compact rows (Category
  * value chip · Owner avatar row · Repeat every stepper and its unit · Due date
- * chip · Show from chip · NFC tag), the same Cancel + sage Save footer as the Log sheet, and a
+ * chip · Show from chip · NFC tags), the same Cancel + sage Save footer as the Log sheet, and a
  * centred tertiary row (Add to calendar · Share · Archive). With [chore] null
- * it is the New chore sheet:
- * eyebrow NEW CHORE, empty title focused, and a tag ID field on the NFC row.
+ * it is the New chore sheet: eyebrow NEW CHORE, empty title focused.
+ *
+ * NFC tags: a chore can have any number. Add scans one, picks a saved tag no
+ * chore has yet, takes a typed id, or (for a saved chore) writes a new one.
+ * Remove lets a tag go on Save; it stays saved for another chore.
  *
  * Every dismiss vector is guarded when the sheet is dirty (LESSONS.md #27).
  * Fields survive rotation and process death (rememberSaveable) and every change
@@ -116,12 +125,16 @@ fun EditChoreSheet(
     owners: List<String>,
     categories: List<String>,
     sheetState: SheetState,
-    /** [leadDays] is this phone's "show from" for the chore; null means automatic. */
-    /** [nfcId] is the chore's NFC tag id, or null for a chore with no tag. */
-    onSave: (nfcId: String?, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
+    /** [nfcIds] are the chore's NFC tags; [leadDays] is this phone's "show from", null for automatic. */
+    onSave: (nfcIds: List<String>, label: String, category: String?, owner: String?, schedule: ChoreSchedule, leadDays: Int?) -> Unit,
     onArchiveToggle: (chore: Chore, archive: Boolean) -> Unit,
-    onWriteTag: (nfcId: String) -> Unit,
+    /** Writes a new tag for the saved [chore] and attaches it once written; null hides the option. */
+    onWriteNewTag: (() -> Unit)?,
     onDismiss: () -> Unit,
+    /** Every saved NFC tag: names for the tag rows, and the unattached ones to offer. */
+    savedTags: List<NfcTagDto> = emptyList(),
+    /** Saved tag id to the name of the other chore that has it, so a scan of one is refused up front. */
+    otherChoreTags: Map<String, String> = emptyMap(),
     /** The id of a tag just scanned, for a new chore made from an unknown tag. */
     initialNfcId: String = "",
     /** This phone's "show from" for [chore], or null when it follows the automatic rule. */
@@ -153,8 +166,15 @@ fun EditChoreSheet(
     var repeatUnit by rememberSaveable(stateSaver = enumStateSaver<RepeatUnit>()) { mutableStateOf(opened.repeatUnitEnum()) }
     var dueDate by rememberSaveable(stateSaver = LocalDateStateSaver) { mutableStateOf(opened.dueDate()) }
     var leadDays by rememberSaveable { mutableStateOf(opened.leadDays) }
-    var nfcId by rememberSaveable { mutableStateOf(opened.nfcId) }
+    var nfcIdsState by rememberSaveable(stateSaver = jsonStateSaver(ListSerializer(String.serializer()))) {
+        mutableStateOf<List<String>?>(opened.nfcIds)
+    }
+    val nfcIds = nfcIdsState.orEmpty()
     var scanning by rememberSaveable { mutableStateOf(false) }
+    var tagMenuOpen by rememberSaveable { mutableStateOf(false) }
+    var showTypeTagId by rememberSaveable { mutableStateOf(false) }
+    // Said under the tag rows after a scan that could not be added.
+    var tagNote by rememberSaveable { mutableStateOf<String?>(null) }
 
     var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
     var showNewCategory by rememberSaveable { mutableStateOf(false) }
@@ -184,16 +204,26 @@ fun EditChoreSheet(
         category = category,
         owner = owner,
         repeatEvery = interval,
-        nfcId = nfcId,
+        nfcIds = nfcIds,
         repeatUnit = repeatUnit.name,
         dueDateEpochDay = dueDate?.toEpochDay(),
         leadDays = leadDays,
     )
     val isDirty = currentDraft.differsFrom(opened)
 
-    // Scanning links a sticker as it is, without writing it: the way to give a
-    // chore a tag another chore or a tag-alarm let go of. The activity's "capture
-    // the next tag" request follows [scanning] and is withdrawn with the sheet.
+    fun addTag(id: String) {
+        val holder = otherChoreTags[id.trim()]
+        if (holder != null) {
+            tagNote = "That tag already belongs to the chore \"$holder\". Detach it in Settings, NFC tags first."
+        } else {
+            tagNote = null
+            nfcIdsState = currentDraft.withNfcId(id).nfcIds
+        }
+    }
+
+    // Scanning adds a tag as it is, without writing it: any sticker, card or
+    // fob, saved or not. The activity's "capture the next tag" request follows
+    // [scanning] and is withdrawn with the sheet.
     LaunchedEffect(scanning) {
         if (scanning) onStartScan() else onCancelScan()
     }
@@ -204,7 +234,7 @@ fun EditChoreSheet(
         val scanned = scannedTagId ?: return@LaunchedEffect
         if (scanning) {
             scanning = false
-            nfcId = scanned
+            addTag(scanned)
         }
         onScanConsumed()
     }
@@ -223,8 +253,8 @@ fun EditChoreSheet(
         dueDate = restored.dueDate()
         leadDays = restored.leadDays
         dueDatePickerState.selectedDateMillis = dueDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
-        // A new chore's tag that arrived with an NFC scan wins over a draft that has none.
-        nfcId = if (isNew) restored.nfcId.ifBlank { nfcId } else restored.nfcId
+        // A new chore's tag that arrived with an NFC scan is kept alongside the draft's.
+        nfcIdsState = if (isNew) (restored.nfcIdList() + nfcIds).distinct() else restored.nfcIdList()
         offeredDraft = null
     }
 
@@ -416,35 +446,67 @@ fun EditChoreSheet(
                     }
                 }
                 SheetRowDivider()
-                SettingsRow(icon = LucideIcons.NfcScan, label = "NFC tag") {
-                    // Blank means no tag. Clearing it unlinks the tag on Save; the
-                    // sticker keeps its id, free for another chore or a tag-alarm.
-                    TagIdField(
-                        value = nfcId,
-                        onValueChange = { nfcId = it },
-                        placeholder = if (scanning) "Hold a tag" else "No tag",
-                    )
-                    if (nfcId.isBlank()) {
-                        ValueChip(
-                            text = if (scanning) "Cancel" else "Scan",
-                            onClick = { scanning = !scanning },
-                            contentDescription = if (scanning) "Stop listening for a tag" else "Scan a tag to link it to this chore",
-                            chevron = false,
-                        )
-                    } else {
-                        ValueChip(
-                            text = "Write",
-                            onClick = { hideThen { onWriteTag(nfcId.trim()) } },
-                            contentDescription = "Write this tag id to an NFC tag",
-                            chevron = false,
-                        )
-                        ValueChip(
-                            text = if (opened.nfcId.isNotBlank()) "Unlink" else "Clear",
-                            onClick = { nfcId = "" },
-                            contentDescription = "Remove the NFC tag from this chore",
-                            chevron = false,
+                SettingsRow(icon = LucideIcons.NfcScan, label = if (nfcIds.size > 1) "NFC tags" else "NFC tag") {
+                    // Saved tags no other chore has, plus any this sheet just removed.
+                    val attachable = savedTags
+                        .filter { (it.choreTagId == null || it.choreTagId == chore?.tagId) && it.nfcId !in nfcIds }
+                        .sortedBy { it.name.lowercase() }
+                    if (nfcIds.isEmpty() && !scanning) {
+                        Text(
+                            text = "None",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                            color = tokens.inkFaint,
                         )
                     }
+                    Box {
+                        ValueChip(
+                            text = if (scanning) "Cancel" else "Add",
+                            onClick = { if (scanning) scanning = false else tagMenuOpen = true },
+                            contentDescription = if (scanning) "Stop listening for a tag" else "Add an NFC tag to this chore",
+                            chevron = !scanning,
+                        )
+                        DropdownMenu(expanded = tagMenuOpen, onDismissRequest = { tagMenuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Scan a tag") },
+                                leadingIcon = { Icon(LucideIcons.NfcScan, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                onClick = { tagMenuOpen = false; tagNote = null; scanning = true },
+                            )
+                            attachable.forEach { tag ->
+                                DropdownMenuItem(
+                                    text = { Text(tag.name) },
+                                    leadingIcon = { Icon(LucideIcons.Nfc, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                    onClick = { tagMenuOpen = false; addTag(tag.nfcId) },
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Type an id…") },
+                                onClick = { tagMenuOpen = false; showTypeTagId = true },
+                            )
+                            if (onWriteNewTag != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Write a new tag") },
+                                    onClick = { tagMenuOpen = false; hideThen { onWriteNewTag() } },
+                                )
+                            }
+                        }
+                    }
+                }
+                if (scanning) {
+                    SheetRowDivider()
+                    TagNoteRow(text = "Hold a tag to the back of your phone.")
+                }
+                nfcIds.forEach { id ->
+                    val saved = savedTags.firstOrNull { it.nfcId == id }
+                    SheetRowDivider()
+                    TagRow(
+                        name = saved?.name ?: "New tag",
+                        nfcId = id,
+                        onRemove = { tagNote = null; nfcIdsState = currentDraft.withoutNfcId(id).nfcIds },
+                    )
+                }
+                tagNote?.let {
+                    SheetRowDivider()
+                    TagNoteRow(text = it, assertive = true)
                 }
             }
 
@@ -463,8 +525,8 @@ fun EditChoreSheet(
                     val ownerValue = owner.trim().ifBlank { null }
                     val categoryValue = category.trim().ifBlank { null }
                     onDraftClear()
-                    val tag = currentDraft.nfcIdOrNull()
-                    hideThen { onSave(tag, label.trim(), categoryValue, ownerValue, schedule, lead) }
+                    val tags = currentDraft.nfcIdList()
+                    hideThen { onSave(tags, label.trim(), categoryValue, ownerValue, schedule, lead) }
                 },
             )
 
@@ -490,6 +552,32 @@ fun EditChoreSheet(
         NewCategoryDialog(
             onCreate = { category = it; showNewCategory = false },
             onDismiss = { showNewCategory = false },
+        )
+    }
+
+    if (showTypeTagId) {
+        var text by rememberSaveable { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showTypeTagId = false },
+            title = { Text("Add a tag by its id") },
+            text = {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Tag id") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { addTag(text); showTypeTagId = false },
+                    enabled = text.isNotBlank(),
+                ) { Text("Add") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTypeTagId = false }) { Text("Cancel") }
+            }
         )
     }
 
@@ -644,38 +732,58 @@ private fun RepeatUnit.shortSuffix(): String = when (this) {
     RepeatUnit.YEAR -> "y"
 }
 
-/** Compact inline field for the chore's NFC tag id, on the NFC row; empty reads "No tag". */
+/** One of the chore's NFC tags on the sheet: its name, its id, and Remove. */
 @Composable
-private fun TagIdField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+private fun TagRow(name: String, nfcId: String, onRemove: () -> Unit) {
     val tokens = LocalDashTokens.current
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
-            .widthIn(min = 72.dp, max = 120.dp)
-            .padding(vertical = 4.dp),
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .padding(start = 43.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
     ) {
-        if (value.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) { contentDescription = "NFC tag $name, id $nfcId" },
+        ) {
             Text(
-                text = placeholder,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                color = tokens.inkFaint,
+                text = name,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = nfcId,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, fontFamily = FontFamily.Monospace),
+                color = tokens.tagLabel,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                color = tokens.tagLabel,
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "NFC tag id" },
+        ValueChip(
+            text = "Remove",
+            onClick = onRemove,
+            contentDescription = "Remove the tag $name from this chore",
+            chevron = false,
         )
     }
+}
+
+/** A line of feedback under the tag rows: listening for a scan, or why one was not added. */
+@Composable
+private fun TagNoteRow(text: String, assertive: Boolean = false) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 43.dp, end = 14.dp, top = 8.dp, bottom = 8.dp)
+            .semantics { liveRegion = if (assertive) LiveRegionMode.Assertive else LiveRegionMode.Polite },
+    )
 }
 
 /**

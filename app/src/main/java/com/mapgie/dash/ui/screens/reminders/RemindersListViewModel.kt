@@ -124,13 +124,13 @@ data class ReminderUiState(
 
     /**
      * NFC tag ids already spoken for, each with the name of what owns it: every
-     * chore's tag and every other tag-alarm's. A tag has one job, so the sheet
+     * tag of every chore and every other tag-alarm's. A tag has one job, so the sheet
      * refuses these when linking a tag-alarm. [editingId] is the memo being edited,
      * whose own tag is not "taken".
      */
     fun takenTagIds(editingId: String? = null): Map<String, String> {
         val taken = LinkedHashMap<String, String>()
-        chores.forEach { chore -> chore.nfcId?.let { taken[it] = "the chore \"${chore.label}\"" } }
+        chores.forEach { chore -> chore.nfcIds.forEach { taken[it] = "the chore \"${chore.label}\"" } }
         reminders.forEach { memo ->
             val tag = memo.tagId ?: return@forEach
             if (memo.isTagAlarm && memo.id != editingId && memo.archivedAt == null) {

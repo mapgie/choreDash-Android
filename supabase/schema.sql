@@ -14,8 +14,9 @@
 --
 -- If you're sharing this project with the taskDash web app, the `owners` and
 -- `todos` tables are compatible with it. Applying this file does not drop or
--- edit any row, with one exception: the run that adds `tags.nfc_id` fills it
--- in once from `tag_id` (see there). Otherwise it only creates/adjusts tables,
+-- edit any row, with two exceptions: the run that adds `tags.nfc_id` fills it
+-- in once from `tag_id`, and the run that creates `nfc_tags` fills it once
+-- from `tags.nfc_id` (see there). Otherwise it only creates/adjusts tables,
 -- policies, constraints and grants.
 --
 -- This schema grants the `anon` role full read/write access (no auth), matching
@@ -51,9 +52,8 @@ CREATE TABLE IF NOT EXISTS tags (
   -- The chore's key: scans point at it, and it never changes. Older chores used
   -- the id on their NFC sticker here; new ones get a random one.
   tag_id        text NOT NULL UNIQUE,
-  -- The id the chore's NFC tag carries, or NULL for a chore with no tag.
-  -- Separate from tag_id so a tag can be unlinked and reused without touching
-  -- the chore's history.
+  -- Legacy: the one NFC tag a chore had before nfc_tags (below) held them.
+  -- Still read by older app versions; this one reads nfc_tags instead.
   nfc_id        text UNIQUE,
   label         text NOT NULL,
   category      text,
@@ -105,6 +105,52 @@ DROP POLICY IF EXISTS "anon update tags" ON tags;
 CREATE POLICY "anon update tags" ON tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "anon delete tags" ON tags;
 CREATE POLICY "anon delete tags" ON tags FOR DELETE TO anon USING (true);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- nfc_tags — every NFC tag the app has saved, one row per physical tag.
+--
+-- A tag is saved under a name and attached to a chore later, or never; a chore
+-- can have any number of tags (one by the front door, one by the back). An
+-- unattached tag has chore_tag_id NULL. Deleting a chore frees its tags rather
+-- than forgetting them. Tags on private chores live on the phone, never here.
+--
+-- This replaces tags.nfc_id, which held one tag per chore. That column stays,
+-- untouched, for app versions that still read it. The table is created, and
+-- filled from tags.nfc_id, only on the run that creates it, so a tag the app
+-- detaches later is never re-attached by a re-run.
+-- ─────────────────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'nfc_tags'
+  ) THEN
+    CREATE TABLE IF NOT EXISTS nfc_tags (
+      -- The id the tag answers with: its written id or its hardware UID.
+      nfc_id       text PRIMARY KEY,
+      name         text NOT NULL,
+      -- The key of the chore a tap logs, or NULL while the tag is only saved.
+      chore_tag_id text REFERENCES tags(tag_id) ON DELETE SET NULL,
+      created_at   timestamptz DEFAULT now()
+    );
+    INSERT INTO nfc_tags (nfc_id, name, chore_tag_id)
+      SELECT nfc_id, label, tag_id FROM tags WHERE nfc_id IS NOT NULL
+      ON CONFLICT (nfc_id) DO NOTHING;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS nfc_tags_chore_idx ON nfc_tags(chore_tag_id);
+
+ALTER TABLE nfc_tags ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon read nfc_tags"   ON nfc_tags;
+CREATE POLICY "anon read nfc_tags"   ON nfc_tags FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon insert nfc_tags" ON nfc_tags;
+CREATE POLICY "anon insert nfc_tags" ON nfc_tags FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "anon update nfc_tags" ON nfc_tags;
+CREATE POLICY "anon update nfc_tags" ON nfc_tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon delete nfc_tags" ON nfc_tags;
+CREATE POLICY "anon delete nfc_tags" ON nfc_tags FOR DELETE TO anon USING (true);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- scans — log of NFC taps. Each scan marks the matching tag as "done now".
@@ -187,6 +233,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON owners TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON tags   TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON scans  TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON nfc_tags TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────

@@ -110,8 +110,8 @@ fun ChoreListScreen(
     onNfcConsumed: () -> Unit,
     nfcWriteRequest: String?,
     nfcWriteResult: NfcWriteResult?,
-    /** Writes [nfcId] to a tag; [linkChore] is the key of a chore to link to it once written. */
-    onStartNfcWrite: (nfcId: String, linkChore: String?) -> Unit,
+    /** Writes [nfcId] to a new tag and, once written, attaches it to the chore with key [linkChore] as [name]. */
+    onStartNfcWrite: (nfcId: String, linkChore: String, name: String) -> Unit,
     onCancelNfcWrite: () -> Unit,
     onNfcWriteResultConsumed: () -> Unit,
     pendingAddIntent: AddMenuOption? = null,
@@ -177,7 +177,7 @@ fun ChoreListScreen(
     LaunchedEffect(pendingNfcTagId, uiState.active.size) {
         val tagId = pendingNfcTagId ?: return@LaunchedEffect
         showNfcDialog = false
-        val chore = (uiState.active + uiState.archived).find { it.nfcId == tagId }
+        val chore = (uiState.active + uiState.archived).find { it.answersTo(tagId) }
         when {
             chore != null -> {
                 logTargetChore = chore
@@ -719,9 +719,8 @@ fun ChoreListScreen(
             },
             onWriteTag = { c ->
                 showLogSheet = false
-                viewModel.nfcIdToWriteFor(c) { id -> onStartNfcWrite(id, c.tagId.takeIf { c.nfcId != id }) }
+                viewModel.nfcIdToWriteFor(c) { id -> onStartNfcWrite(id, c.tagId, c.label) }
             },
-            onUnlinkTag = { c -> viewModel.unlinkTag(c) },
             onDismiss = {
                 showLogSheet = false
                 if (uiState.pendingNfcTagId != null) {
@@ -750,17 +749,21 @@ fun ChoreListScreen(
             onStartScan = onStartNfcCapture,
             onCancelScan = onCancelNfcCapture,
             onScanConsumed = onNfcCaptureConsumed,
-            onSave = { nfcId, label, category, owner, schedule, leadDays ->
-                viewModel.updateChore(chore.tagId, nfcId, label, category, owner, schedule, leadDays)
+            savedTags = uiState.savedTags,
+            otherChoreTags = uiState.tagsOfOtherChores(chore.tagId),
+            onSave = { nfcIds, label, category, owner, schedule, leadDays ->
+                // Left alone when unchanged, so an edit never re-sends the tag list.
+                val tags = nfcIds.takeIf { it != chore.nfcIds }
+                viewModel.updateChore(chore.tagId, tags, label, category, owner, schedule, leadDays)
                 showEditSheet = false
             },
             onArchiveToggle = { c, archive ->
                 viewModel.archiveChore(c.tagId, archive)
                 showEditSheet = false
             },
-            onWriteTag = { nfcId ->
+            onWriteNewTag = {
                 showEditSheet = false
-                onStartNfcWrite(nfcId, chore.tagId.takeIf { chore.nfcId != nfcId })
+                viewModel.nfcIdToWriteFor(chore) { id -> onStartNfcWrite(id, chore.tagId, chore.label) }
             },
             onDismiss = { showEditSheet = false }
         )
@@ -817,8 +820,10 @@ fun ChoreListScreen(
             onStartScan = onStartNfcCapture,
             onCancelScan = onCancelNfcCapture,
             onScanConsumed = onNfcCaptureConsumed,
-            onSave = { nfcId, label, category, owner, schedule, leadDays ->
-                viewModel.addChore(nfcId, label, category, owner, schedule, leadDays)
+            savedTags = uiState.savedTags,
+            otherChoreTags = uiState.tagsOfOtherChores(null),
+            onSave = { nfcIds, label, category, owner, schedule, leadDays ->
+                viewModel.addChore(nfcIds, label, category, owner, schedule, leadDays)
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {
                     viewModel.clearPendingNfcTag()
@@ -826,11 +831,8 @@ fun ChoreListScreen(
                 }
             },
             onArchiveToggle = { _, _ -> },
-            onWriteTag = { nfcId ->
-                showAddSheet = false
-                // The chore is not saved yet; its tag id is kept in the sheet's draft.
-                onStartNfcWrite(nfcId, null)
-            },
+            // A new tag is written for a saved chore only; scan or pick one here instead.
+            onWriteNewTag = null,
             onDismiss = {
                 showAddSheet = false
                 if (uiState.pendingNfcTagId != null) {

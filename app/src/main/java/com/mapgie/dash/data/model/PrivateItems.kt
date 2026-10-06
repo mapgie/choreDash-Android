@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * Everything in the reserved [PRIVATE_CATEGORY], stored on this phone only
  * (`PrivateItemStore`, DataStore) and never written to Supabase: private tasks,
- * private chores (as the same [TagDto] rows Supabase would hold) and the logs
- * of those chores. One document, so a move in or out of the category is one
+ * private chores (as the same [TagDto] rows Supabase would hold), the logs
+ * of those chores and their NFC tags. One document, so a move in or out of the category is one
  * atomic write.
  *
  * The repositories decide where a row lives from its category alone (see
@@ -25,6 +25,17 @@ data class PrivateItems(
      * unlinked later is never put back.
      */
     val nfcIdsSplit: Boolean = false,
+    /**
+     * NFC tags attached to private chores, and any let go of since: they stay
+     * here rather than surfacing in Supabase. A tag moves to Supabase only when
+     * it is attached to a shared chore.
+     */
+    val nfcTags: List<NfcTagDto> = emptyList(),
+    /**
+     * Set once [withNfcTagsSplit] has run, for the same reason as [nfcIdsSplit]:
+     * a tag detached later is never put back from the old [TagDto.nfcId].
+     */
+    val nfcTagsSplit: Boolean = false,
 ) {
     // ── Tasks ─────────────────────────────────────────────────────────────────
 
@@ -57,10 +68,35 @@ data class PrivateItems(
         )
     }
 
+    /**
+     * Turns every private chore's one [TagDto.nfcId] into a saved tag attached
+     * to it, named after the chore (the same carry-across as schema.sql's
+     * one-time fill of `nfc_tags`). A no-op once done.
+     */
+    fun withNfcTagsSplit(): PrivateItems {
+        if (nfcTagsSplit) return this
+        val carried = chores.mapNotNull { chore ->
+            chore.nfcId?.takeIf { id -> nfcTags.none { it.nfcId == id } }
+                ?.let { NfcTagDto(nfcId = it, name = chore.label, choreTagId = chore.tagId, createdAt = chore.createdAt) }
+        }
+        return copy(nfcTags = nfcTags + carried.distinctBy { it.nfcId }, nfcTagsSplit = true)
+    }
+
     fun hasChore(tagId: String): Boolean = chores.any { it.tagId == tagId }
 
-    /** The chore whose NFC tag carries [nfcId], or null. */
-    fun choreByNfcId(nfcId: String): TagDto? = chores.firstOrNull { it.nfcId == nfcId }
+    /** The chore a tap on the tag [nfcId] logs, or null. */
+    fun choreByNfcId(nfcId: String): TagDto? =
+        nfcTag(nfcId)?.choreTagId?.let { chore(it) }
+
+    // ── NFC tags ──────────────────────────────────────────────────────────────
+
+    fun nfcTag(nfcId: String): NfcTagDto? = nfcTags.firstOrNull { it.nfcId == nfcId }
+
+    /** Adds [tag], replacing any stored tag with the same id. */
+    fun withNfcTag(tag: NfcTagDto): PrivateItems =
+        copy(nfcTags = nfcTags.filterNot { it.nfcId == tag.nfcId } + tag)
+
+    fun withoutNfcTag(nfcId: String): PrivateItems = copy(nfcTags = nfcTags.filterNot { it.nfcId == nfcId })
 
     fun chore(tagId: String): TagDto? = chores.firstOrNull { it.tagId == tagId }
 

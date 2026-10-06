@@ -22,14 +22,16 @@ sealed class NfcWriteResult {
  * [NfcHandler.extractTagId] as the bare id, so one id space serves chores and
  * tag-alarms alike; the host only says which kind minted it. [fromSettings]
  * marks a write started on Settings › NFC tags, which shows its own dialog.
- * [linkChore] is the key of a chore to link to [id] once the write succeeds,
- * so a chore gains a tag only when a sticker really carries it.
+ * [linkChore] is the key of a chore to attach the new tag to once the write
+ * succeeds, saved as [linkName], so a chore gains a tag only when a sticker
+ * really carries it.
  */
 data class NfcWriteRequest(
     val kind: Kind,
     val id: String,
     val fromSettings: Boolean = false,
     val linkChore: String? = null,
+    val linkName: String = "",
 ) {
     /** What to put on the tag; [ERASE] wipes it instead, [id] unused. */
     enum class Kind { CHORE, MEMO, ERASE }
