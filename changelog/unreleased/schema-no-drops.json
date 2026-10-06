@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "fixed": [
+    "The Supabase schema no longer drops and recreates its access policies on every run, so the SQL Editor stops warning that it is destructive.",
+    "Applying only the saved NFC tags part of the schema now works on a project that never had the earlier NFC tag column."
+  ]
+}

@@ -100,6 +100,29 @@ class SchemaSyncTest {
     }
 
     @Test
+    fun `the nfc_tags carry-across works on a database that never got tags nfc_id`() {
+        // Run on its own, the section can meet a tags table without nfc_id; the
+        // copy must check for the column and fall back to tag_id.
+        assertTrue(
+            "supabase/schema.sql must copy nfc_tags from tag_id when tags.nfc_id is missing",
+            Regex("""INSERT INTO nfc_tags[^;]*SELECT tag_id, label, tag_id FROM tags""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(schema),
+        )
+    }
+
+    @Test
+    fun `applying the schema never drops a policy, a table or a column`() {
+        // Supabase's SQL Editor flags DROP as destructive. Policies are created
+        // only when missing (pg_policies), so a re-run drops nothing.
+        for (statement in listOf("DROP POLICY", "DROP TABLE", "DROP COLUMN")) {
+            assertTrue(
+                "supabase/schema.sql contains $statement; create only what is missing instead",
+                !Regex("""(?m)^[^-\n]*\b$statement\b""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+            )
+        }
+    }
+
+    @Test
     fun `every table is granted to the anon role for the Data API`() {
         // From 2026 Supabase stops auto-exposing public tables to the Data API, so
         // a table the app reaches through the anon key must carry an explicit GRANT
