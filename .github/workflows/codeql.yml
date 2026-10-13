@@ -12,4 +12,4 @@ permissions:
   contents: read
 jobs:
   analyze:
-    uses: mapgie/android-Actions/.github/workflows/codeql.yml@03a8dfd32ef0e703cc1506c1105bdb98f31a29cc
+    uses: mapgie/android-Actions/.github/workflows/codeql.yml@1a6f42d3abb98e085e01ec0803a74e0902b55ff3
