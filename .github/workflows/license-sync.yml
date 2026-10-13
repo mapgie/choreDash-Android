@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   check:
-    uses: mapgie/android-Actions/.github/workflows/license-sync.yml@03a8dfd32ef0e703cc1506c1105bdb98f31a29cc
+    uses: mapgie/android-Actions/.github/workflows/license-sync.yml@1a6f42d3abb98e085e01ec0803a74e0902b55ff3
     with:
       screen-file: LicensesScreen.kt
       screen-path: app/src/main/java/com/mapgie/dash/ui/screens/licenses/LicensesScreen.kt
