@@ -1,4 +1,0 @@
-{
-  "bump": "patch",
-  "changed": ["Renamed the app from choreDash to Urgh. No functional changes; internal identifiers, the NFC tag URI scheme, and existing stickers are unaffected."]
-}
