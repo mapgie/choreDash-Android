@@ -3,10 +3,12 @@
 `schema.sql` is the single source of truth for the shared Supabase project the
 Android app and the taskDash web app talk to. It creates the tables (`owners`,
 `tags`, `nfc_tags`, `scans`, `todos`), their policies, grants and constraints. Every statement
-is **idempotent** (tables/indexes use `IF NOT EXISTS`, policies are dropped then
-created, constraints dropped then added, grants re-granted), so applying the whole
-file to a database that already has some or all of it is safe and never touches row
-data.
+is **idempotent** (tables/indexes use `IF NOT EXISTS`, policies are created only
+when missing, a CHECK is replaced only when it is missing or out of date, grants
+re-granted), so applying the whole file to a database that already has some or all
+of it is safe. No statement drops a table, a column, a row or a policy. The only row
+writes are the one-time fills that carry a chore's NFC tag across (see the file).
+Each section also works when run on its own.
 
 ## Applying it by hand
 

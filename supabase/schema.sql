@@ -3,8 +3,10 @@
 -- The whole tables + app schema, and the single source of truth for it. Every
 -- statement is idempotent (safe to run any number of times against a database
 -- that already has some or all of it): tables and indexes use IF NOT EXISTS,
--- policies are dropped-then-created, constraints are dropped-then-added, grants
--- re-grant. So you can apply it two ways, and both are safe:
+-- policies are created only when missing, a CHECK is replaced only when it is
+-- missing or out of date, grants re-grant. No statement drops a table, a
+-- column, a row or a policy. Any section can also be run on its own. So you
+-- can apply it two ways, and both are safe:
 --   • by hand: paste the whole file into the SQL Editor (Project → SQL Editor →
 --     New query) and Run;
 --   • automatically: the "Deploy Supabase schema" GitHub Action
@@ -32,14 +34,22 @@ CREATE TABLE IF NOT EXISTS owners (
 
 ALTER TABLE owners ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "anon read owners"   ON owners;
-CREATE POLICY "anon read owners"   ON owners FOR SELECT TO anon USING (true);
-DROP POLICY IF EXISTS "anon insert owners" ON owners;
-CREATE POLICY "anon insert owners" ON owners FOR INSERT TO anon WITH CHECK (true);
-DROP POLICY IF EXISTS "anon update owners" ON owners;
-CREATE POLICY "anon update owners" ON owners FOR UPDATE TO anon USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "anon delete owners" ON owners;
-CREATE POLICY "anon delete owners" ON owners FOR DELETE TO anon USING (true);
+-- Created only when missing, so a re-run drops nothing (LESSONS #69).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'owners' AND policyname = 'anon read owners') THEN
+    CREATE POLICY "anon read owners" ON owners FOR SELECT TO anon USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'owners' AND policyname = 'anon insert owners') THEN
+    CREATE POLICY "anon insert owners" ON owners FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'owners' AND policyname = 'anon update owners') THEN
+    CREATE POLICY "anon update owners" ON owners FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'owners' AND policyname = 'anon delete owners') THEN
+    CREATE POLICY "anon delete owners" ON owners FOR DELETE TO anon USING (true);
+  END IF;
+END $$;
 
 -- Add one row per household member, e.g.:
 -- INSERT INTO owners (handle) VALUES ('alex'), ('sam');
@@ -97,14 +107,22 @@ CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);
 
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "anon read tags"   ON tags;
-CREATE POLICY "anon read tags"   ON tags FOR SELECT TO anon USING (true);
-DROP POLICY IF EXISTS "anon insert tags" ON tags;
-CREATE POLICY "anon insert tags" ON tags FOR INSERT TO anon WITH CHECK (true);
-DROP POLICY IF EXISTS "anon update tags" ON tags;
-CREATE POLICY "anon update tags" ON tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "anon delete tags" ON tags;
-CREATE POLICY "anon delete tags" ON tags FOR DELETE TO anon USING (true);
+-- Created only when missing, so a re-run drops nothing (LESSONS #69).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tags' AND policyname = 'anon read tags') THEN
+    CREATE POLICY "anon read tags" ON tags FOR SELECT TO anon USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tags' AND policyname = 'anon insert tags') THEN
+    CREATE POLICY "anon insert tags" ON tags FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tags' AND policyname = 'anon update tags') THEN
+    CREATE POLICY "anon update tags" ON tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tags' AND policyname = 'anon delete tags') THEN
+    CREATE POLICY "anon delete tags" ON tags FOR DELETE TO anon USING (true);
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- nfc_tags — every NFC tag the app has saved, one row per physical tag.
@@ -116,8 +134,9 @@ CREATE POLICY "anon delete tags" ON tags FOR DELETE TO anon USING (true);
 --
 -- This replaces tags.nfc_id, which held one tag per chore. That column stays,
 -- untouched, for app versions that still read it. The table is created, and
--- filled from tags.nfc_id, only on the run that creates it, so a tag the app
--- detaches later is never re-attached by a re-run.
+-- filled from tags.nfc_id (or tag_id, on a database that never got nfc_id),
+-- only on the run that creates it, so a tag the app detaches later is never
+-- re-attached by a re-run.
 -- ─────────────────────────────────────────────────────────────────────────
 DO $$
 BEGIN
@@ -133,9 +152,22 @@ BEGIN
       chore_tag_id text REFERENCES tags(tag_id) ON DELETE SET NULL,
       created_at   timestamptz DEFAULT now()
     );
-    INSERT INTO nfc_tags (nfc_id, name, chore_tag_id)
-      SELECT nfc_id, label, tag_id FROM tags WHERE nfc_id IS NOT NULL
-      ON CONFLICT (nfc_id) DO NOTHING;
+    -- Run on its own, this section can meet a tags table that never got
+    -- nfc_id (the block above adds it). Then tag_id is still the sticker's
+    -- id, and an app-made UUID means the chore has no tag.
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'tags' AND column_name = 'nfc_id'
+    ) THEN
+      INSERT INTO nfc_tags (nfc_id, name, chore_tag_id)
+        SELECT nfc_id, label, tag_id FROM tags WHERE nfc_id IS NOT NULL
+        ON CONFLICT (nfc_id) DO NOTHING;
+    ELSE
+      INSERT INTO nfc_tags (nfc_id, name, chore_tag_id)
+        SELECT tag_id, label, tag_id FROM tags
+        WHERE tag_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        ON CONFLICT (nfc_id) DO NOTHING;
+    END IF;
   END IF;
 END $$;
 
@@ -143,14 +175,22 @@ CREATE INDEX IF NOT EXISTS nfc_tags_chore_idx ON nfc_tags(chore_tag_id);
 
 ALTER TABLE nfc_tags ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "anon read nfc_tags"   ON nfc_tags;
-CREATE POLICY "anon read nfc_tags"   ON nfc_tags FOR SELECT TO anon USING (true);
-DROP POLICY IF EXISTS "anon insert nfc_tags" ON nfc_tags;
-CREATE POLICY "anon insert nfc_tags" ON nfc_tags FOR INSERT TO anon WITH CHECK (true);
-DROP POLICY IF EXISTS "anon update nfc_tags" ON nfc_tags;
-CREATE POLICY "anon update nfc_tags" ON nfc_tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "anon delete nfc_tags" ON nfc_tags;
-CREATE POLICY "anon delete nfc_tags" ON nfc_tags FOR DELETE TO anon USING (true);
+-- Created only when missing, so a re-run drops nothing (LESSONS #69).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'nfc_tags' AND policyname = 'anon read nfc_tags') THEN
+    CREATE POLICY "anon read nfc_tags" ON nfc_tags FOR SELECT TO anon USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'nfc_tags' AND policyname = 'anon insert nfc_tags') THEN
+    CREATE POLICY "anon insert nfc_tags" ON nfc_tags FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'nfc_tags' AND policyname = 'anon update nfc_tags') THEN
+    CREATE POLICY "anon update nfc_tags" ON nfc_tags FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'nfc_tags' AND policyname = 'anon delete nfc_tags') THEN
+    CREATE POLICY "anon delete nfc_tags" ON nfc_tags FOR DELETE TO anon USING (true);
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- scans — log of NFC taps. Each scan marks the matching tag as "done now".
@@ -166,14 +206,22 @@ CREATE INDEX IF NOT EXISTS scans_scanned_at_idx ON scans(scanned_at);
 
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "anon read scans"   ON scans;
-CREATE POLICY "anon read scans"   ON scans FOR SELECT TO anon USING (true);
-DROP POLICY IF EXISTS "anon insert scans" ON scans;
-CREATE POLICY "anon insert scans" ON scans FOR INSERT TO anon WITH CHECK (true);
-DROP POLICY IF EXISTS "anon update scans" ON scans;
-CREATE POLICY "anon update scans" ON scans FOR UPDATE TO anon USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "anon delete scans" ON scans;
-CREATE POLICY "anon delete scans" ON scans FOR DELETE TO anon USING (true);
+-- Created only when missing, so a re-run drops nothing (LESSONS #69).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scans' AND policyname = 'anon read scans') THEN
+    CREATE POLICY "anon read scans" ON scans FOR SELECT TO anon USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scans' AND policyname = 'anon insert scans') THEN
+    CREATE POLICY "anon insert scans" ON scans FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scans' AND policyname = 'anon update scans') THEN
+    CREATE POLICY "anon update scans" ON scans FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scans' AND policyname = 'anon delete scans') THEN
+    CREATE POLICY "anon delete scans" ON scans FOR DELETE TO anon USING (true);
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- todos — shared task list, used by both taskDash (web) and the Android app.
@@ -201,14 +249,22 @@ CREATE INDEX IF NOT EXISTS todos_owner_idx        ON todos(owner);
 
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "anon read todos"   ON todos;
-CREATE POLICY "anon read todos"   ON todos FOR SELECT TO anon USING (true);
-DROP POLICY IF EXISTS "anon insert todos" ON todos;
-CREATE POLICY "anon insert todos" ON todos FOR INSERT TO anon WITH CHECK (true);
-DROP POLICY IF EXISTS "anon update todos" ON todos;
-CREATE POLICY "anon update todos" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "anon delete todos" ON todos;
-CREATE POLICY "anon delete todos" ON todos FOR DELETE TO anon USING (true);
+-- Created only when missing, so a re-run drops nothing (LESSONS #69).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'todos' AND policyname = 'anon read todos') THEN
+    CREATE POLICY "anon read todos" ON todos FOR SELECT TO anon USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'todos' AND policyname = 'anon insert todos') THEN
+    CREATE POLICY "anon insert todos" ON todos FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'todos' AND policyname = 'anon update todos') THEN
+    CREATE POLICY "anon update todos" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'todos' AND policyname = 'anon delete todos') THEN
+    CREATE POLICY "anon delete todos" ON todos FOR DELETE TO anon USING (true);
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Data API exposure (table grants)
@@ -244,10 +300,26 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_r
 -- an older database (created before 'eventually' was allowed, or before
 -- repeat_unit existed) is brought in line; a no-op once it already matches.
 -- ─────────────────────────────────────────────────────────────────────────
-ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
-ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
-  CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
+DO $$
+BEGIN
+  -- Replaced only when missing or lacking the newest value the app writes, so
+  -- a database already in line is left alone. When a value is added to a CHECK
+  -- below, change the LIKE to look for it.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'todos_due_period_check' AND pg_get_constraintdef(oid) LIKE '%''eventually''%'
+  ) THEN
+    ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_due_period_check;
+    ALTER TABLE todos ADD CONSTRAINT todos_due_period_check
+      CHECK (due_period IN ('today', 'this_week', 'this_month', 'eventually'));
+  END IF;
 
-ALTER TABLE tags DROP CONSTRAINT IF EXISTS tags_repeat_unit_check;
-ALTER TABLE tags ADD CONSTRAINT tags_repeat_unit_check
-  CHECK (repeat_unit IN ('week', 'month', 'year'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'tags_repeat_unit_check' AND pg_get_constraintdef(oid) LIKE '%''year''%'
+  ) THEN
+    ALTER TABLE tags DROP CONSTRAINT IF EXISTS tags_repeat_unit_check;
+    ALTER TABLE tags ADD CONSTRAINT tags_repeat_unit_check
+      CHECK (repeat_unit IN ('week', 'month', 'year'));
+  END IF;
+END $$;
