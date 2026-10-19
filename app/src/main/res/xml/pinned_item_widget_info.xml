@@ -8,6 +8,6 @@
     android:maxResizeHeight="250dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="0"
     android:description="@string/widget_pinned_item_description"
     android:previewImage="@mipmap/ic_launcher" />

@@ -31,7 +31,9 @@ class DashApplication : Application(), Configuration.Provider {
             "daily_chore_check", ExistingPeriodicWorkPolicy.KEEP, request)
     }
     private fun scheduleWidgetRefresh() {
-        // Widgets read from Supabase, so there's no point running (and retrying) with no connectivity.
+        // The only timed widget refresh: the widget XMLs set updatePeriodMillis="0" so the
+        // launcher does not run a second one. Widgets read from Supabase, so there's no
+        // point running (and retrying) with no connectivity.
         val request = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(30, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()

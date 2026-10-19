@@ -58,11 +58,15 @@ class ChoreRepository @Inject constructor(
         val client = requireClient()
 
         val tags = client.from("tags").select().decodeList<TagDto>()
-        val scans = client.from("scans")
-            .select {
-                order("scanned_at", Order.DESCENDING)
+        // Only each chore's latest scan is needed. latest_scans returns one row
+        // per chore; a database whose schema predates the view falls back to
+        // reading the whole log, which grows with every tap.
+        val scans = runCatching { client.from("latest_scans").select().decodeList<ScanDto>() }
+            .getOrElse {
+                client.from("scans")
+                    .select { order("scanned_at", Order.DESCENDING) }
+                    .decodeList<ScanDto>()
             }
-            .decodeList<ScanDto>()
         val onDevice = privateStore.current()
         // A database without nfc_tags yet still lists its chores, tagless.
         val savedTags = runCatching { nfcTags.all() }.getOrElse { nfcTags.onDevice() }
