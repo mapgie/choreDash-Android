@@ -1,0 +1,7 @@
+{
+  "bump": "patch",
+  "changed": [
+    "The chore list, widgets and daily check fetch only each chore's latest log instead of every log ever recorded, so loading stays fast as history grows and the shared database does less work",
+    "Widgets refresh on one 30-minute timer instead of two"
+  ]
+}

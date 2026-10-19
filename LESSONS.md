@@ -1592,3 +1592,24 @@ Things that came with it:
 - **Diff the list, don't replace it.** Saving a chore sends the wanted ids;
   `nfcTagChanges` (pure, tested) turns that into attach, detach, and "taken by
   another chore", checked whole before any write so a refusal never half-applies.
+
+## 69. Fetch the aggregate the screen shows, not the log it is computed from
+
+**Symptom:** Supabase warned the project was depleting its Disk IO budget. Every
+chore list load, every widget refresh (per widget, twice per half hour) and the
+daily stale-chore check ran `select * from scans order by scanned_at desc`: the
+whole tap log, ever, to keep one row per chore (`lastScanByTagId`). Cost grew
+with history while the answer stayed the size of the chore list.
+
+**Fix:** a `latest_scans` view in `schema.sql` that returns one row per chore,
+written as `tags CROSS JOIN LATERAL (... ORDER BY scanned_at DESC LIMIT 1)` over
+an index on `scans(tag_id, scanned_at DESC)`. That is one index probe per chore;
+`DISTINCT ON (tag_id)` would still walk every scan. The view is
+`security_invoker = true` so RLS and grants apply as the caller (a plain view
+runs as its owner and skips RLS), and it needs its own `GRANT SELECT` (#54).
+`ChoreRepository.load` reads the view and falls back to the full read if the
+database predates it, so the app ships before the schema is applied.
+
+Also: a Glance widget with `updatePeriodMillis` *and* a periodic WorkManager
+refresh fetches twice. Keep one; the worker wins because it can require network.
+`SchemaSyncTest` guards the view, its grant and its index.
