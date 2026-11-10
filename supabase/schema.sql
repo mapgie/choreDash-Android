@@ -161,7 +161,12 @@ CREATE TABLE IF NOT EXISTS scans (
   scanned_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS scans_tag_id_idx     ON scans(tag_id);
+-- (tag_id, scanned_at DESC) answers "this chore's latest logs" from the index
+-- alone, for latest_scans (below) and a chore's history. It also covers every
+-- lookup by tag_id, so the old single-column index is dropped: one less index
+-- to write on every scan.
+CREATE INDEX IF NOT EXISTS scans_tag_latest_idx ON scans(tag_id, scanned_at DESC);
+DROP INDEX IF EXISTS scans_tag_id_idx;
 CREATE INDEX IF NOT EXISTS scans_scanned_at_idx ON scans(scanned_at);
 
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
@@ -174,6 +179,22 @@ DROP POLICY IF EXISTS "anon update scans" ON scans;
 CREATE POLICY "anon update scans" ON scans FOR UPDATE TO anon USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "anon delete scans" ON scans;
 CREATE POLICY "anon delete scans" ON scans FOR DELETE TO anon USING (true);
+
+-- latest_scans — each chore's most recent scan, one row per chore. The chore
+-- list, the widgets and the daily check need only this, so they read it rather
+-- than the whole scans log, which grows with every tap. The LATERAL form costs
+-- one index probe per chore (scans_tag_latest_idx), whatever the log's size.
+-- security_invoker makes the view run with the caller's grants and RLS, not the
+-- view owner's.
+CREATE OR REPLACE VIEW latest_scans WITH (security_invoker = true) AS
+  SELECT s.id, s.tag_id, s.scanned_at
+  FROM tags t
+  CROSS JOIN LATERAL (
+    SELECT id, tag_id, scanned_at FROM scans
+    WHERE scans.tag_id = t.tag_id
+    ORDER BY scanned_at DESC
+    LIMIT 1
+  ) s;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- todos — shared task list, used by both taskDash (web) and the Android app.
@@ -235,6 +256,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON tags   TO anon, authenticated, service_r
 GRANT SELECT, INSERT, UPDATE, DELETE ON scans  TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON nfc_tags TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_role;
+GRANT SELECT ON latest_scans TO anon, authenticated, service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Constraint sync
