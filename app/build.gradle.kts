@@ -15,8 +15,8 @@ android {
         applicationId = "com.mapgie.dash"
         minSdk = 26
         targetSdk = 35
-        versionCode = 68
-        versionName = "0.46.0"
+        versionCode = 69
+        versionName = "0.46.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

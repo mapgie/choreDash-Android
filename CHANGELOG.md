@@ -31,6 +31,12 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.46.1] - 2026-10-13
+
+### Changed
+- Renamed the app from choreDash to Urgh. No functional changes; internal identifiers, the NFC tag URI scheme, and existing stickers are unaffected.
+
+---
 ## [0.46.0] - 2026-10-06
 
 ### Added

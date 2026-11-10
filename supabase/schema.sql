@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS owners (
 
 ALTER TABLE owners ENABLE ROW LEVEL SECURITY;
 
--- Created only when missing, so a re-run drops nothing (LESSONS #69).
+-- Created only when missing, so a re-run drops nothing (LESSONS #70).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'owners' AND policyname = 'anon read owners') THEN
@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS tags_archived_idx ON tags(archived_at);
 
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 
--- Created only when missing, so a re-run drops nothing (LESSONS #69).
+-- Created only when missing, so a re-run drops nothing (LESSONS #70).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tags' AND policyname = 'anon read tags') THEN
@@ -175,7 +175,7 @@ CREATE INDEX IF NOT EXISTS nfc_tags_chore_idx ON nfc_tags(chore_tag_id);
 
 ALTER TABLE nfc_tags ENABLE ROW LEVEL SECURITY;
 
--- Created only when missing, so a re-run drops nothing (LESSONS #69).
+-- Created only when missing, so a re-run drops nothing (LESSONS #70).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'nfc_tags' AND policyname = 'anon read nfc_tags') THEN
@@ -201,12 +201,26 @@ CREATE TABLE IF NOT EXISTS scans (
   scanned_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS scans_tag_id_idx     ON scans(tag_id);
+-- (tag_id, scanned_at DESC) answers "this chore's latest logs" from the index
+-- alone, for latest_scans (below) and a chore's history. It also covers every
+-- lookup by tag_id, so the old single-column index is retired: one less index
+-- to write on every scan. That runs only on a database that still has it (it
+-- removes a lookup aid, never a row), so a re-run drops nothing.
+CREATE INDEX IF NOT EXISTS scans_tag_latest_idx ON scans(tag_id, scanned_at DESC);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'scans_tag_id_idx'
+  ) THEN
+    DROP INDEX scans_tag_id_idx;
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS scans_scanned_at_idx ON scans(scanned_at);
 
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 
--- Created only when missing, so a re-run drops nothing (LESSONS #69).
+-- Created only when missing, so a re-run drops nothing (LESSONS #70).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scans' AND policyname = 'anon read scans') THEN
@@ -222,6 +236,22 @@ BEGIN
     CREATE POLICY "anon delete scans" ON scans FOR DELETE TO anon USING (true);
   END IF;
 END $$;
+
+-- latest_scans — each chore's most recent scan, one row per chore. The chore
+-- list, the widgets and the daily check need only this, so they read it rather
+-- than the whole scans log, which grows with every tap. The LATERAL form costs
+-- one index probe per chore (scans_tag_latest_idx), whatever the log's size.
+-- security_invoker makes the view run with the caller's grants and RLS, not the
+-- view owner's.
+CREATE OR REPLACE VIEW latest_scans WITH (security_invoker = true) AS
+  SELECT s.id, s.tag_id, s.scanned_at
+  FROM tags t
+  CROSS JOIN LATERAL (
+    SELECT id, tag_id, scanned_at FROM scans
+    WHERE scans.tag_id = t.tag_id
+    ORDER BY scanned_at DESC
+    LIMIT 1
+  ) s;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- todos — shared task list, used by both taskDash (web) and the Android app.
@@ -249,7 +279,7 @@ CREATE INDEX IF NOT EXISTS todos_owner_idx        ON todos(owner);
 
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 
--- Created only when missing, so a re-run drops nothing (LESSONS #69).
+-- Created only when missing, so a re-run drops nothing (LESSONS #70).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'todos' AND policyname = 'anon read todos') THEN
@@ -291,6 +321,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON tags   TO anon, authenticated, service_r
 GRANT SELECT, INSERT, UPDATE, DELETE ON scans  TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON nfc_tags TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON todos  TO anon, authenticated, service_role;
+GRANT SELECT ON latest_scans TO anon, authenticated, service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Constraint sync
