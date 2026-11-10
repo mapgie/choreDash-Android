@@ -120,6 +120,27 @@ class SchemaSyncTest {
         )
     }
 
+    @Test
+    fun `the schema serves each chore's latest scan from a view the app can read`() {
+        // ChoreRepository.load reads latest_scans instead of the whole scans log.
+        // Without security_invoker the view would bypass RLS; without the grant
+        // the Data API answers "permission denied" and the app falls back to the
+        // full read it was meant to stop.
+        assertTrue(
+            "supabase/schema.sql must define latest_scans WITH (security_invoker = true)",
+            Regex("""CREATE OR REPLACE VIEW latest_scans WITH \(security_invoker = true\)""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(schema),
+        )
+        assertTrue(
+            "supabase/schema.sql must GRANT SELECT ON latest_scans to anon",
+            Regex("""GRANT SELECT ON latest_scans TO anon\b""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+        assertTrue(
+            "supabase/schema.sql must index scans on (tag_id, scanned_at DESC) for latest_scans",
+            Regex("""ON scans\(tag_id, scanned_at DESC\)""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+    }
+
     /** The quoted values inside the first `CHECK (<column> IN ('a', 'b', ...))` for [column]. */
     private fun allowedValues(column: String): Set<String> {
         val inList = Regex("""$column\s+IN\s*\(([^)]*)\)""", RegexOption.IGNORE_CASE)
