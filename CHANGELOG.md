@@ -31,6 +31,18 @@ the table above) and resets `-beta.N` to `beta.1`. Promoting out of beta (droppi
 `-beta.N` suffix) remains a manual edit.
 
 ---
+## [0.46.2] - 2026-11-24
+
+### Changed
+- The chore list, widgets and daily check fetch only each chore's latest log instead of every log ever recorded, so loading stays fast as history grows and the shared database does less work
+- Widgets refresh on one 30-minute timer instead of two
+
+### Fixed
+- The Supabase schema no longer drops and recreates its access policies on every run, so the SQL Editor stops warning that it is destructive.
+- Applying only the saved NFC tags part of the schema now works on a project that never had the earlier NFC tag column.
+- After the database schema is updated, the app no longer reports a column as missing until Supabase is restarted
+
+---
 ## [0.46.1] - 2026-10-13
 
 ### Changed

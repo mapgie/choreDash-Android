@@ -1,6 +1,0 @@
-{
-  "bump": "patch",
-  "fixed": [
-    "After the database schema is updated, the app no longer reports a column as missing until Supabase is restarted"
-  ]
-}
