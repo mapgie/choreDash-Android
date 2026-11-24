@@ -1613,3 +1613,31 @@ database predates it, so the app ships before the schema is applied.
 Also: a Glance widget with `updatePeriodMillis` *and* a periodic WorkManager
 refresh fetches twice. Keep one; the worker wins because it can require network.
 `SchemaSyncTest` guards the view, its grant and its index.
+
+---
+
+## 70. An idempotent schema file must also be safe in pieces, and read as safe
+
+#58 made `schema.sql` idempotent with `DROP POLICY IF EXISTS` before each
+`CREATE POLICY`. Correct, but Supabase's SQL Editor flags any query with `DROP`
+as destructive, so a person pasting a section to apply one change is asked to
+confirm something that sounds like data loss. Reasonably, they hesitate.
+
+Then the section they did paste (the `nfc_tags` block from #68) failed: its
+one-time copy read `tags.nfc_id`, a column an *earlier* section adds, and their
+database had never had that section applied. Run whole, the file was fine; run
+in pieces, it assumed state it did not create.
+
+Rules that fall out:
+- **Create only what is missing instead of drop-and-recreate.** Policies check
+  `pg_policies`; a CHECK is replaced only when `pg_constraint` shows it missing
+  or lacking the newest value (`pg_get_constraintdef(oid) LIKE '%''value''%'`).
+  The re-run is then a true no-op, and the file has no `DROP POLICY` to alarm
+  anyone. `SchemaSyncTest` fails if one comes back.
+- **A section that reads a column checks that the column exists**, and knows what
+  the data meant before it did (here: `tag_id` was the sticker id, a UUID meant
+  no tag). People apply schema files by the section, not only by the file.
+- **Test DDL against a real Postgres when one is to hand.** The container has
+  Postgres 16 binaries (`/usr/lib/postgresql/16/bin`); `initdb` under the
+  `postgres` user in its home dir (the scratchpad path is too long for a socket)
+  ran the fresh, old-shape, partial and re-run cases in seconds.
