@@ -354,3 +354,12 @@ BEGIN
       CHECK (repeat_unit IN ('week', 'month', 'year'));
   END IF;
 END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Refresh the Data API's view of the tables
+--
+-- PostgREST caches which tables and columns exist. Until it reloads, a column
+-- added above is "missing" to the app (PGRST204, "... in the schema cache").
+-- This asks it to reload now. It reads and changes no data.
+-- ─────────────────────────────────────────────────────────────────────────
+NOTIFY pgrst, 'reload schema';
