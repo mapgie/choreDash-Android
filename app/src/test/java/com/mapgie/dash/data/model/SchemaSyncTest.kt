@@ -144,6 +144,16 @@ class SchemaSyncTest {
     }
 
     @Test
+    fun `applying the schema makes the Data API see new columns at once`() {
+        // Without the reload, PostgREST keeps its cached column list and the app
+        // reports a column added by this very file as missing.
+        assertTrue(
+            "supabase/schema.sql must end by asking PostgREST to reload its schema cache",
+            Regex("""(?m)^NOTIFY pgrst, 'reload schema';""", RegexOption.IGNORE_CASE).containsMatchIn(schema),
+        )
+    }
+
+    @Test
     fun `the schema serves each chore's latest scan from a view the app can read`() {
         // ChoreRepository.load reads latest_scans instead of the whole scans log.
         // Without security_invoker the view would bypass RLS; without the grant
