@@ -310,7 +310,8 @@ for home screen widgets) is an unrelated API to Compose's
 `Text`/`Button`/`CheckBox` content inside the clickable element instead, so
 there's nothing to add.
 
-`a11y_check.py` now skips any file that imports
+`a11y_check.py` (now the shared copy in android-Actions,
+`.github/actions/a11y-check/`) skips any file that imports
 `androidx.glance.action.clickable` rather than trying to distinguish the two
 APIs line by line. Don't "fix" Glance widget code by adding a `.semantics {
 role = Role.X }` call: it doesn't exist for `GlanceModifier` and won't
@@ -1641,3 +1642,16 @@ Rules that fall out:
   Postgres 16 binaries (`/usr/lib/postgresql/16/bin`); `initdb` under the
   `postgres` user in its home dir (the scratchpad path is too long for a socket)
   ran the fresh, old-shape, partial and re-run cases in seconds.
+
+---
+
+## 71. A check script copied into each repo drifts; ship one copy with the shared workflow
+
+`a11y_check.py` lived in both choreDash and GoFlo. choreDash's copy learned to
+skip Glance widget files (#16); GoFlo's never did, so the same rule meant
+different things in the two apps and nobody noticed. The script now ships
+inside android-Actions as the `a11y-check` composite action, which runs it from
+the caller's checkout via `$GITHUB_ACTION_PATH`. A reusable workflow can't
+reach its own repo's files with a relative path (`./` is the caller's repo),
+so a script the shared workflow runs belongs in an action beside it, pinned by
+SHA like any other. Change the check in android-Actions, then move the pins.

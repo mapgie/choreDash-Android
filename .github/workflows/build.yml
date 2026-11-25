@@ -14,7 +14,7 @@ permissions:
   contents: write
 jobs:
   build:
-    uses: mapgie/android-Actions/.github/workflows/android-build-release.yml@55fd01778230063aca02eb208c0a73e33541c497
+    uses: mapgie/android-Actions/.github/workflows/android-build-release.yml@dd00edf5b4eb8c148dc3a7e3945cd773dbf66e7b
     with:
       app-name: Dash
       create-release: ${{ github.event_name == 'workflow_dispatch' }}

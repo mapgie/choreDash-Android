@@ -44,7 +44,7 @@ The phone needs NFC for chores and tag-alarms; everything else works without it.
 ./gradlew assembleDebug        # debug APK
 ./gradlew testDebugUnitTest    # JVM unit tests (app/src/test)
 ./gradlew lintDebug            # Android lint
-python3 a11y_check.py          # every clickable carries a semantics role
+python3 ../android-Actions/.github/actions/a11y-check/a11y_check.py   # every clickable carries a semantics role (shared copy, android-Actions cloned beside this repo)
 python3 check_changelog_fragment.py   # the PR has a valid changelog fragment
 ```
 

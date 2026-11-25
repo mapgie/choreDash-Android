@@ -146,7 +146,8 @@ Facts that save a detour:
 - **Errors shown to users go through `userFacingMessage()`** (`data/supabase/`),
   which keeps the reason and drops the request dump.
 - **No build here.** The web/remote container has no Android SDK; CI is the check.
-  `python3 a11y_check.py` and `python3 check_changelog_fragment.py` do run.
+  `python3 check_changelog_fragment.py` runs, and so does the shared role
+  check, `python3 ../android-Actions/.github/actions/a11y-check/a11y_check.py`.
 - `LESSONS.md` is long: `grep -n "^## [0-9]" LESSONS.md` lists the headings;
   read only the ones your task touches.
 
@@ -169,7 +170,12 @@ Facts that save a detour:
 - Supabase credentials live only in DataStore via `SettingsRepository` — never log them or write them to the changelog/commit messages
 - **Never use en dashes (–) or em dashes (—) in user-facing text.** They read as robotic. Use a period, colon, or reword the sentence instead. Hyphens in genuine compound words ("in-app", "4-digit", "built-in", "30-day") are fine.
 
-## Accessibility Rules (enforced by `a11y_check.py` in CI)
+## Accessibility Rules (enforced by the shared `a11y_check.py` in CI)
+
+The role check lives in android-Actions (`.github/actions/a11y-check/a11y_check.py`),
+not in this repo: the shared build workflow runs that one copy for every app. Change
+the check there. Colour contrast is checked separately by `WcagContrastTest` and
+`SwatchContrastTest` (JVM unit tests).
 
 Every `.clickable {}` or `.combinedClickable {}` modifier **must** carry a matching `.semantics { role = Role.<Type> }` in the same modifier chain. Use the role that best describes the element:
 
@@ -186,4 +192,4 @@ Additional rules:
 - `clearAndSetSemantics { }` must also include `role = Role.<Type>` — it replaces all child semantics, so the role must be re-declared there.
 - Status text that appears or changes in response to user action needs `Modifier.semantics { liveRegion = LiveRegionMode.Assertive }` (errors) or `LiveRegionMode.Polite` (non-urgent feedback).
 - Icon-only interactive controls (FABs, icon-only buttons outside of `IconButton`) need `Modifier.semantics { contentDescription = "<action label>" }` on the container itself.
-- Run `python3 a11y_check.py` locally before pushing to confirm no new violations.
+- Before pushing, run `python3 ../android-Actions/.github/actions/a11y-check/a11y_check.py` from the repo root (with android-Actions cloned beside it) to confirm no new violations.
