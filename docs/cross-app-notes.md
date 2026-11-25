@@ -9,7 +9,7 @@ Generated 2026-06-16. Covers both apps at their current state on branch `claude/
 - **Versioning scheme:** Both use `MAJOR.MINOR.PATCH-beta.N`. Both use changelog fragment JSON files (`changelog/unreleased/<slug>.json`) with `check_changelog_fragment.py` CI and `consolidate_changelog.py` release automation.
 - **Alarm/reminder scheduling:** Both use `AlarmManager.setExactAndAllowWhileIdle(RTC_WAKEUP)` with the same API 31+ `canScheduleExactAlarms()` guard and the same `goAsync()` + coroutine pattern in `BroadcastReceiver`.
 - **Boot rescheduling:** Both have `BootReceiver` → `BootWorker` (HiltWorker via WorkManager) that reschedules all pending alarms on boot/update.
-- **Accessibility:** Both enforce `.semantics { role = Role.X }` on every clickable, `liveRegion` for feedback, `stateDescription` on switches, `contentDescription` on icon-only controls. Both enforced by `a11y_check.py` in CI.
+- **Accessibility:** Both enforce `.semantics { role = Role.X }` on every clickable, `liveRegion` for feedback, `stateDescription` on switches, `contentDescription` on icon-only controls. Both enforced in CI by the one shared `a11y_check.py` in android-Actions (`.github/actions/a11y-check/`). Both check theme colour contrast with a JVM `WcagContrastTest` that reads the real colour schemes.
 - **Navigation:** Both use `NavHost` with the same `popUpTo + saveState + restoreState` bottom-tab pattern.
 - **DataStore:** Both use `androidx.datastore.preferences` for settings persistence.
 - **Hilt DI, WorkManager, Material 3, Compose Navigation** — all the same versions and patterns.
